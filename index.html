@@ -275,16 +275,27 @@
   .imp-help{display:flex;justify-content:center;margin-top:-8px;}
   .imp-sum{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;}
   .imp-sum .badge{font-size:11px;padding:3px 9px;}
-  .imp-row{display:grid;grid-template-columns:40px 1.5fr 1fr 1.4fr;gap:10px;align-items:center;padding:9px 12px;border-bottom:1px solid var(--line);font-size:13px;}
+  .modal.imp-modal{max-width:880px;}
+  .imp-row{display:grid;grid-template-columns:36px minmax(0,1fr);gap:8px 10px;align-items:start;padding:10px 12px;border-bottom:1px solid var(--line);font-size:13px;}
   .imp-row:last-child{border-bottom:none;}
-  .imp-row.head{padding:7px 12px;font-size:11px;text-transform:uppercase;letter-spacing:0.05em;color:var(--faint);font-weight:700;background:#FBFAF6;}
   .imp-row.bad{background:var(--rust-pale);}
-  .imp-row .why{color:var(--rust);font-weight:600;font-size:12.5px;}
-  .imp-row .ok{color:var(--green);font-size:12.5px;}
-  @media (max-width:640px){
-    .imp-row{grid-template-columns:32px 1fr;row-gap:3px;}
-    .imp-row > :nth-child(n+3){grid-column:2;}
-    .imp-row.head{display:none;}
+  .imp-row.off .imp-fields{opacity:0.45;}
+  .imp-inc{display:flex;flex-direction:column;align-items:center;gap:4px;padding-top:15px;cursor:pointer;}
+  .imp-inc input{width:17px;height:17px;margin:0;accent-color:var(--green);cursor:pointer;}
+  .imp-fields{display:grid;grid-template-columns:minmax(110px,1.8fr) repeat(5,minmax(48px,1fr));gap:6px;}
+  .imp-fields.stock{grid-template-columns:minmax(110px,1.8fr) repeat(6,minmax(48px,1fr));}
+  .imp-f{min-width:0;}
+  .imp-f .lbl{font-size:10px;color:var(--faint);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:3px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .imp-f input{width:100%;padding:6px 7px;border-radius:6px;border:1px solid var(--line2);font-size:13px;font-family:'JetBrains Mono',monospace;background:#FCFBF8;color:var(--ink);}
+  .imp-f-species input{font-family:inherit;}
+  .imp-f input:focus{outline:2px solid var(--green);outline-offset:-1px;border-color:var(--green);}
+  .imp-out{grid-column:2;display:flex;justify-content:space-between;gap:4px 12px;flex-wrap:wrap;font-size:12.5px;}
+  .imp-res{color:var(--faint);}
+  .imp-res.why{color:var(--rust);font-weight:600;}
+  .imp-res.ok{color:var(--green);}
+  @media (max-width:700px){
+    .imp-fields,.imp-fields.stock{grid-template-columns:repeat(3,minmax(0,1fr));}
+    .imp-f-species{grid-column:1 / -1;}
   }
 </style>
 </head>
@@ -602,7 +613,7 @@
 
 <!-- File upload (inventory + bill out) -->
 <div class="overlay" id="imp-overlay">
-  <div class="modal wide">
+  <div class="modal wide imp-modal">
     <div class="modal-head"><h2 id="imp-title">Upload file</h2><button id="imp-close" aria-label="Close"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
     <div class="modal-body">
       <p class="imp-lead" id="imp-lead"></p>
@@ -2032,6 +2043,7 @@
   function planStock(lines){
     var added = {}, fresh = {};
     return lines.map(function(L){
+      if(L.skip) return { L:L, skip:true };
       if(L.err) return { L:L, err:L.err };
       var item = findStock(L);
       var key = (L.species||'').trim().toLowerCase()+'|'+L.t+'x'+L.w+'x'+L.l;
@@ -2052,6 +2064,7 @@
   function planBill(lines){
     var taken = {};
     return lines.map(function(L){
+      if(L.skip) return { L:L, skip:true };
       if(L.err) return { L:L, err:L.err };
       var item = findStock(L);
       if(!item) return { L:L, err:'Not in inventory' };
@@ -2065,26 +2078,70 @@
     });
   }
 
+  // Editable preview: the inputs are drawn once, and only the results refresh while typing so focus stays put
+  var IMP_FIELDS = {
+    stock:[['species','Species'],['t','Thick (in)'],['w','Width (in)'],['l','Length (ft)'],['bs','Pcs / bunk'],['bunks','Bunks'],['pcs','Loose pcs']],
+    bill:[['species','Species'],['t','Thick (in)'],['w','Width (in)'],['l','Length (ft)'],['bunks','Bunks'],['pcs','Pieces']]
+  };
+  function shownNum(n){ return n==null ? '' : isNaN(n) ? '?' : String(n); }
   function renderImp(){
-    var ready = impPlan.filter(function(p){ return !p.err; }).length, skipped = impPlan.length - ready;
-    var rows = impPlan.map(function(p){
-      var L = p.L, sp = p.item ? p.item.species : L.species;
-      var size = (L.t>0 && L.w>0 && L.l>0) ? dims(lineSpec(L)) : 'size missing';
-      var asked = [L.bunks>0 ? L.bunks+(L.bunks===1?' bunk':' bunks') : '', L.pcs>0 ? L.pcs+(L.pcs===1?' pc':' pcs') : ''].filter(Boolean).join(' + ') || '—';
-      var qty = p.err ? asked : qtyText(p.bs, p.add)+'<div class="meta">'+fmt(bfPer(lineSpec(L))*p.add)+' bd ft</div>';
-      return '<div class="imp-row'+(p.err?' bad':'')+'">'+
-        '<div class="num zero">'+L.row+'</div>'+
-        '<div><div class="name'+((sp||'').trim()?'':' unspec')+'">'+esc(spName(sp))+'</div><div class="meta">'+esc(size)+'</div></div>'+
-        '<div class="num">'+qty+'</div>'+
-        '<div class="'+(p.err?'why':'ok')+'">'+esc(p.err || p.note)+'</div>'+
+    var rows = impPlan.map(function(p, i){
+      var L = p.L;
+      var fields = IMP_FIELDS[impMode].map(function(fd){
+        var f = fd[0], v = f==='species' ? (L.species||'') : shownNum(L[f]);
+        return '<div class="imp-f imp-f-'+f+'"><div class="lbl">'+fd[1]+'</div>'+
+          '<input type="text" data-f="'+f+'" value="'+esc(v)+'"'+(f==='species' ? '' : ' inputmode="decimal"')+' aria-label="'+fd[1]+', row '+L.row+'"></div>';
+      }).join('');
+      return '<div class="imp-row" data-i="'+i+'">'+
+        '<label class="imp-inc"><input type="checkbox" data-f="inc"'+(L.skip?'':' checked')+' aria-label="Include row '+L.row+'"><span class="num zero">'+L.row+'</span></label>'+
+        '<div class="imp-fields'+(impMode==='stock'?' stock':'')+'">'+fields+'</div>'+
+        '<div class="imp-out"><span class="imp-qty num"></span><span class="imp-res"></span></div>'+
       '</div>';
     }).join('');
-    $('imp-preview').innerHTML =
-      '<div class="imp-sum"><span class="badge on">'+ready+' ready</span>'+(skipped ? '<span class="badge off">'+skipped+' will be skipped</span>' : '')+'</div>'+
-      '<div class="card"><div class="imp-row head"><div>Row</div><div>Item</div><div>Qty</div><div>Result</div></div>'+rows+'</div>';
+    $('imp-preview').innerHTML = '<div class="imp-sum" id="imp-sum"></div><div class="card">'+rows+'</div>';
+    refreshImp();
+  }
+  function refreshImp(){
+    var rows = $('imp-preview').querySelectorAll('.imp-row[data-i]');
+    var ready = 0, bad = 0, off = 0;
+    impPlan.forEach(function(p, i){
+      var row = rows[i], L = p.L;
+      if(!row) return;
+      var q = row.querySelector('.imp-qty'), r = row.querySelector('.imp-res');
+      row.classList.toggle('bad', !!p.err);
+      row.classList.toggle('off', !!p.skip);
+      if(p.skip){ off++; q.textContent = ''; r.className = 'imp-res'; r.textContent = "Left out, won't be added"; }
+      else if(p.err){ bad++; q.textContent = ''; r.className = 'imp-res why'; r.textContent = p.err; }
+      else {
+        ready++;
+        q.textContent = qtyText(p.bs, p.add)+(p.bs>0 && p.add>=p.bs ? ' ('+p.add.toLocaleString()+' pcs)' : '')+' · '+fmt(bfPer(lineSpec(L))*p.add)+' bd ft';
+        r.className = 'imp-res ok';
+        r.textContent = (impMode==='bill' && p.item ? spName(p.item.species)+' · ' : '')+p.note;
+      }
+      var bsIn = row.querySelector('[data-f=bs]');
+      if(bsIn) bsIn.placeholder = (L.bs==null && p.bs) ? String(p.bs) : '';
+    });
+    $('imp-sum').innerHTML = '<span class="badge on">'+ready+' ready</span>'+
+      (bad ? '<span class="badge off">'+bad+' need fixing</span>' : '')+
+      (off ? '<span class="badge" style="background:var(--line);color:var(--soft);margin-left:0;">'+off+' left out</span>' : '');
     var btn = $('imp-apply');
     btn.disabled = !ready;
     btn.textContent = ready ? 'Add '+ready+(ready===1?' row':' rows')+(impMode==='stock' ? ' to inventory' : ' to ticket') : 'Nothing to add';
+  }
+  function onImpEdit(e){
+    var el = e.target, f = el.dataset && el.dataset.f;
+    var row = f && el.closest('.imp-row');
+    var p = row && impPlan[Number(row.dataset.i)];
+    if(!p) return;
+    var L = p.L;
+    if(f==='inc') L.skip = !el.checked;
+    else if(f==='species') L.species = el.value.trim();
+    else L[f] = impNum(el.value);
+    delete L.err;
+    checkLine(L);
+    var lines = impPlan.map(function(x){ return x.L; });
+    impPlan = impMode==='stock' ? planStock(lines) : planBill(lines);
+    refreshImp();
   }
 
   function impFail(msg){
@@ -2129,8 +2186,8 @@
     impMode = mode; impPlan = [];
     $('imp-title').textContent = mode==='stock' ? 'Upload stock' : 'Upload a pull list';
     $('imp-lead').textContent = mode==='stock'
-      ? 'Upload an order confirmation, packing list, or spreadsheet of lumber you received. Lines that match an item already in inventory add to its count, and new sizes become new items. You will see a preview before anything changes.'
-      : 'Upload an order, pull list, or spreadsheet of lumber to pull. Each line is matched to inventory and added to the sale ticket, where you can check it before completing the sale.';
+      ? 'Upload an order confirmation, packing list, or spreadsheet of lumber you received. Lines that match an item already in inventory add to its count, and new sizes become new items. You can fix any row or uncheck it to leave it out before anything changes.'
+      : 'Upload an order, pull list, or spreadsheet of lumber to pull. Each line is matched to inventory and added to the sale ticket. You can fix any row or uncheck it to leave it out first.';
     $('imp-file').value = '';
     $('imp-drop-main').textContent = 'Choose a file or drop it here';
     $('imp-preview').innerHTML = '';
@@ -2142,7 +2199,7 @@
   function closeImp(){ $('imp-overlay').classList.remove('open'); $('imp-drop').classList.remove('over'); impMode = null; impPlan = []; }
 
   function applyImp(){
-    var ok = impPlan.filter(function(p){ return !p.err; });
+    var ok = impPlan.filter(function(p){ return !p.err && !p.skip; });
     if(!ok.length || !impMode) return;
     var pieces = ok.reduce(function(s, p){ return s + p.add; }, 0);
     if(impMode==='stock'){
@@ -2200,6 +2257,8 @@
     handleImpFile(e.dataTransfer && e.dataTransfer.files[0]);
   });
   $('imp-template').addEventListener('click', downloadTemplate);
+  $('imp-preview').addEventListener('input', onImpEdit);
+  $('imp-preview').addEventListener('change', onImpEdit);
   $('imp-apply').addEventListener('click', applyImp);
   $('imp-cancel').addEventListener('click', closeImp);
   $('imp-close').addEventListener('click', closeImp);
