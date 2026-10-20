@@ -281,7 +281,9 @@
   .imp-row.off .imp-fields{opacity:0.45;}
   .imp-inc{display:flex;flex-direction:column;align-items:center;gap:4px;padding-top:15px;cursor:pointer;}
   .imp-inc input{width:17px;height:17px;margin:0;accent-color:var(--green);cursor:pointer;}
-  .imp-fields{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px;}
+  .imp-fields{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;}
+  .imp-f input[data-f=kind]{font-family:inherit;text-transform:uppercase;}
+  .imp-f input[data-f=kind]::placeholder{text-transform:none;}
   .imp-f{min-width:0;}
   .imp-f .lbl{font-size:10px;color:var(--faint);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:3px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .imp-f input{width:100%;padding:6px 7px;border-radius:6px;border:1px solid var(--line2);font-size:13px;font-family:'JetBrains Mono',monospace;background:#FCFBF8;color:var(--ink);}
@@ -469,6 +471,7 @@
         <div class="field"><label for="f-w">Width (in)</label><input type="number" id="f-w" min="0" step="0.125" placeholder="4"></div>
         <div class="field"><label for="f-l">Length (ft, or " for inches)</label><input type="text" id="f-l" inputmode="decimal" autocomplete="off" placeholder="8 or 104 5/8&quot;"></div>
       </div>
+      <div class="field"><label for="f-kind">Type (optional)</label><input type="text" id="f-kind" list="kind-list" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Leave blank for plain lumber, or PT, DF, LVL"><datalist id="kind-list"></datalist></div>
       <div class="grid3">
         <div class="field"><label for="f-bunksize">Pieces per bunk</label><input type="number" id="f-bunksize" min="0" step="1" placeholder="e.g. 294"></div>
         <div class="field"><label for="f-bunks">Number of bunks</label><input type="number" id="f-bunks" min="0" step="1" placeholder="0"></div>
@@ -653,17 +656,30 @@
   function round2(n){ return Math.round(n*100)/100; }
   function fmt(n){ return Number(n||0).toLocaleString(undefined,{maximumFractionDigits:2}); }
   function fmtDate(iso){ var d=new Date(iso); return d.toLocaleDateString()+' '+d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}); }
-  function dims(i){ return i.thickness+'" × '+i.width+'" × '+fmtLen(i.length); }
+  // Type is optional (PT, DF, LVL...). Blank means plain lumber. Same size with a different type is a different item.
+  function normKind(s){ return String(s==null ? '' : s).trim().toUpperCase().replace(/\s+/g,' '); }
+  function kindOf(i){ return normKind(i.kind); }
+  function sizeName(i){ return fracIn(i.thickness)+'" × '+fracIn(i.width)+'"'+(kindOf(i) ? ' '+kindOf(i) : ''); }
+  function dims(i){ return sizeName(i)+' × '+fmtLen(i.length); }
+  function bySize(a, b){ return (a.thickness-b.thickness) || (a.width-b.width) || kindOf(a).localeCompare(kindOf(b)) || ((a.length||0)-(b.length||0)); }
+  function sizeHay(i){
+    var hay = (i.thickness+'x'+i.width+'x'+i.length+' '+i.thickness+'x'+i.width+kindOf(i)+' '+kindOf(i)).toLowerCase();
+    return hay+' '+hay.replace(/\s+/g,'');
+  }
   // Lengths are stored in feet. Whole feet show as 12'; anything else shows in inches, like 104 5/8"
   function fmtLen(l){
     l = Number(l);
     if(!isFinite(l)) return '';
     if(Math.abs(l - Math.round(l)) < 1e-9) return Math.round(l)+"'";
-    var inch = l*12, whole = Math.floor(inch + 1e-9), frac = Math.round((inch - whole)*16);
+    return fracIn(l*12)+'"';
+  }
+  // Inches to the nearest 1/16 as a fraction: 1.75 -> "1 3/4", 104.625 -> "104 5/8"
+  function fracIn(inch){
+    inch = Number(inch);
+    var whole = Math.floor(inch + 1e-9), frac = Math.round((inch - whole)*16), d = 16;
     if(frac===16){ whole++; frac = 0; }
-    var d = 16;
     while(frac && frac%2===0){ frac /= 2; d /= 2; }
-    return whole+(frac ? ' '+frac+'/'+d : '')+'"';
+    return (whole || !frac ? whole : '')+(frac ? (whole ? ' ' : '')+frac+'/'+d : '');
   }
   // "12", "12'", "104 5/8\"", "104.625 in" -> feet; blank -> null; junk -> NaN
   function lenNum(v){
@@ -1140,7 +1156,7 @@
   ===================================================== */
   var openTypes = {};
   var pickOpen = {};
-  function typeKey(i){ return i.thickness+'x'+i.width; }
+  function typeKey(i){ return i.thickness+'x'+i.width+'|'+kindOf(i); }
   function allTypeKeys(){
     var seen = {}, out = [];
     stock.forEach(function(i){ var k = typeKey(i); if(!seen[k]){ seen[k]=true; out.push(k); } });
@@ -1164,25 +1180,20 @@
     }
     var q = invSearch;
     var list = stock.filter(function(i){
-      var hay = i.thickness+'x'+i.width+'x'+i.length;
-      return (!q || hay.indexOf(q.replace(/\s+/g,''))>-1) && (!lowOnly || isLow(i));
-    }).sort(function(a,b){
-      return (a.thickness-b.thickness) || (a.width-b.width) || (a.length-b.length);
-    });
+      return (!q || sizeHay(i).indexOf(q)>-1) && (!lowOnly || isLow(i));
+    }).sort(bySize);
     if(list.length===0){
       el.innerHTML = '<div class="card"><div class="empty"><div class="big">Nothing matches</div><div>'+(lowOnly && !q ? 'No items are at or below their low stock alert.' : 'Try a different search.')+'</div></div></div>';
       return;
     }
-    // Layer 1: thickness x width. Layer 2: length.
+    // Layer 1: thickness x width (+ type). Layer 2: length.
     var groups = {};
     list.forEach(function(i){
       var k = typeKey(i);
-      if(!groups[k]) groups[k] = { key:k, thickness:i.thickness, width:i.width, items:[] };
+      if(!groups[k]) groups[k] = { key:k, thickness:i.thickness, width:i.width, kind:kindOf(i), items:[] };
       groups[k].items.push(i);
     });
-    var glist = Object.keys(groups).map(function(k){ return groups[k]; }).sort(function(a,b){
-      return (a.thickness-b.thickness) || (a.width-b.width);
-    });
+    var glist = Object.keys(groups).map(function(k){ return groups[k]; }).sort(bySize);
     var forceOpen = !!q || lowOnly;
     var allKeys = allTypeKeys();
     var allOpen = allKeys.length>0 && allKeys.every(function(k){ return openTypes[k]; });
@@ -1205,7 +1216,7 @@
       var open = forceOpen || !!openTypes[g.key];
       var head = '<div class="row inv-row group-row" data-gi="'+gi+'">'+
         '<div class="g-title"><span class="chev'+(open?' open':'')+'">'+chevSvg+'</span>'+
-          '<div><div class="name">'+g.thickness+'" × '+g.width+'"'+
+          '<div><div class="name">'+esc(sizeName(g))+
             (allOut ? '<span class="badge out">Out</span>' : (flagged ? '<span class="badge low">Low</span>' : ''))+'</div>'+
           '<div class="meta">'+g.items.length+(g.items.length===1?' length':' lengths')+'</div></div></div>'+
         '<div class="num c-num'+(gb?'':' zero')+'">'+gb+'</div>'+
@@ -1290,6 +1301,10 @@
     $('f-t').value = item ? item.thickness : '';
     $('f-w').value = item ? item.width : '';
     $('f-l').value = item ? fmtLen(item.length) : '';
+    $('f-kind').value = item ? kindOf(item) : '';
+    var kinds = ['PT','DF','LVL'];
+    stock.forEach(function(i){ var k = kindOf(i); if(k && kinds.indexOf(k)<0) kinds.push(k); });
+    $('kind-list').innerHTML = kinds.map(function(k){ return '<option value="'+esc(k)+'">'; }).join('');
     var bs = item ? (Number(item.bunkSize)||0) : 0;
     $('f-bunksize').value = bs>0 ? bs : '';
     $('f-bunks').value = item ? bunksOf(item) : '';
@@ -1311,15 +1326,16 @@
     var lowRaw = $('f-low').value.trim();
     var lowAt = lowRaw==='' ? null : Number(lowRaw);
     if(!err && lowAt!==null && (isNaN(lowAt) || lowAt<0 || Math.floor(lowAt)!==lowAt)) err = 'Low stock alert must be a whole number, or leave it blank.';
-    var spec = { thickness:t, width:w, length:l };
+    var kind = normKind($('f-kind').value);
+    var spec = { thickness:t, width:w, length:l, kind:kind };
     if(!err && stock.some(function(i){ return i.id!==editingId && sameSpec(i, spec); })) err = dims(spec)+' is already in inventory. Edit that item instead.';
     if(err){ $('stock-err').textContent = err; $('stock-err').classList.add('show'); return; }
 
     if(editingId){
       var idx = stock.findIndex(function(i){ return i.id===editingId; });
-      if(idx>-1) stock[idx] = Object.assign({}, stock[idx], {thickness:t, width:w, length:l, bunkSize:c.bs, quantity:c.total, lowAt:lowAt});
+      if(idx>-1) stock[idx] = Object.assign({}, stock[idx], {thickness:t, width:w, length:l, kind:kind, bunkSize:c.bs, quantity:c.total, lowAt:lowAt});
     } else {
-      stock.push({id:uid('lu'), thickness:t, width:w, length:l, bunkSize:c.bs, quantity:c.total, lowAt:lowAt});
+      stock.push({id:uid('lu'), thickness:t, width:w, length:l, kind:kind, bunkSize:c.bs, quantity:c.total, lowAt:lowAt});
     }
     var savedItem = editingId ? stock.find(function(i){ return i.id===editingId; }) : stock[stock.length-1];
     if(savedItem) openTypes[typeKey(savedItem)] = true;
@@ -1372,23 +1388,18 @@
     }
     var q = pickSearch;
     var list = stock.filter(function(i){
-      var hay = i.thickness+'x'+i.width+'x'+i.length;
-      return !q || hay.indexOf(q.replace(/\s+/g,''))>-1;
-    }).sort(function(a,b){
-      return (a.thickness-b.thickness) || (a.width-b.width) || (a.length-b.length);
-    });
+      return !q || sizeHay(i).indexOf(q)>-1;
+    }).sort(bySize);
     if(list.length===0){ el.innerHTML = '<div class="empty"><div class="big">No matches</div></div>'; return; }
 
-    // Layer 1: thickness x width. Layer 2: length.
+    // Layer 1: thickness x width (+ type). Layer 2: length.
     var groups = {};
     list.forEach(function(i){
       var k = typeKey(i);
-      if(!groups[k]) groups[k] = { key:k, thickness:i.thickness, width:i.width, items:[] };
+      if(!groups[k]) groups[k] = { key:k, thickness:i.thickness, width:i.width, kind:kindOf(i), items:[] };
       groups[k].items.push(i);
     });
-    var glist = Object.keys(groups).map(function(k){ return groups[k]; }).sort(function(a,b){
-      return (a.thickness-b.thickness) || (a.width-b.width);
-    });
+    var glist = Object.keys(groups).map(function(k){ return groups[k]; }).sort(bySize);
     var forceOpen = !!q;
     var allKeys = allTypeKeys();
     var allOpen = allKeys.length>0 && allKeys.every(function(k){ return pickOpen[k]; });
@@ -1404,7 +1415,7 @@
       var open = forceOpen || !!pickOpen[g.key];
       var head = '<div class="pick-group'+(availTotal<=0?' dim':'')+'" data-gi="'+gi+'">'+
         '<span class="chev'+(open?' open':'')+'">'+chevSvg+'</span>'+
-        '<div><div class="name">'+g.thickness+'" × '+g.width+'"</div>'+
+        '<div><div class="name">'+esc(sizeName(g))+'</div>'+
           '<div class="meta">'+g.items.length+(g.items.length===1?' length':' lengths')+' · '+(availTotal>0 ? availTotal.toLocaleString()+' pcs available' : 'none left')+'</div></div>'+
       '</div>';
       if(!open) return head;
@@ -1512,7 +1523,7 @@
     var lines = cart.map(function(c){
       var item = stock.find(function(i){ return i.id===c.stockId; });
       return {
-        thickness:item.thickness, width:item.width, length:item.length,
+        thickness:item.thickness, width:item.width, length:item.length, kind:kindOf(item),
         bunkSize:Number(item.bunkSize)||0, pieces:c.pieces, bf:round2(bfPer(item)*c.pieces)
       };
     });
@@ -1621,14 +1632,15 @@
   }
   $('sdel-restock').addEventListener('change', updateSdelHint);
   function sameSpec(a, b){
-    return Number(a.thickness)===Number(b.thickness) && Number(a.width)===Number(b.width) && Number(a.length)===Number(b.length);
+    return Number(a.thickness)===Number(b.thickness) && Number(a.width)===Number(b.width) && Number(a.length)===Number(b.length) &&
+      kindOf(a)===kindOf(b);
   }
   function restockFrom(list){
     list.forEach(function(s){
       s.lines.forEach(function(l){
         var item = stock.find(function(i){ return sameSpec(i, l); });
         if(item) item.quantity = Number(item.quantity) + l.pieces;
-        else stock.push({id:uid('lu'), thickness:l.thickness, width:l.width, length:l.length, bunkSize:Number(l.bunkSize)||0, quantity:l.pieces, lowAt:null});
+        else stock.push({id:uid('lu'), thickness:l.thickness, width:l.width, length:l.length, kind:kindOf(l), bunkSize:Number(l.bunkSize)||0, quantity:l.pieces, lowAt:null});
       });
     });
     save(KEYS.stock, stock);
@@ -1841,6 +1853,7 @@
   // Accepted headings, after lowercasing and dropping spaces, punctuation and "(in)"-style notes
   var IMP_COLS = {
     desc:['description','desc','item','size','dimensions','dims','dimension'],
+    kind:['type','kind','treatment'],
     t:['thickness','thick','thk','t'],
     w:['width','wide','w'],
     l:['length','len','l','lengthft','ft','feet'],
@@ -1850,8 +1863,8 @@
     low:['lowstock','lowat','lowstockalert','alert','reorder','reorderat','reorderpoint']
   };
   var IMP_TEMPLATES = {
-    stock:['Thickness (in)','Width (in)','Length (ft)','Pieces per bunk','Bunks','Loose pieces','Low stock alert'],
-    bill:['Thickness (in)','Width (in)','Length (ft)','Pieces per bunk','Bunks','Pieces']
+    stock:['Thickness (in)','Width (in)','Type','Length (ft)','Pieces per bunk','Bunks','Loose pieces','Low stock alert'],
+    bill:['Thickness (in)','Width (in)','Type','Length (ft)','Pieces per bunk','Bunks','Pieces']
   };
 
   // Loads a library only when someone uploads that kind of file
@@ -1923,16 +1936,23 @@
     var n = Number(s);
     return isFinite(n) ? n : NaN;
   }
-  // "Doug fir 2x4x8", "2 x 6 SPF 16'", "5/4x6 cedar" -> {t, w, l}; any other words are ignored
+  // "Doug fir 2x4x8", "2 x 6 SPF 16'", "2x4PT 12'", "5/4x6 cedar" -> {t, w, l, kind}; other words are ignored
   var DIM_RE = /(\d+(?:\.\d+)?(?:\s*\/\s*\d+)?)\s*[x×*]\s*(\d+(?:\.\d+)?)(?:\s*[x×*]\s*(\d+(?:\.\d+)?)\s*(?:'|ft\b|feet\b)?)?/i;
+  // A type written right after the size, like 2x4PT or 2x6 DF
+  function kindAfter(text){
+    var k = /^\s*-?\s*(PT|DF|LVL|TREATED)\b/i.exec(text || '');
+    return !k ? '' : /^treated$/i.test(k[1]) ? 'PT' : k[1].toUpperCase();
+  }
   function parseDesc(s){
     s = String(s==null ? '' : s);
     var m = DIM_RE.exec(s), out = {};
     if(!m) return out;
+    var after = s.slice(m.index + m[0].length);
     out.t = impNum(m[1]); out.w = impNum(m[2]);
+    out.kind = kindAfter(after);
     if(m[3]) out.l = Number(m[3]);
     else {
-      var lm = /(\d+(?:\.\d+)?)\s*(?:'|ft\b|feet\b)/i.exec(s.slice(m.index + m[0].length));
+      var lm = /(\d+(?:\.\d+)?)\s*(?:'|ft\b|feet\b)/i.exec(after);
       if(lm) out.l = Number(lm[1]);
     }
     return out;
@@ -1958,7 +1978,7 @@
       var d = map.desc!==undefined ? parseDesc(cell('desc')) : {};
       lines.push(checkLine({
         row: hi + ri + 2,
-        t: val('t', d.t), w: val('w', d.w),
+        t: val('t', d.t), w: val('w', d.w), kind: normKind(cell('kind')) || d.kind || '',
         l: String(cell('l')==null ? '' : cell('l')).trim()==='' ? (d.l==null ? null : d.l) : lenNum(cell('l')),
         bs: val('bs'), bunks: val('bunks'), pcs: val('pcs'), low: val('low')
       }));
@@ -2022,7 +2042,7 @@
         var lm = /(\d+(?:\.\d+)?)\s*(?:'|ft\b|feet\b)/i.exec(after);
         if(lm) l = Number(lm[1]);
       }
-      var L = { row: lines.length+1, t:t, w:w, l:l, bs:null, bunks:null, pcs:null, low:null };
+      var L = { row: lines.length+1, t:t, w:w, kind:kindAfter(desc.slice(dm.index + dm[0].length)), l:l, bs:null, bunks:null, pcs:null, low:null };
       var per = (t>0 && w>0 && l>0) ? t*w*l/12 : 0;
       var fromBf = (bf && per) ? Math.round(bf/per) : null;
       if(PACK_UNITS.test(unit)){
@@ -2036,9 +2056,10 @@
     return lines;
   }
 
-  // A material list: a size on its own line ("2x4", "2x6PT"), then "length  quantity" lines under it.
+  // A material list: a size on its own line ("2x4", "2x6PT", "11 7/8 LVL"), then "length  quantity" lines under it.
   // e.g.  2x4 / 104 5/8"  43 / 10'  13
   var LIST_SIZE_RE = /^(\d+(?:\s+\d+\/\d+)?)\s*[x×]\s*(\d+(?:\.\d+)?)\s*([A-Za-z]*)$/;
+  var LIST_LVL_RE = /^(\d+(?:\.\d+)?(?:\s+\d+\/\d+)?)\s*LVL$/i;   // depth only; LVL is taken as 1 3/4" thick
   var LIST_ITEM_RE = /^(\d+(?:\.\d+)?(?:\s+\d+\/\d+)?)\s*('|"|ft\b|in\b)?\s+([\d,]+)$/i;
   function pdfListLines(textLines){
     var lines = [], cur = null, heading = '';
@@ -2046,25 +2067,23 @@
       var s = raw.trim().replace(/\s+/g,' ');
       if(!s) return;
       var h = LIST_SIZE_RE.exec(s);
-      if(h){ cur = { t:impNum(h[1]), w:Number(h[2]), tag:h[3].toUpperCase(), label:s }; return; }
+      if(h){ cur = { t:impNum(h[1]), w:Number(h[2]), kind:normKind(h[3]), label:s }; return; }
+      var lv = LIST_LVL_RE.exec(s);
+      if(lv){ cur = { t:1.75, w:impNum(lv[1]), kind:'LVL', label:s }; return; }
       var m = LIST_ITEM_RE.exec(s);
       if(!m){ cur = null; heading = s; return; }   // a section title or a non-lumber heading like "9 1/2 LVL"
       var v = impNum(m[1]), unit = (m[2]||'').toLowerCase();
       // No unit: over 30 has to be inches (a 104 5/8 precut stud), otherwise feet
       var l = (unit==='"' || unit==='in') ? v/12 : unit ? v : (v>30 ? v/12 : v);
       var L = checkLine({ row: lines.length+1, src:(cur ? cur.label : heading)+' · '+s,
-        t: cur ? cur.t : null, w: cur ? cur.w : null, l:l, bs:null, bunks:null, pcs:Number(m[3].replace(/,/g,'')), low:null });
+        t: cur ? cur.t : null, w: cur ? cur.w : null, kind: cur ? cur.kind : '', l:l, bs:null, bunks:null, pcs:Number(m[3].replace(/,/g,'')), low:null });
       if(!cur) L.err = '"'+heading+'" is not a size like 2x4';
-      else if(cur.tag && !L.err){
-        L.skip = true;
-        L.why = cur.label+' is a different kind of lumber from plain '+cur.t+'x'+cur.w+', so it was left unchecked';
-      }
       lines.push(L);
     });
     return lines;
   }
 
-  function lineSpec(L){ return { thickness:L.t, width:L.w, length:L.l }; }
+  function lineSpec(L){ return { thickness:L.t, width:L.w, length:L.l, kind:L.kind }; }
   function findStock(L){
     var spec = lineSpec(L);
     return stock.find(function(i){ return sameSpec(i, spec); }) || null;
@@ -2076,7 +2095,7 @@
       if(L.skip) return { L:L, skip:true };
       if(L.err) return { L:L, err:L.err };
       var item = findStock(L);
-      var key = L.t+'x'+L.w+'x'+L.l;
+      var key = L.t+'x'+L.w+'x'+L.l+'|'+normKind(L.kind);
       var bs = L.bs || (item && Number(item.bunkSize)) || (fresh[key] && fresh[key].bs) || 0;
       if(L.bunks>0 && !bs) return { L:L, err:'Needs pieces per bunk' };
       var p = { L:L, item:item, key:key, bs:bs, add:(L.bunks||0)*bs + (L.pcs||0) };
@@ -2110,18 +2129,21 @@
 
   // Editable preview: the inputs are drawn once, and only the results refresh while typing so focus stays put
   var IMP_FIELDS = {
-    stock:[['t','Thick (in)'],['w','Width (in)'],['l','Length'],['bs','Pcs / bunk'],['bunks','Bunks'],['pcs','Loose pcs']],
-    bill:[['t','Thick (in)'],['w','Width (in)'],['l','Length'],['bs','Pcs / bunk'],['bunks','Bunks'],['pcs','Pieces']]
+    stock:[['t','Thick (in)'],['w','Width (in)'],['kind','Type'],['l','Length'],['bs','Pcs / bunk'],['bunks','Bunks'],['pcs','Loose pcs']],
+    bill:[['t','Thick (in)'],['w','Width (in)'],['kind','Type'],['l','Length'],['bs','Pcs / bunk'],['bunks','Bunks'],['pcs','Pieces']]
   };
   function shownNum(n){ return n==null ? '' : isNaN(n) ? '?' : String(n); }
-  function shownField(L, f){ return (f==='l' && L.l>0) ? fmtLen(L.l) : shownNum(L[f]); }
+  function shownField(L, f){
+    if(f==='kind') return normKind(L.kind);
+    return (f==='l' && L.l>0) ? fmtLen(L.l) : shownNum(L[f]);
+  }
   function renderImp(){
     var rows = impPlan.map(function(p, i){
       var L = p.L;
       var fields = IMP_FIELDS[impMode].map(function(fd){
         var f = fd[0];
         return '<div class="imp-f"><div class="lbl">'+fd[1]+'</div>'+
-          '<input type="text" data-f="'+f+'" value="'+esc(shownField(L, f)).replace(/"/g,'&quot;')+'" inputmode="decimal" aria-label="'+fd[1]+', row '+L.row+'"></div>';
+          '<input type="text" data-f="'+f+'" value="'+esc(shownField(L, f)).replace(/"/g,'&quot;')+'"'+(f==='kind' ? ' placeholder="plain" autocapitalize="characters" spellcheck="false"' : ' inputmode="decimal"')+' aria-label="'+fd[1]+', row '+L.row+'"></div>';
       }).join('');
       return '<div class="imp-row" data-i="'+i+'">'+
         '<label class="imp-inc"><input type="checkbox" data-f="inc"'+(L.skip?'':' checked')+' aria-label="Include row '+L.row+'"><span class="num zero">'+L.row+'</span></label>'+
@@ -2142,7 +2164,7 @@
       row.classList.toggle('bad', !!p.err);
       row.classList.toggle('off', !!p.skip);
       var src = L.src ? 'In file: '+L.src : '';
-      if(p.skip){ off++; q.textContent = src; r.className = 'imp-res'; r.textContent = L.why || "Left out, won't be added"; }
+      if(p.skip){ off++; q.textContent = src; r.className = 'imp-res'; r.textContent = "Left out, won't be added"; }
       else if(p.err){ bad++; q.textContent = src; r.className = 'imp-res why'; r.textContent = p.err; }
       else {
         ready++;
@@ -2166,7 +2188,8 @@
     var p = row && impPlan[Number(row.dataset.i)];
     if(!p) return;
     var L = p.L;
-    if(f==='inc'){ L.skip = !el.checked; delete L.why; }
+    if(f==='inc') L.skip = !el.checked;
+    else if(f==='kind') L.kind = normKind(el.value);
     else L[f] = f==='l' ? lenNum(el.value) : impNum(el.value);
     delete L.err;
     checkLine(L);
@@ -2245,7 +2268,7 @@
           if(!(Number(item.bunkSize)>0) && p.bs) item.bunkSize = p.bs;
           if(L.low!==null) item.lowAt = L.low;
         } else {
-          item = { id:uid('lu'), thickness:L.t, width:L.w, length:L.l, bunkSize:p.bs, quantity:p.add, lowAt:L.low };
+          item = { id:uid('lu'), thickness:L.t, width:L.w, length:L.l, kind:normKind(L.kind), bunkSize:p.bs, quantity:p.add, lowAt:L.low };
           stock.push(item);
           created[p.key] = item;
         }
@@ -2309,15 +2332,15 @@
     if(can('sales')) renderSales();
     if(can('accounts')) renderAccounts();
   }
-  // Lumber is tracked by size only. Items saved back when species was kept are combined by size, once.
+  // Lumber is tracked by size and type. Items saved back when species was kept are combined by size, once.
   function mergeBySize(list){
-    var bySize = {}, out = [];
+    var seen = {}, out = [];
     list.forEach(function(i){
-      var k = Number(i.thickness)+'x'+Number(i.width)+'x'+Number(i.length), m = bySize[k];
+      var k = Number(i.thickness)+'x'+Number(i.width)+'x'+Number(i.length)+'|'+kindOf(i), m = seen[k];
       if(!m){
         m = Object.assign({}, i);
         delete m.species;
-        bySize[k] = m; out.push(m);
+        seen[k] = m; out.push(m);
         return;
       }
       m.quantity = Number(m.quantity) + Number(i.quantity);
