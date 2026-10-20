@@ -467,7 +467,7 @@
       <div class="grid3">
         <div class="field"><label for="f-t">Thickness (in)</label><input type="number" id="f-t" min="0" step="0.125" placeholder="2"></div>
         <div class="field"><label for="f-w">Width (in)</label><input type="number" id="f-w" min="0" step="0.125" placeholder="4"></div>
-        <div class="field"><label for="f-l">Length (ft)</label><input type="number" id="f-l" min="0" step="0.5" placeholder="8"></div>
+        <div class="field"><label for="f-l">Length (ft, or " for inches)</label><input type="text" id="f-l" inputmode="decimal" autocomplete="off" placeholder="8 or 104 5/8&quot;"></div>
       </div>
       <div class="grid3">
         <div class="field"><label for="f-bunksize">Pieces per bunk</label><input type="number" id="f-bunksize" min="0" step="1" placeholder="e.g. 294"></div>
@@ -653,7 +653,26 @@
   function round2(n){ return Math.round(n*100)/100; }
   function fmt(n){ return Number(n||0).toLocaleString(undefined,{maximumFractionDigits:2}); }
   function fmtDate(iso){ var d=new Date(iso); return d.toLocaleDateString()+' '+d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}); }
-  function dims(i){ return i.thickness+'" × '+i.width+'" × '+i.length+"'"; }
+  function dims(i){ return i.thickness+'" × '+i.width+'" × '+fmtLen(i.length); }
+  // Lengths are stored in feet. Whole feet show as 12'; anything else shows in inches, like 104 5/8"
+  function fmtLen(l){
+    l = Number(l);
+    if(!isFinite(l)) return '';
+    if(Math.abs(l - Math.round(l)) < 1e-9) return Math.round(l)+"'";
+    var inch = l*12, whole = Math.floor(inch + 1e-9), frac = Math.round((inch - whole)*16);
+    if(frac===16){ whole++; frac = 0; }
+    var d = 16;
+    while(frac && frac%2===0){ frac /= 2; d /= 2; }
+    return whole+(frac ? ' '+frac+'/'+d : '')+'"';
+  }
+  // "12", "12'", "104 5/8\"", "104.625 in" -> feet; blank -> null; junk -> NaN
+  function lenNum(v){
+    if(typeof v==='number') return v;
+    var s = String(v==null ? '' : v).trim();
+    var n = impNum(s);
+    if(n==null || isNaN(n)) return n;
+    return /"|\bin\b|inch/i.test(s) ? n/12 : n;
+  }
   function bfPer(i){ return (Number(i.thickness)*Number(i.width)*Number(i.length))/12; }
   function bunksOf(i){ var bs=Number(i.bunkSize)||0; return bs>0 ? Math.floor(i.quantity/bs) : 0; }
   function looseOf(i){ var bs=Number(i.bunkSize)||0; return bs>0 ? i.quantity % bs : i.quantity; }
@@ -1200,7 +1219,7 @@
       var kids = g.items.map(function(i){
         var b=bunksOf(i), l=looseOf(i), out = i.quantity<=0;
         return '<div class="row inv-row child-row" data-id="'+i.id+'">'+
-          '<div class="c-title"><div class="name">'+i.length+"'"+(out?'<span class="badge out">Out</span>':(isLow(i)?'<span class="badge low">Low</span>':''))+'</div>'+
+          '<div class="c-title"><div class="name">'+fmtLen(i.length)+(out?'<span class="badge out">Out</span>':(isLow(i)?'<span class="badge low">Low</span>':''))+'</div>'+
             '<div class="meta">'+(i.bunkSize>0 ? i.bunkSize+' per bunk' : 'loose only')+'</div></div>'+
           '<div class="num c-num'+(b?'':' zero')+'">'+b+'</div>'+
           '<div class="num c-num'+(l?'':' zero')+'">'+l+'</div>'+
@@ -1270,7 +1289,7 @@
     $('stock-title').textContent = item ? 'Edit stock' : 'Add stock';
     $('f-t').value = item ? item.thickness : '';
     $('f-w').value = item ? item.width : '';
-    $('f-l').value = item ? item.length : '';
+    $('f-l').value = item ? fmtLen(item.length) : '';
     var bs = item ? (Number(item.bunkSize)||0) : 0;
     $('f-bunksize').value = bs>0 ? bs : '';
     $('f-bunks').value = item ? bunksOf(item) : '';
@@ -1283,7 +1302,7 @@
   function closeStock(){ $('stock-overlay').classList.remove('open'); }
 
   function saveStock(){
-    var t = Number($('f-t').value), w = Number($('f-w').value), l = Number($('f-l').value);
+    var t = Number($('f-t').value), w = Number($('f-w').value), l = lenNum($('f-l').value);
     var c = readCounts();
     var err = '';
     if(!(t>0 && w>0 && l>0)) err = 'Enter thickness, width and length.';
@@ -1394,7 +1413,7 @@
         var hasBunk = i.bunkSize>0;
         var off = avail<=0;
         return '<div class="pick-row'+(off?' dim':'')+'" data-id="'+i.id+'">'+
-          '<div class="c-title"><div class="name len">'+i.length+"'"+'</div>'+
+          '<div class="c-title"><div class="name len">'+fmtLen(i.length)+'</div>'+
             '<div class="meta">'+(off ? 'none left' : qtyText(i.bunkSize, avail)+' avail')+'</div></div>'+
           '<div><div class="lbl">Bunks</div><input type="number" class="pk-bunks" min="0" step="1" placeholder="0" '+((off||!hasBunk)?'disabled':'')+'></div>'+
           '<div><div class="lbl">Pieces</div><input type="number" class="pk-pcs" min="0" step="1" placeholder="0" '+(off?'disabled':'')+'></div>'+
@@ -1939,7 +1958,8 @@
       var d = map.desc!==undefined ? parseDesc(cell('desc')) : {};
       lines.push(checkLine({
         row: hi + ri + 2,
-        t: val('t', d.t), w: val('w', d.w), l: val('l', d.l),
+        t: val('t', d.t), w: val('w', d.w),
+        l: String(cell('l')==null ? '' : cell('l')).trim()==='' ? (d.l==null ? null : d.l) : lenNum(cell('l')),
         bs: val('bs'), bunks: val('bunks'), pcs: val('pcs'), low: val('low')
       }));
     });
@@ -2016,6 +2036,34 @@
     return lines;
   }
 
+  // A material list: a size on its own line ("2x4", "2x6PT"), then "length  quantity" lines under it.
+  // e.g.  2x4 / 104 5/8"  43 / 10'  13
+  var LIST_SIZE_RE = /^(\d+(?:\s+\d+\/\d+)?)\s*[x×]\s*(\d+(?:\.\d+)?)\s*([A-Za-z]*)$/;
+  var LIST_ITEM_RE = /^(\d+(?:\.\d+)?(?:\s+\d+\/\d+)?)\s*('|"|ft\b|in\b)?\s+([\d,]+)$/i;
+  function pdfListLines(textLines){
+    var lines = [], cur = null, heading = '';
+    textLines.forEach(function(raw){
+      var s = raw.trim().replace(/\s+/g,' ');
+      if(!s) return;
+      var h = LIST_SIZE_RE.exec(s);
+      if(h){ cur = { t:impNum(h[1]), w:Number(h[2]), tag:h[3].toUpperCase(), label:s }; return; }
+      var m = LIST_ITEM_RE.exec(s);
+      if(!m){ cur = null; heading = s; return; }   // a section title or a non-lumber heading like "9 1/2 LVL"
+      var v = impNum(m[1]), unit = (m[2]||'').toLowerCase();
+      // No unit: over 30 has to be inches (a 104 5/8 precut stud), otherwise feet
+      var l = (unit==='"' || unit==='in') ? v/12 : unit ? v : (v>30 ? v/12 : v);
+      var L = checkLine({ row: lines.length+1, src:(cur ? cur.label : heading)+' · '+s,
+        t: cur ? cur.t : null, w: cur ? cur.w : null, l:l, bs:null, bunks:null, pcs:Number(m[3].replace(/,/g,'')), low:null });
+      if(!cur) L.err = '"'+heading+'" is not a size like 2x4';
+      else if(cur.tag && !L.err){
+        L.skip = true;
+        L.why = cur.label+' is a different kind of lumber from plain '+cur.t+'x'+cur.w+', so it was left unchecked';
+      }
+      lines.push(L);
+    });
+    return lines;
+  }
+
   function lineSpec(L){ return { thickness:L.t, width:L.w, length:L.l }; }
   function findStock(L){
     var spec = lineSpec(L);
@@ -2062,17 +2110,18 @@
 
   // Editable preview: the inputs are drawn once, and only the results refresh while typing so focus stays put
   var IMP_FIELDS = {
-    stock:[['t','Thick (in)'],['w','Width (in)'],['l','Length (ft)'],['bs','Pcs / bunk'],['bunks','Bunks'],['pcs','Loose pcs']],
-    bill:[['t','Thick (in)'],['w','Width (in)'],['l','Length (ft)'],['bs','Pcs / bunk'],['bunks','Bunks'],['pcs','Pieces']]
+    stock:[['t','Thick (in)'],['w','Width (in)'],['l','Length'],['bs','Pcs / bunk'],['bunks','Bunks'],['pcs','Loose pcs']],
+    bill:[['t','Thick (in)'],['w','Width (in)'],['l','Length'],['bs','Pcs / bunk'],['bunks','Bunks'],['pcs','Pieces']]
   };
   function shownNum(n){ return n==null ? '' : isNaN(n) ? '?' : String(n); }
+  function shownField(L, f){ return (f==='l' && L.l>0) ? fmtLen(L.l) : shownNum(L[f]); }
   function renderImp(){
     var rows = impPlan.map(function(p, i){
       var L = p.L;
       var fields = IMP_FIELDS[impMode].map(function(fd){
         var f = fd[0];
         return '<div class="imp-f"><div class="lbl">'+fd[1]+'</div>'+
-          '<input type="text" data-f="'+f+'" value="'+esc(shownNum(L[f]))+'" inputmode="decimal" aria-label="'+fd[1]+', row '+L.row+'"></div>';
+          '<input type="text" data-f="'+f+'" value="'+esc(shownField(L, f)).replace(/"/g,'&quot;')+'" inputmode="decimal" aria-label="'+fd[1]+', row '+L.row+'"></div>';
       }).join('');
       return '<div class="imp-row" data-i="'+i+'">'+
         '<label class="imp-inc"><input type="checkbox" data-f="inc"'+(L.skip?'':' checked')+' aria-label="Include row '+L.row+'"><span class="num zero">'+L.row+'</span></label>'+
@@ -2092,8 +2141,9 @@
       var q = row.querySelector('.imp-qty'), r = row.querySelector('.imp-res');
       row.classList.toggle('bad', !!p.err);
       row.classList.toggle('off', !!p.skip);
-      if(p.skip){ off++; q.textContent = ''; r.className = 'imp-res'; r.textContent = "Left out, won't be added"; }
-      else if(p.err){ bad++; q.textContent = ''; r.className = 'imp-res why'; r.textContent = p.err; }
+      var src = L.src ? 'In file: '+L.src : '';
+      if(p.skip){ off++; q.textContent = src; r.className = 'imp-res'; r.textContent = L.why || "Left out, won't be added"; }
+      else if(p.err){ bad++; q.textContent = src; r.className = 'imp-res why'; r.textContent = p.err; }
       else {
         ready++;
         q.textContent = qtyText(p.bs, p.add)+(p.bs>0 && p.add>=p.bs ? ' ('+p.add.toLocaleString()+' pcs)' : '')+' · '+fmt(bfPer(lineSpec(L))*p.add)+' bd ft';
@@ -2116,8 +2166,8 @@
     var p = row && impPlan[Number(row.dataset.i)];
     if(!p) return;
     var L = p.L;
-    if(f==='inc') L.skip = !el.checked;
-    else L[f] = impNum(el.value);
+    if(f==='inc'){ L.skip = !el.checked; delete L.why; }
+    else L[f] = f==='l' ? lenNum(el.value) : impNum(el.value);
     delete L.err;
     checkLine(L);
     var lines = impPlan.map(function(x){ return x.L; });
@@ -2141,8 +2191,10 @@
     if(/\.pdf$/i.test(file.name||'') || file.type==='application/pdf'){
       pdfText(file).then(function(text){
         if(impMode!==mode) return;
-        var lines = pdfToLines(text);
-        if(!lines.length) return impFail("Couldn't find any lumber lines in this PDF. Each line needs a quantity and a size like 2x4 with a length. Scanned or photographed PDFs can't be read, only ones made by a computer.");
+        // Supplier orders put everything on one line; material lists put the size above. Use whichever reads more.
+        var orderLines = pdfToLines(text), listLines = pdfListLines(text);
+        var lines = listLines.length > orderLines.length ? listLines : orderLines;
+        if(!lines.length) return impFail("Couldn't find any lumber lines in this PDF. It needs lines with a size like 2x4, a length and a quantity. Scanned or photographed PDFs can't be read, only ones made by a computer.");
         impPlan = mode==='stock' ? planStock(lines) : planBill(lines);
         renderImp();
       }).catch(function(){
