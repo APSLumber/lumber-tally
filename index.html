@@ -281,8 +281,7 @@
   .imp-row.off .imp-fields{opacity:0.45;}
   .imp-inc{display:flex;flex-direction:column;align-items:center;gap:4px;padding-top:15px;cursor:pointer;}
   .imp-inc input{width:17px;height:17px;margin:0;accent-color:var(--green);cursor:pointer;}
-  .imp-fields{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;}
-  .imp-fields.stock{grid-template-columns:repeat(6,minmax(0,1fr));}
+  .imp-fields{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px;}
   .imp-f{min-width:0;}
   .imp-f .lbl{font-size:10px;color:var(--faint);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:3px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .imp-f input{width:100%;padding:6px 7px;border-radius:6px;border:1px solid var(--line2);font-size:13px;font-family:'JetBrains Mono',monospace;background:#FCFBF8;color:var(--ink);}
@@ -292,7 +291,7 @@
   .imp-res.why{color:var(--rust);font-weight:600;}
   .imp-res.ok{color:var(--green);}
   @media (max-width:700px){
-    .imp-fields,.imp-fields.stock{grid-template-columns:repeat(3,minmax(0,1fr));}
+    .imp-fields{grid-template-columns:repeat(3,minmax(0,1fr));}
   }
 </style>
 </head>
@@ -1833,7 +1832,7 @@
   };
   var IMP_TEMPLATES = {
     stock:['Thickness (in)','Width (in)','Length (ft)','Pieces per bunk','Bunks','Loose pieces','Low stock alert'],
-    bill:['Thickness (in)','Width (in)','Length (ft)','Bunks','Pieces']
+    bill:['Thickness (in)','Width (in)','Length (ft)','Pieces per bunk','Bunks','Pieces']
   };
 
   // Loads a library only when someone uploads that kind of file
@@ -2051,8 +2050,8 @@
       if(L.err) return { L:L, err:L.err };
       var item = findStock(L);
       if(!item) return { L:L, err:'Not in inventory' };
-      var bs = Number(item.bunkSize)||0;
-      if(L.bunks>0 && !bs) return { L:L, item:item, err:'Sold loose only, no bunk size' };
+      var bs = Number(item.bunkSize) || L.bs || 0;   // the file's pack size (PK189) covers items stocked without one
+      if(L.bunks>0 && !bs) return { L:L, item:item, err:'Needs pieces per bunk' };
       var pieces = (L.bunks||0)*bs + (L.pcs||0);
       var avail = Number(item.quantity) - inCart(item.id) - (taken[item.id]||0);
       if(pieces>avail) return { L:L, item:item, err:'Only '+qtyText(bs, Math.max(0, avail))+' available' };
@@ -2064,7 +2063,7 @@
   // Editable preview: the inputs are drawn once, and only the results refresh while typing so focus stays put
   var IMP_FIELDS = {
     stock:[['t','Thick (in)'],['w','Width (in)'],['l','Length (ft)'],['bs','Pcs / bunk'],['bunks','Bunks'],['pcs','Loose pcs']],
-    bill:[['t','Thick (in)'],['w','Width (in)'],['l','Length (ft)'],['bunks','Bunks'],['pcs','Pieces']]
+    bill:[['t','Thick (in)'],['w','Width (in)'],['l','Length (ft)'],['bs','Pcs / bunk'],['bunks','Bunks'],['pcs','Pieces']]
   };
   function shownNum(n){ return n==null ? '' : isNaN(n) ? '?' : String(n); }
   function renderImp(){
@@ -2077,7 +2076,7 @@
       }).join('');
       return '<div class="imp-row" data-i="'+i+'">'+
         '<label class="imp-inc"><input type="checkbox" data-f="inc"'+(L.skip?'':' checked')+' aria-label="Include row '+L.row+'"><span class="num zero">'+L.row+'</span></label>'+
-        '<div class="imp-fields'+(impMode==='stock'?' stock':'')+'">'+fields+'</div>'+
+        '<div class="imp-fields">'+fields+'</div>'+
         '<div class="imp-out"><span class="imp-qty num"></span><span class="imp-res"></span></div>'+
       '</div>';
     }).join('');
