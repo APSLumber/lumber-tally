@@ -147,7 +147,7 @@
   /* Bill out */
   .bill-grid{display:grid;grid-template-columns:1.45fr 1fr;gap:18px;align-items:start;}
   h2.section{font-size:15px;margin:0 0 12px;font-weight:700;}
-  .pick-row{display:grid;grid-template-columns:1fr 64px 64px 58px;gap:8px;align-items:center;padding:12px 16px;border-bottom:1px solid var(--line);}
+  .pick-row{display:grid;grid-template-columns:1fr 64px 64px 76px;gap:8px;align-items:center;padding:12px 16px;border-bottom:1px solid var(--line);}
   .pick-row:last-child{border-bottom:none;}
   .pick-row.dim{opacity:0.5;}
   .pick-group{display:flex;align-items:center;gap:10px;padding:12px 16px;background:#F7F5EC;border-bottom:1px solid var(--line);cursor:pointer;}
@@ -295,6 +295,30 @@
   @media (max-width:700px){
     .imp-fields{grid-template-columns:repeat(3,minmax(0,1fr));}
   }
+  .imp-res.bo{color:#8A6215;font-weight:600;}
+  .imp-opt{display:flex;gap:8px;align-items:center;font-size:13px;font-weight:600;margin-bottom:10px;cursor:pointer;}
+  .imp-opt input{width:16px;height:16px;margin:0;accent-color:var(--green);}
+
+  /* Back orders */
+  .tab-count{display:inline-block;min-width:18px;padding:0 5px;margin-left:6px;border-radius:9px;background:var(--gold);color:#fff;font-size:11px;line-height:18px;text-align:center;vertical-align:1px;}
+  .bo-cart{margin-top:6px;padding-top:8px;border-top:1px dashed var(--gold);}
+  .bo-cart h4{margin:0;font-size:11px;text-transform:uppercase;letter-spacing:0.05em;color:#8A6215;}
+  .cart-line.bo .cart-qty,.fills{color:#8A6215;}
+  .fills{font-size:11.5px;font-weight:600;margin-top:2px;}
+  .bo-note{color:#8A6215;font-weight:600;}
+  .pick-row .add.bo{background:var(--gold);}
+  .pick-row .add.bo:hover{background:#9A6F22;}
+  .bo-group{margin-bottom:14px;}
+  .bo-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 16px;background:#F7F5EC;border-bottom:1px solid var(--line);}
+  .bo-head .name{font-size:14.5px;font-weight:700;}
+  .bo-row{grid-template-columns:minmax(0,1.6fr) minmax(0,1fr) minmax(0,1.3fr) auto;}
+  .bo-row .actions{align-items:center;}
+  @media (max-width:700px){
+    .bo-row{grid-template-columns:minmax(0,1fr) auto;row-gap:6px;}
+    .bo-row .bo-status{grid-column:1;}
+  }
+  .paper .p-bo{margin-top:16px;padding-top:8px;border-top:1px dashed var(--gold);}
+  .paper .p-bo-title{font-family:'Inter',sans-serif;font-weight:700;font-size:13px;color:#8A6215;margin-bottom:4px;}
 </style>
 </head>
 <body>
@@ -347,6 +371,7 @@
     <div class="tabs" id="tabs">
       <button class="tab-btn" data-view="inventory">Inventory</button>
       <button class="tab-btn" data-view="bill">Bill out</button>
+      <button class="tab-btn" data-view="backorders">Back orders<span class="tab-count" id="bo-count" hidden></span></button>
       <button class="tab-btn" data-view="customers">Customers</button>
       <button class="tab-btn" data-view="sales">Sales</button>
       <button class="tab-btn" data-view="accounts">Accounts</button>
@@ -413,6 +438,7 @@
           <input type="text" id="customer" placeholder="Name (optional)" style="margin-top:8px;">
         </div>
         <div id="cart"></div>
+        <div id="bo-cart"></div>
         <div class="totals">
           <div class="t-row"><span>Board feet</span><span class="mono" id="t-bf">0</span></div>
           <div class="t-row grand"><span>Pieces</span><span id="t-pieces">0</span></div>
@@ -421,6 +447,28 @@
         <button class="btn primary complete" id="complete-btn">Complete sale</button>
       </div>
     </div>
+  </section>
+
+  <!-- BACK ORDERS -->
+  <section class="view" id="view-backorders">
+    <div class="stats">
+      <div class="stat"><div class="label">Open back orders</div><div class="value" id="bo-stat-lines">—</div></div>
+      <div class="stat"><div class="label">Pieces owed</div><div class="value" id="bo-stat-pcs">—</div></div>
+      <div class="stat"><div class="label">Customers waiting</div><div class="value" id="bo-stat-cust">—</div></div>
+      <div class="stat"><div class="label">Ready to fill</div><div class="value" id="bo-stat-ready">—</div></div>
+    </div>
+    <div class="controls">
+      <div class="search">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        <input type="text" id="bo-search" placeholder="Search customer, size or ticket">
+      </div>
+      <button class="btn toggle" id="bo-filled-toggle">Show filled</button>
+      <button class="btn primary" id="bo-add-btn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+        Add back order
+      </button>
+    </div>
+    <div id="bo-list"><div class="loading">Loading back orders…</div></div>
   </section>
 
   <!-- CUSTOMERS -->
@@ -455,7 +503,7 @@
     <h2 class="section" style="margin-top:24px;">Other admin</h2>
     <div class="card" id="admin2-card"></div>
     <div class="acct-head"><h2 class="section" style="margin:0;">User accounts</h2><span class="meta" id="acct-count" style="margin:0;"></span></div>
-    <p class="acct-note">User accounts can open Bill out and Customers only. Inventory, Sales, and Accounts are admin-only.</p>
+    <p class="acct-note">User accounts can open Bill out, Back orders and Customers only. Inventory, Sales, and Accounts are admin-only.</p>
     <div class="card" id="acct-list"></div>
   </section>
 
@@ -629,6 +677,30 @@
   </div>
 </div>
 
+<!-- Add back order by hand -->
+<div class="overlay" id="boadd-overlay">
+  <div class="modal">
+    <div class="modal-head"><h2>Add back order</h2><button id="boadd-close" aria-label="Close"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+    <div class="modal-body">
+      <div class="field"><label for="ba-cust">Customer</label>
+        <select id="ba-cust"><option value="">Someone not in Customers</option></select>
+        <input type="text" id="ba-name" placeholder="Customer name" style="margin-top:8px;">
+      </div>
+      <div class="grid3">
+        <div class="field"><label for="ba-t">Thickness (in)</label><input type="text" id="ba-t" inputmode="decimal" placeholder="2"></div>
+        <div class="field"><label for="ba-w">Width (in)</label><input type="text" id="ba-w" inputmode="decimal" placeholder="4"></div>
+        <div class="field"><label for="ba-kind">Type (optional)</label><input type="text" id="ba-kind" list="kind-list" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="PT, DF…"></div>
+      </div>
+      <div class="grid2">
+        <div class="field"><label for="ba-l">Length (ft, or " for inches)</label><input type="text" id="ba-l" inputmode="decimal" autocomplete="off" placeholder="12 or 104 5/8&quot;"></div>
+        <div class="field"><label for="ba-pcs">Pieces owed</label><input type="number" id="ba-pcs" min="1" step="1" placeholder="0"></div>
+      </div>
+      <div class="form-err" id="ba-err"></div>
+    </div>
+    <div class="modal-foot"><button class="btn" id="boadd-cancel">Cancel</button><button class="btn primary" id="boadd-save">Add back order</button></div>
+  </div>
+</div>
+
 <!-- Generic confirm -->
 <div class="overlay" id="cf-overlay">
   <div class="modal" style="max-width:400px;">
@@ -641,7 +713,11 @@
 <script>
 (function(){
   'use strict';
-  var KEYS = { stock:'tally:stock', sales:'tally:sales', cust:'tally:customers', seq:'tally:nextno', acct:'tally:accounts' };
+  var KEYS = { stock:'tally:stock', sales:'tally:sales', cust:'tally:customers', seq:'tally:nextno', acct:'tally:accounts', bo:'tally:backorders' };
+  // Back orders: lumber owed to a customer. { id, date, customerId, customer, by, ticket, thickness, width, length, kind,
+  // bunkSize, pieces, filled, fills:[{ticket,date,pieces}], status:'open'|'filled', filledDate }
+  var backorders = [];
+  var boCart = [];   // lines on the current Bill out ticket that will be back ordered: { thickness, width, length, kind, bunkSize, pieces }
   var nextNo = 1001;
   var stock = [], sales = [], cart = [], customers = [];
   var editingId = null, deletingId = null;
@@ -814,7 +890,7 @@
   var MAX_USERS = 10;
   var USERNAME_RULE = 'Username must be 3 to 30 characters: letters, numbers, dot, dash, or underscore.';
   var PASS_RULE = 'Password must be at least 6 characters.';
-  var ROLE_VIEWS = { admin:['inventory','bill','customers','sales','accounts'], user:['bill','customers'] };
+  var ROLE_VIEWS = { admin:['inventory','bill','backorders','customers','sales','accounts'], user:['bill','backorders','customers'] };
   function can(view){ return !!session && ROLE_VIEWS[session.role].indexOf(view)>-1; }
   function saveAccounts(){ save(KEYS.acct, accounts); }
   function adminRec(id){ return id==='admin' ? accounts.admin : (id==='admin2' && accounts.admin2) ? accounts.admin2 : null; }
@@ -874,6 +950,7 @@
     if(view==='customers') renderCustomers();
     if(view==='sales') renderSales();
     if(view==='accounts') renderAccounts();
+    if(view==='backorders') renderBackorders();
   }
   document.querySelectorAll('.tab-btn').forEach(function(btn){
     btn.addEventListener('click', function(){ go(btn.dataset.view); });
@@ -951,10 +1028,10 @@
   /* ---------- sign out ---------- */
   $('signout').addEventListener('click', function(){
     session = null; storeSession();
-    cart = [];
+    cart = []; boCart = [];
     $('customer').value = ''; $('cust-select').value = '';
     closeStock(); closeDelete(); closeTicket(); closeCust(); closeCustDetail(); closeCdel(); closeSdel();
-    closeAcct(); closePw(); closeCf(); closeImp();
+    closeAcct(); closePw(); closeCf(); closeImp(); closeBoAdd();
     document.body.classList.remove('authed');
     showGate('login');
   });
@@ -1205,6 +1282,7 @@
     var delSvg = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6h16Z"/></svg>';
     var chevSvg = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m9 6 6 6-6 6"/></svg>';
 
+    var owed = boOwedBySpec();
     var html = glist.map(function(g, gi){
       g.items.sort(function(a,b){ return a.length-b.length; });
       var gp=0, gbf=0, gb=0, gl=0, flagged=false, allOut=true;
@@ -1231,7 +1309,8 @@
         var b=bunksOf(i), l=looseOf(i), out = i.quantity<=0;
         return '<div class="row inv-row child-row" data-id="'+i.id+'">'+
           '<div class="c-title"><div class="name">'+fmtLen(i.length)+(out?'<span class="badge out">Out</span>':(isLow(i)?'<span class="badge low">Low</span>':''))+'</div>'+
-            '<div class="meta">'+(i.bunkSize>0 ? i.bunkSize+' per bunk' : 'loose only')+'</div></div>'+
+            '<div class="meta">'+(i.bunkSize>0 ? i.bunkSize+' per bunk' : 'loose only')+
+              (owed[specKey(i)] ? ' · <span class="bo-note">'+owed[specKey(i)].toLocaleString()+' back ordered</span>' : '')+'</div></div>'+
           '<div class="num c-num'+(b?'':' zero')+'">'+b+'</div>'+
           '<div class="num c-num'+(l?'':' zero')+'">'+l+'</div>'+
           '<div class="num c-num strong">'+Number(i.quantity).toLocaleString()+'</div>'+
@@ -1343,6 +1422,8 @@
     closeStock();
     syncCart();
     renderAll();
+    var ready = boReadyCount();
+    if(ready) toast(ready+(ready===1?' back order':' back orders')+' can be filled now. See the Back orders tab.');
   }
   $('stock-save').addEventListener('click', saveStock);
   $('stock-cancel').addEventListener('click', closeStock);
@@ -1426,9 +1507,9 @@
         return '<div class="pick-row'+(off?' dim':'')+'" data-id="'+i.id+'">'+
           '<div class="c-title"><div class="name len">'+fmtLen(i.length)+'</div>'+
             '<div class="meta">'+(off ? 'none left' : qtyText(i.bunkSize, avail)+' avail')+'</div></div>'+
-          '<div><div class="lbl">Bunks</div><input type="number" class="pk-bunks" min="0" step="1" placeholder="0" '+((off||!hasBunk)?'disabled':'')+'></div>'+
-          '<div><div class="lbl">Pieces</div><input type="number" class="pk-pcs" min="0" step="1" placeholder="0" '+(off?'disabled':'')+'></div>'+
-          '<button class="add" '+(off?'disabled':'')+'>Add</button>'+
+          '<div><div class="lbl">Bunks</div><input type="number" class="pk-bunks" min="0" step="1" placeholder="0" '+(hasBunk?'':'disabled')+'></div>'+
+          '<div><div class="lbl">Pieces</div><input type="number" class="pk-pcs" min="0" step="1" placeholder="0"></div>'+
+          (off ? '<button class="add bo" title="None in stock: add to the ticket as a back order">Back order</button>' : '<button class="add">Add</button>')+
         '</div>';
       }).join('');
     }).join('');
@@ -1451,15 +1532,21 @@
         var loose = Number(row.querySelector('.pk-pcs').value)||0;
         if(bunks<0 || loose<0 || Math.floor(bunks)!==bunks || Math.floor(loose)!==loose) return;
         var pieces = bunks*(Number(item.bunkSize)||0) + loose;
-        var avail = item.quantity - inCart(item.id);
+        var avail = Math.max(0, item.quantity - inCart(item.id));
         if(pieces<=0) return;
+        if(avail<=0){ addToBoCart(item, pieces); renderPicker(); renderCart(); return; }
         if(pieces>avail){
-          row.querySelector('.meta').innerHTML = '<span style="color:var(--rust)">only '+qtyText(item.bunkSize, avail)+' available</span>';
+          var short = pieces - avail, meta = row.querySelector('.meta');
+          meta.innerHTML = '<span style="color:var(--rust)">only '+qtyText(item.bunkSize, avail)+' available</span> '+
+            '<button type="button" class="link-btn" style="padding:2px 0;font-size:12px;">Sell '+avail.toLocaleString()+', back order '+short.toLocaleString()+'</button>';
+          meta.querySelector('button').addEventListener('click', function(){
+            addCartPieces(item.id, avail);
+            addToBoCart(item, short);
+            renderPicker(); renderCart();
+          });
           return;
         }
-        var existing = cart.find(function(c){ return c.stockId===item.id; });
-        if(existing) existing.pieces += pieces;
-        else cart.push({stockId:item.id, pieces:pieces});
+        addCartPieces(item.id, pieces);
         renderPicker(); renderCart();
       }
       add.addEventListener('click', doAdd);
@@ -1477,10 +1564,37 @@
   });
   $('pick-search').addEventListener('input', function(e){ pickSearch = e.target.value.trim().toLowerCase(); renderPicker(); });
 
+  function addCartPieces(stockId, pieces, boId){
+    if(!(pieces>0)) return;
+    var line = cart.find(function(c){ return c.stockId===stockId; });
+    if(!line){ line = { stockId:stockId, pieces:0 }; cart.push(line); }
+    line.pieces += pieces;
+    if(boId){ line.fills = line.fills || {}; line.fills[boId] = (line.fills[boId]||0) + pieces; }
+  }
+  function addToBoCart(spec, pieces){
+    if(!(pieces>0)) return;
+    var line = boCart.find(function(b){ return sameSpec(b, spec); });
+    if(line){ line.pieces += pieces; return; }
+    boCart.push({ thickness:spec.thickness, width:spec.width, length:spec.length, kind:kindOf(spec), bunkSize:Number(spec.bunkSize)||0, pieces:pieces });
+  }
+  function renderBoCart(){
+    var el = $('bo-cart');
+    if(!boCart.length){ el.innerHTML = ''; return; }
+    el.innerHTML = '<div class="bo-cart"><h4>Back order · not in stock</h4>'+boCart.map(function(b, i){
+      return '<div class="cart-line bo"><div class="cart-top"><div><div class="cart-name mono">'+esc(dims(b))+'</div>'+
+        '<div class="cart-qty">'+qtyText(b.bunkSize, b.pieces)+' owed to the customer</div></div>'+
+        '<button class="cart-remove" data-bi="'+i+'" aria-label="Remove back order">&times;</button></div></div>';
+    }).join('')+'</div>';
+    el.querySelectorAll('[data-bi]').forEach(function(btn){
+      btn.addEventListener('click', function(){ boCart.splice(Number(btn.dataset.bi), 1); renderCart(); });
+    });
+  }
+
   function renderCart(){
     var el = $('cart');
+    renderBoCart();
     if(cart.length===0){
-      el.innerHTML = '<div class="cart-empty">Nothing on the ticket yet</div>';
+      el.innerHTML = '<div class="cart-empty">'+(boCart.length ? 'Nothing from stock on this ticket' : 'Nothing on the ticket yet')+'</div>';
       updateTotals();
       return;
     }
@@ -1489,7 +1603,8 @@
       if(!item) return '';
       return '<div class="cart-line" data-id="'+c.stockId+'">'+
         '<div class="cart-top"><div><div class="cart-name mono">'+esc(dims(item))+'</div>'+
-          '<div class="cart-qty">'+qtyText(item.bunkSize, c.pieces)+(item.bunkSize>0 && c.pieces>=item.bunkSize ? ' ('+c.pieces+' pcs)' : '')+' · '+fmt(bfPer(item)*c.pieces)+' bd ft</div></div>'+
+          '<div class="cart-qty">'+qtyText(item.bunkSize, c.pieces)+(item.bunkSize>0 && c.pieces>=item.bunkSize ? ' ('+c.pieces+' pcs)' : '')+' · '+fmt(bfPer(item)*c.pieces)+' bd ft</div>'+
+          (c.fills ? '<div class="fills">Fills a back order</div>' : '')+'</div>'+
           '<button class="cart-remove" aria-label="Remove">&times;</button></div>'+
       '</div>';
     }).join('');
@@ -1519,26 +1634,49 @@
   $('complete-btn').addEventListener('click', function(){
     var err = $('cart-err');
     err.classList.remove('show');
-    if(cart.length===0){ err.textContent = 'Add at least one item to the ticket.'; err.classList.add('show'); return; }
-    var lines = cart.map(function(c){
-      var item = stock.find(function(i){ return i.id===c.stockId; });
-      return {
-        thickness:item.thickness, width:item.width, length:item.length, kind:kindOf(item),
-        bunkSize:Number(item.bunkSize)||0, pieces:c.pieces, bf:round2(bfPer(item)*c.pieces)
-      };
-    });
+    if(cart.length===0 && boCart.length===0){ err.textContent = 'Add at least one item to the ticket.'; err.classList.add('show'); return; }
     var custId = $('cust-select').value || null;
     var chosen = custId ? customers.find(function(x){ return x.id===custId; }) : null;
     if(!chosen) custId = null;
-    var custName = chosen ? chosen.name : ($('customer').value.trim() || 'Walk-in');
+    var custName = chosen ? chosen.name : $('customer').value.trim();
+    if(boCart.length && !custName){ err.textContent = 'Pick or type the customer, so the back order is under their name.'; err.classList.add('show'); return; }
+    var number = 'T-'+nextNo, date = new Date().toISOString();
+    var lines = cart.map(function(c){
+      var item = stock.find(function(i){ return i.id===c.stockId; });
+      var line = {
+        thickness:item.thickness, width:item.width, length:item.length, kind:kindOf(item),
+        bunkSize:Number(item.bunkSize)||0, pieces:c.pieces, bf:round2(bfPer(item)*c.pieces)
+      };
+      // Pieces on this line that were pulled for back orders: count them as filled
+      var left = c.pieces, from = [];
+      Object.keys(c.fills||{}).forEach(function(id){
+        var b = backorders.find(function(x){ return x.id===id && x.status==='open'; });
+        var n = b ? Math.min(c.fills[id], boRemaining(b), left) : 0;
+        if(n<=0) return;
+        left -= n;
+        b.filled = (Number(b.filled)||0) + n;
+        b.fills = (b.fills||[]).concat({ ticket:number, date:date, pieces:n });
+        if(boRemaining(b)<=0){ b.status = 'filled'; b.filledDate = date; }
+        if(b.ticket && from.indexOf(b.ticket)<0) from.push(b.ticket);
+      });
+      if(c.fills) line.fillsBackorder = from.length ? from : true;
+      return line;
+    });
     var sale = {
-      id:uid('sale'), number:'T-'+nextNo, date:new Date().toISOString(),
+      id:uid('sale'), number:number, date:date,
       by: session ? session.name : '',
-      customerId: custId, customer: custName,
+      customerId: custId, customer: custName || 'Walk-in',
       lines:lines,
       pieces:lines.reduce(function(s,l){ return s+l.pieces; },0),
       bf:round2(lines.reduce(function(s,l){ return s+l.bf; },0))
     };
+    if(boCart.length){
+      sale.backorders = boCart.map(function(b){ return Object.assign({}, b); });
+      boCart.forEach(function(b){
+        backorders.push({ id:uid('bo'), date:date, customerId:custId, customer:custName, by:sale.by, ticket:number,
+          thickness:b.thickness, width:b.width, length:b.length, kind:b.kind, bunkSize:b.bunkSize, pieces:b.pieces, filled:0, status:'open' });
+      });
+    }
     sales.unshift(sale);
     nextNo++;
     save(KEYS.seq, {n:nextNo});
@@ -1548,7 +1686,8 @@
     });
     save(KEYS.stock, stock);
     save(KEYS.sales, sales);
-    cart = [];
+    save(KEYS.bo, backorders);
+    cart = []; boCart = [];
     $('customer').value = '';
     $('cust-select').value = '';
     toggleWalkin();
@@ -1660,17 +1799,23 @@
 
   function showTicket(s){
     var rows = s.lines.map(function(l){
+      var fills = l.fillsBackorder ? '<div class="sub">Fills back order'+(Array.isArray(l.fillsBackorder) ? ' from '+esc(l.fillsBackorder.join(', ')) : '')+'</div>' : '';
       return '<tr>'+
-        '<td>'+esc(dims(l))+'</td>'+
+        '<td>'+esc(dims(l))+fills+'</td>'+
         '<td>'+qtyText(l.bunkSize, l.pieces)+(l.bunkSize>0 && l.pieces>=l.bunkSize ? '<div class="sub">'+l.pieces+' pcs</div>' : '')+'</td>'+
         '<td class="r">'+fmt(l.bf)+'</td>'+
       '</tr>';
+    }).join('') || '<tr><td colspan="3" class="sub">Nothing pulled from stock on this ticket</td></tr>';
+    var boRows = (s.backorders||[]).map(function(b){
+      return '<tr><td>'+esc(dims(b))+'</td><td>'+qtyText(b.bunkSize, b.pieces)+'</td><td class="r">'+fmt(round2(bfPer(b)*b.pieces))+'</td></tr>';
     }).join('');
     $('paper').innerHTML =
       '<div class="p-head"><div><div class="shop">Advanced Precut Systems Lumber Tally</div><div class="sub">'+esc(s.number)+' · '+fmtDate(s.date)+'</div>'+(s.by ? '<div class="sub">Served by '+esc(s.by)+'</div>' : '')+'</div>'+
         '<div style="text-align:right;"><div class="sub">Sold to</div><div style="font-weight:700;">'+esc(s.customer)+'</div></div></div>'+
       '<table><thead><tr><th>Item</th><th>Qty</th><th class="r">Bd ft</th></tr></thead><tbody>'+rows+'</tbody></table>'+
-      '<div class="p-total"><span>'+s.pieces.toLocaleString()+' pieces</span><span>'+fmt(s.bf)+' bd ft</span></div>';
+      '<div class="p-total"><span>'+s.pieces.toLocaleString()+' pieces</span><span>'+fmt(s.bf)+' bd ft</span></div>'+
+      (boRows ? '<div class="p-bo"><div class="p-bo-title">Back ordered (not included above, to follow)</div>'+
+        '<table><thead><tr><th>Item</th><th>Qty</th><th class="r">Bd ft</th></tr></thead><tbody>'+boRows+'</tbody></table></div>' : '');
     $('ticket-overlay').classList.add('open');
   }
   function closeTicket(){ $('ticket-overlay').classList.remove('open'); }
@@ -1766,6 +1911,8 @@
       var idx = customers.findIndex(function(x){ return x.id===id; });
       if(idx>-1) customers[idx] = Object.assign({}, customers[idx], data);
       sales.forEach(function(s){ if(s.customerId===id) s.customer = name; });
+      backorders.forEach(function(b){ if(b.customerId===id) b.customer = name; });
+      save(KEYS.bo, backorders);
       save(KEYS.sales, sales);
     } else {
       id = uid('cu');
@@ -1837,6 +1984,8 @@
     var id = viewingCustId;
     customers = customers.filter(function(c){ return c.id!==id; });
     sales.forEach(function(s){ if(s.customerId===id) s.customerId = null; });
+    backorders.forEach(function(b){ if(b.customerId===id) b.customerId = null; });
+    save(KEYS.bo, backorders);
     save(KEYS.cust, customers); save(KEYS.sales, sales);
     viewingCustId = null;
     closeCdel(); closeCustDetail();
@@ -1844,12 +1993,212 @@
   });
 
   /* =====================================================
+     BACK ORDERS (lumber owed to customers)
+  ===================================================== */
+  var boShowFilled = false, boSearch = '';
+  function specKey(i){ return Number(i.thickness)+'x'+Number(i.width)+'x'+Number(i.length)+'|'+kindOf(i); }
+  function boRemaining(b){ return Math.max(0, Number(b.pieces) - (Number(b.filled)||0)); }
+  function openBackorders(){ return backorders.filter(function(b){ return b.status==='open'; }); }
+  function boItem(b){ return stock.find(function(i){ return sameSpec(i, b); }) || null; }
+  // Pieces already on the Bill out ticket for this back order
+  function boQueued(b){ return cart.reduce(function(s, c){ return s + ((c.fills && c.fills[b.id]) || 0); }, 0); }
+  // How much of a back order could be pulled from stock right now
+  function boFillable(b){
+    var item = boItem(b);
+    if(!item) return 0;
+    return Math.max(0, Math.min(boRemaining(b) - boQueued(b), Number(item.quantity) - inCart(item.id)));
+  }
+  function boReadyCount(){ return openBackorders().filter(function(b){ return boFillable(b)>0; }).length; }
+  function boOwedBySpec(){
+    var out = {};
+    openBackorders().forEach(function(b){ var k = specKey(b); out[k] = (out[k]||0) + boRemaining(b); });
+    return out;
+  }
+  function boCustKey(b){ return b.customerId ? 'id:'+b.customerId : 'name:'+String(b.customer||'').trim().toLowerCase(); }
+
+  function renderBackorders(){
+    if(!session || !can('backorders')) return;
+    var open = openBackorders();
+    var countEl = $('bo-count');
+    countEl.textContent = open.length;
+    countEl.hidden = !open.length;
+    var custs = {};
+    open.forEach(function(b){ custs[boCustKey(b)] = true; });
+    $('bo-stat-lines').textContent = open.length;
+    $('bo-stat-pcs').textContent = open.reduce(function(s, b){ return s + boRemaining(b); }, 0).toLocaleString();
+    $('bo-stat-cust').textContent = Object.keys(custs).length;
+    $('bo-stat-ready').textContent = boReadyCount();
+
+    var el = $('bo-list'), q = boSearch;
+    var list = (boShowFilled ? backorders.filter(function(b){ return b.status==='filled'; }) : open).filter(function(b){
+      return !q || ((b.customer||'')+' '+(b.ticket||'')+' '+sizeHay(b)).toLowerCase().indexOf(q)>-1;
+    });
+    if(!list.length){
+      el.innerHTML = '<div class="card"><div class="empty"><div class="big">'+
+        (q ? 'Nothing matches' : boShowFilled ? 'No filled back orders yet' : 'No open back orders')+'</div><div>'+
+        (q ? 'Try a different search.' : boShowFilled ? 'Back orders show up here once they are filled.' :
+          'When a ticket asks for more than is in stock, the rest can be back ordered and will show up here.')+'</div></div></div>';
+      return;
+    }
+    var delSvg = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6h16Z"/></svg>';
+    var day = function(iso){ return iso ? new Date(iso).toLocaleDateString() : ''; };
+
+    if(boShowFilled){
+      list.sort(function(a,b){ return new Date(b.filledDate) - new Date(a.filledDate); });
+      el.innerHTML = '<div class="card">'+list.map(function(b){
+        var tickets = (b.fills||[]).map(function(f){ return f.ticket; }).filter(Boolean).join(', ');
+        return '<div class="row bo-row" data-id="'+b.id+'">'+
+          '<div><div class="name mono">'+esc(dims(b))+'</div><div class="meta">'+esc(b.customer)+'</div></div>'+
+          '<div class="num strong">'+qtyText(b.bunkSize, Number(b.pieces))+'</div>'+
+          '<div class="bo-status"><span class="badge on">Filled '+day(b.filledDate)+'</span>'+
+            '<div class="meta">Ordered '+day(b.date)+(b.ticket ? ' on '+esc(b.ticket) : '')+(tickets ? ' · filled on '+esc(tickets) : '')+'</div></div>'+
+          '<div class="actions"><button class="icon-btn danger" data-act="remove" aria-label="Remove from list">'+delSvg+'</button></div>'+
+        '</div>';
+      }).join('')+'</div>';
+      return;
+    }
+
+    // Open back orders, grouped by customer, oldest first
+    var groups = {}, order = [];
+    list.slice().sort(function(a,b){ return new Date(a.date) - new Date(b.date); }).forEach(function(b){
+      var k = boCustKey(b);
+      if(!groups[k]){ groups[k] = { key:k, name:b.customer, items:[] }; order.push(k); }
+      groups[k].items.push(b);
+    });
+    el.innerHTML = order.map(function(k){
+      var g = groups[k], owed = 0, readyN = 0;
+      g.items.forEach(function(b){ owed += boRemaining(b); if(boFillable(b)>0) readyN++; });
+      return '<div class="card bo-group">'+
+        '<div class="bo-head"><div><div class="name">'+esc(g.name)+'</div>'+
+          '<div class="meta">'+g.items.length+(g.items.length===1?' back order':' back orders')+' · '+owed.toLocaleString()+' pcs owed</div></div>'+
+          (readyN ? '<button class="btn sm primary" data-act="fill-all" data-key="'+esc(k)+'">Fill what\'s in stock ('+readyN+')</button>' : '')+
+        '</div>'+
+        g.items.map(function(b){
+          var rem = boRemaining(b), item = boItem(b), fillN = boFillable(b);
+          var status = !item ? '<span class="badge off">Not stocked</span>'
+            : fillN>=rem ? '<span class="badge on">In stock</span>'
+            : fillN>0 ? '<span class="badge low">'+fillN.toLocaleString()+' pcs in stock</span>'
+            : boQueued(b) ? '<span class="badge low">On the Bill out ticket</span>'
+            : '<span class="badge off">Out of stock</span>';
+          return '<div class="row bo-row" data-id="'+b.id+'">'+
+            '<div><div class="name mono">'+esc(dims(b))+'</div>'+
+              '<div class="meta">'+day(b.date)+(b.ticket ? ' · '+esc(b.ticket) : '')+
+                (Number(b.filled) ? ' · '+Number(b.filled).toLocaleString()+' of '+Number(b.pieces).toLocaleString()+' filled' : '')+'</div></div>'+
+            '<div class="num strong">'+qtyText(b.bunkSize, rem)+'</div>'+
+            '<div class="bo-status">'+status+'</div>'+
+            '<div class="actions">'+
+              '<button class="btn sm" data-act="fill"'+(fillN>0?'':' disabled')+'>Fill</button>'+
+              '<button class="icon-btn danger" data-act="cancel" aria-label="Cancel back order">'+delSvg+'</button>'+
+            '</div>'+
+          '</div>';
+        }).join('')+
+      '</div>';
+    }).join('');
+  }
+
+  // Puts what is in stock for these back orders on the Bill out ticket, for their customer
+  function fillBackorders(list){
+    list = list.filter(function(b){ return boFillable(b)>0; });
+    if(!list.length){ toast('None of that is in stock yet.'); return; }
+    var b0 = list[0];
+    var tCust = $('cust-select').value, tName = $('customer').value.trim().toLowerCase();
+    var same = b0.customerId ? tCust===b0.customerId : (!tCust && tName===String(b0.customer||'').trim().toLowerCase());
+    if((cart.length || boCart.length) && !same){
+      toast('The Bill out ticket has items for someone else. Complete or clear it first.');
+      return;
+    }
+    var pcs = 0;
+    list.forEach(function(b){
+      var item = boItem(b), n = boFillable(b);
+      addCartPieces(item.id, n, b.id);
+      pcs += n;
+    });
+    if(b0.customerId && customers.some(function(c){ return c.id===b0.customerId; })){ $('cust-select').value = b0.customerId; }
+    else { $('cust-select').value = ''; $('customer').value = b0.customer || ''; }
+    toggleWalkin();
+    go('bill');
+    renderCart();
+    toast('Put '+pcs.toLocaleString()+' pcs on the ticket for '+b0.customer+'. Complete the sale to mark '+(list.length===1?'it':'them')+' filled.');
+  }
+
+  $('bo-list').addEventListener('click', function(e){
+    var btn = e.target.closest('[data-act]');
+    if(!btn || btn.disabled) return;
+    var act = btn.dataset.act;
+    if(act==='fill-all'){
+      fillBackorders(openBackorders().filter(function(b){ return boCustKey(b)===btn.dataset.key; }));
+      return;
+    }
+    var row = btn.closest('[data-id]');
+    var b = row && backorders.find(function(x){ return x.id===row.dataset.id; });
+    if(!b) return;
+    if(act==='fill') fillBackorders([b]);
+    else if(act==='cancel' || act==='remove'){
+      var what = qtyText(b.bunkSize, act==='cancel' ? boRemaining(b) : Number(b.pieces))+' of '+dims(b)+' for '+b.customer;
+      askConfirm(act==='cancel' ? 'Cancel back order' : 'Remove from list',
+        act==='cancel' ? 'Cancel the back order for '+what+'? It will no longer be owed.' : 'Remove the filled back order for '+what+' from this list?',
+        act==='cancel' ? 'Cancel back order' : 'Remove', function(){
+          backorders = backorders.filter(function(x){ return x.id!==b.id; });
+          cart.forEach(function(c){ if(c.fills) delete c.fills[b.id]; });
+          save(KEYS.bo, backorders);
+          renderAll();
+        });
+    }
+  });
+  $('bo-search').addEventListener('input', function(e){ boSearch = e.target.value.trim().toLowerCase(); renderBackorders(); });
+  $('bo-filled-toggle').addEventListener('click', function(){
+    boShowFilled = !boShowFilled;
+    this.classList.toggle('active', boShowFilled);
+    this.textContent = boShowFilled ? 'Show open' : 'Show filled';
+    renderBackorders();
+  });
+
+  /* ---------- add a back order by hand ---------- */
+  function openBoAdd(){
+    $('ba-cust').innerHTML = '<option value="">Someone not in Customers</option>'+
+      customers.slice().sort(function(a,b){ return a.name.localeCompare(b.name); }).map(function(c){
+        return '<option value="'+c.id+'">'+esc(c.name)+'</option>';
+      }).join('');
+    ['ba-name','ba-t','ba-w','ba-kind','ba-l','ba-pcs'].forEach(function(id){ $(id).value = ''; });
+    $('ba-name').style.display = 'block';
+    fclear('ba-err');
+    $('boadd-overlay').classList.add('open');
+    $('ba-cust').focus();
+  }
+  function closeBoAdd(){ $('boadd-overlay').classList.remove('open'); }
+  $('ba-cust').addEventListener('change', function(){ $('ba-name').style.display = this.value ? 'none' : 'block'; });
+  $('boadd-save').addEventListener('click', function(){
+    fclear('ba-err');
+    var custId = $('ba-cust').value || null;
+    var chosen = custId ? customers.find(function(c){ return c.id===custId; }) : null;
+    var name = chosen ? chosen.name : $('ba-name').value.trim();
+    var spec = { thickness:impNum($('ba-t').value), width:impNum($('ba-w').value), length:lenNum($('ba-l').value), kind:normKind($('ba-kind').value) };
+    var pcs = Number($('ba-pcs').value);
+    var msg = !name ? 'Pick or type the customer.' :
+      !(spec.thickness>0 && spec.width>0 && spec.length>0) ? 'Enter thickness, width and length.' :
+      !(pcs>0 && Math.floor(pcs)===pcs) ? 'Enter how many pieces are owed, as a whole number.' : '';
+    if(msg){ ferr('ba-err', msg); return; }
+    var item = boItem(spec);
+    backorders.push({ id:uid('bo'), date:new Date().toISOString(), customerId:chosen ? chosen.id : null, customer:name,
+      by: session ? session.name : '', ticket:'', thickness:spec.thickness, width:spec.width, length:spec.length, kind:spec.kind,
+      bunkSize: item ? Number(item.bunkSize)||0 : 0, pieces:pcs, filled:0, status:'open' });
+    save(KEYS.bo, backorders);
+    closeBoAdd();
+    renderAll();
+    toast('Back order added for '+name+'.');
+  });
+  $('bo-add-btn').addEventListener('click', openBoAdd);
+  $('boadd-cancel').addEventListener('click', closeBoAdd);
+  $('boadd-close').addEventListener('click', closeBoAdd);
+  $('boadd-overlay').addEventListener('click', function(e){ if(e.target.id==='boadd-overlay') closeBoAdd(); });
+
+  /* =====================================================
      FILE UPLOAD (Inventory: add stock · Bill out: fill the ticket)
   ===================================================== */
   var XLSX_SRC = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
   var PDFJS_SRC = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
   var PDFJS_WORKER = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-  var impMode = null, impPlan = [];
+  var impMode = null, impPlan = [], impBo = true;   // impBo: on a pull list, back order what is short
   // Accepted headings, after lowercasing and dropping spaces, punctuation and "(in)"-style notes
   var IMP_COLS = {
     desc:['description','desc','item','size','dimensions','dims','dimension'],
@@ -2116,12 +2465,20 @@
       if(L.skip) return { L:L, skip:true };
       if(L.err) return { L:L, err:L.err };
       var item = findStock(L);
-      if(!item) return { L:L, err:'Not in inventory' };
-      var bs = Number(item.bunkSize) || L.bs || 0;   // the file's pack size (PK189) covers items stocked without one
+      var bs = (item && Number(item.bunkSize)) || L.bs || 0;   // the file's pack size (PK189) covers items stocked without one
       if(L.bunks>0 && !bs) return { L:L, item:item, err:'Needs pieces per bunk' };
       var pieces = (L.bunks||0)*bs + (L.pcs||0);
-      var avail = Number(item.quantity) - inCart(item.id) - (taken[item.id]||0);
-      if(pieces>avail) return { L:L, item:item, err:'Only '+qtyText(bs, Math.max(0, avail))+' available' };
+      if(!item){
+        if(!impBo) return { L:L, err:'Not in inventory' };
+        return { L:L, item:null, bs:bs, add:0, bo:pieces, note:'Not stocked · all of it back ordered' };
+      }
+      var avail = Math.max(0, Number(item.quantity) - inCart(item.id) - (taken[item.id]||0));
+      if(pieces>avail){
+        if(!impBo) return { L:L, item:item, err:'Only '+qtyText(bs, avail)+' available' };
+        taken[item.id] = (taken[item.id]||0) + avail;
+        return { L:L, item:item, bs:bs, add:avail, bo:pieces-avail,
+          note: avail ? 'Only '+qtyText(bs, avail)+' in stock · rest back ordered' : 'Out of stock · all of it back ordered' };
+      }
       taken[item.id] = (taken[item.id]||0) + pieces;
       return { L:L, item:item, bs:bs, add:pieces, note:'Leaves '+qtyText(bs, avail - pieces) };
     });
@@ -2151,12 +2508,14 @@
         '<div class="imp-out"><span class="imp-qty num"></span><span class="imp-res"></span></div>'+
       '</div>';
     }).join('');
-    $('imp-preview').innerHTML = '<div class="imp-sum" id="imp-sum"></div><div class="card">'+rows+'</div>';
+    $('imp-preview').innerHTML = '<div class="imp-sum" id="imp-sum"></div>'+
+      (impMode==='bill' ? '<label class="imp-opt"><input type="checkbox" data-f="bo-opt"'+(impBo?' checked':'')+'> Back order anything that is short or not in stock</label>' : '')+
+      '<div class="card">'+rows+'</div>';
     refreshImp();
   }
   function refreshImp(){
     var rows = $('imp-preview').querySelectorAll('.imp-row[data-i]');
-    var ready = 0, bad = 0, off = 0;
+    var ready = 0, bad = 0, off = 0, owed = 0;
     impPlan.forEach(function(p, i){
       var row = rows[i], L = p.L;
       if(!row) return;
@@ -2168,14 +2527,19 @@
       else if(p.err){ bad++; q.textContent = src; r.className = 'imp-res why'; r.textContent = p.err; }
       else {
         ready++;
-        q.textContent = qtyText(p.bs, p.add)+(p.bs>0 && p.add>=p.bs ? ' ('+p.add.toLocaleString()+' pcs)' : '')+' · '+fmt(bfPer(lineSpec(L))*p.add)+' bd ft';
-        r.className = 'imp-res ok';
+        if(p.bo) owed++;
+        q.textContent = [
+          p.add ? qtyText(p.bs, p.add)+(p.bs>0 && p.add>=p.bs ? ' ('+p.add.toLocaleString()+' pcs)' : '')+' · '+fmt(bfPer(lineSpec(L))*p.add)+' bd ft' : '',
+          p.bo ? qtyText(p.bs, p.bo)+' to back order' : ''
+        ].filter(Boolean).join(' + ');
+        r.className = 'imp-res '+(p.bo ? 'bo' : 'ok');
         r.textContent = p.note;
       }
       var bsIn = row.querySelector('[data-f=bs]');
       if(bsIn) bsIn.placeholder = (L.bs==null && p.bs) ? String(p.bs) : '';
     });
     $('imp-sum').innerHTML = '<span class="badge on">'+ready+' ready</span>'+
+      (owed ? '<span class="badge low" style="margin-left:0;">'+owed+' with back orders</span>' : '')+
       (bad ? '<span class="badge off">'+bad+' need fixing</span>' : '')+
       (off ? '<span class="badge" style="background:var(--line);color:var(--soft);margin-left:0;">'+off+' left out</span>' : '');
     var btn = $('imp-apply');
@@ -2184,6 +2548,11 @@
   }
   function onImpEdit(e){
     var el = e.target, f = el.dataset && el.dataset.f;
+    if(f==='bo-opt'){
+      impBo = el.checked;
+      impPlan = planBill(impPlan.map(function(x){ return x.L; }));
+      return refreshImp();
+    }
     var row = f && el.closest('.imp-row');
     var p = row && impPlan[Number(row.dataset.i)];
     if(!p) return;
@@ -2239,7 +2608,7 @@
 
   function openImp(mode){
     if(!can(mode==='stock' ? 'inventory' : 'bill')) return;
-    impMode = mode; impPlan = [];
+    impMode = mode; impPlan = []; impBo = true;
     $('imp-title').textContent = mode==='stock' ? 'Upload stock' : 'Upload a pull list';
     $('imp-lead').textContent = mode==='stock'
       ? 'Upload an order confirmation, packing list, or spreadsheet of lumber you received. Lines that match an item already in inventory add to its count, and new sizes become new items. You can fix any row or uncheck it to leave it out before anything changes.'
@@ -2278,16 +2647,18 @@
       closeImp();
       syncCart();
       renderAll();
-      toast('Added '+pieces.toLocaleString()+' pieces to inventory from '+ok.length+(ok.length===1?' row.':' rows.'));
+      var ready = boReadyCount();
+      toast('Added '+pieces.toLocaleString()+' pieces to inventory from '+ok.length+(ok.length===1?' row.':' rows.')+
+        (ready ? ' '+ready+(ready===1?' back order':' back orders')+' can be filled now.' : ''));
     } else {
+      var owedLines = 0;
       ok.forEach(function(p){
-        var existing = cart.find(function(c){ return c.stockId===p.item.id; });
-        if(existing) existing.pieces += p.add;
-        else cart.push({ stockId:p.item.id, pieces:p.add });
+        if(p.item && p.add) addCartPieces(p.item.id, p.add);
+        if(p.bo){ addToBoCart(Object.assign(lineSpec(p.L), { bunkSize:p.bs }), p.bo); owedLines++; }
       });
       closeImp();
       renderPicker(); renderCart();
-      toast('Added '+ok.length+(ok.length===1?' line':' lines')+' to the ticket. Check it, then complete the sale.');
+      toast('Added '+ok.length+(ok.length===1?' line':' lines')+' to the ticket'+(owedLines ? ', '+owedLines+' with back orders' : '')+'. Check it, then complete the sale.');
     }
   }
 
@@ -2321,7 +2692,7 @@
   $('imp-overlay').addEventListener('click', function(e){ if(e.target.id==='imp-overlay') closeImp(); });
 
   document.addEventListener('keydown', function(e){
-    if(e.key==='Escape'){ closeStock(); closeDelete(); closeTicket(); closeCust(); closeCustDetail(); closeCdel(); closeSdel(); closeAcct(); closePw(); closeCf(); closeImp(); }
+    if(e.key==='Escape'){ closeStock(); closeDelete(); closeTicket(); closeCust(); closeCustDetail(); closeCdel(); closeSdel(); closeAcct(); closePw(); closeCf(); closeImp(); closeBoAdd(); }
   });
 
   /* ---------- boot ---------- */
@@ -2331,6 +2702,7 @@
     renderPicker(); renderCart(); renderCustomers(); renderCustSelect();
     if(can('sales')) renderSales();
     if(can('accounts')) renderAccounts();
+    renderBackorders();
   }
   // Lumber is tracked by size and type. Items saved back when species was kept are combined by size, once.
   function mergeBySize(list){
@@ -2357,6 +2729,7 @@
     }
     sales = await load(KEYS.sales);
     customers = await load(KEYS.cust);
+    backorders = await load(KEYS.bo);
     var q = await load(KEYS.seq);
     if(q && typeof q.n==='number') nextNo = q.n;
     sales.forEach(function(s){
