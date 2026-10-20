@@ -1,0 +1,1793 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Advanced Precut Systems Lumber Tally</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F4F1E8; --card:#FFFFFF; --ink:#1F2420; --soft:#5D6459; --faint:#8E958A;
+    --line:#DDD9CB; --line2:#C8C3B0;
+    --green:#2F5D3A; --green-dark:#244A2E; --green-pale:#E3ECE0;
+    --rust:#B5472B; --rust-pale:#F7E3DB;
+    --gold:#B7852E; --gold-pale:#F4E8CC;
+    --radius:10px;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',system-ui,sans-serif;-webkit-font-smoothing:antialiased;font-size:14px;}
+  .mono{font-family:'JetBrains Mono',monospace;}
+  button{font-family:inherit;}
+
+  /* Header */
+  header.top{background:var(--green);color:#fff;}
+  header.top .inner{max-width:1100px;margin:0 auto;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;}
+  .brand{display:flex;align-items:center;gap:12px;}
+  .brand .mark{width:36px;height:36px;border-radius:8px;background:#fff;color:var(--green);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;letter-spacing:0.02em;flex-shrink:0;}
+  .brand h1{margin:0;font-size:18px;font-weight:700;letter-spacing:-0.01em;}
+  .brand p{margin:1px 0 0;font-size:12px;color:#C9DBC6;font-family:'JetBrains Mono',monospace;}
+  .tabs{display:flex;gap:4px;background:rgba(0,0,0,0.18);padding:4px;border-radius:9px;}
+  .tab-btn{border:none;background:transparent;color:#D6E5D3;padding:8px 16px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;}
+  .tab-btn.active{background:#fff;color:var(--green);}
+  [hidden]{display:none !important;}
+  .hdr-btns{display:flex;gap:8px;flex-shrink:0;}
+  .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--green-dark);color:#fff;padding:11px 18px;border-radius:8px;font-size:13.5px;font-weight:600;z-index:60;box-shadow:0 6px 24px rgba(0,0,0,0.25);max-width:90vw;}
+  .btn.signout{background:rgba(255,255,255,0.12);border-color:rgba(255,255,255,0.35);color:#fff;padding:8px 14px;flex-shrink:0;white-space:nowrap;}
+  .btn.signout:hover{background:rgba(255,255,255,0.24);}
+  @media (max-width:960px){
+    header.top .inner{row-gap:12px;}
+    .brand{order:1;min-width:0;}
+    .hdr-btns{order:2;margin-left:auto;}
+    .btn.signout{padding:8px 11px;font-size:12.5px;}
+    .tabs{order:3;width:100%;overflow-x:auto;scrollbar-width:none;}
+    .tabs::-webkit-scrollbar{display:none;}
+    .tab-btn{flex:1 0 auto;}
+  }
+
+  /* Sign-in gate */
+  body:not(.authed) header.top, body:not(.authed) main{display:none;}
+  .gate{position:fixed;inset:0;z-index:40;background:var(--bg);display:flex;align-items:flex-start;justify-content:center;padding:48px 20px;overflow-y:auto;}
+  body.authed .gate{display:none;}
+  .gate-card{width:100%;max-width:400px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:26px;box-shadow:0 12px 40px rgba(0,0,0,0.07);}
+  .gate-brand{display:flex;align-items:center;gap:12px;margin-bottom:20px;}
+  .gate-brand .mark{width:40px;height:40px;border-radius:9px;background:var(--green);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12.5px;flex-shrink:0;}
+  .gate-brand h1{margin:0;font-size:16px;line-height:1.25;font-weight:700;}
+  .gate-card h2{margin:0 0 4px;font-size:16px;}
+  .gate-card .lead{margin:0 0 16px;color:var(--soft);font-size:13px;line-height:1.45;}
+  .gate-card .field{margin-bottom:12px;}
+  .gate-card .btn{width:100%;justify-content:center;padding:12px;margin-top:4px;}
+  .gate-card .form-err{margin-bottom:6px;}
+  .gate-links{display:flex;justify-content:center;margin-top:10px;}
+  .link-btn{background:none;border:none;color:var(--green);font-size:13px;font-weight:600;cursor:pointer;padding:6px 4px;text-decoration:underline;}
+
+  /* Accounts */
+  .flash{background:var(--green-pale);border:1px solid var(--green);color:var(--green-dark);padding:10px 14px;border-radius:8px;font-size:13px;font-weight:600;margin-bottom:14px;}
+  .me-row{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding:14px 16px;}
+  .acct-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin:24px 0 4px;}
+  .acct-note{margin:0 0 12px;color:var(--soft);font-size:13px;}
+  .acct-row{display:grid;grid-template-columns:30px 1.6fr 80px auto;gap:12px;align-items:center;padding:12px 16px;border-bottom:1px solid var(--line);}
+  .acct-row:last-child{border-bottom:none;}
+  .acct-row.empty-slot .name{color:var(--faint);font-weight:500;}
+  .slot-no{font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--faint);}
+  .acct-actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;}
+  .btn.sm{padding:6px 11px;font-size:12.5px;}
+  .badge.on{background:var(--green-pale);color:var(--green);margin-left:0;}
+  .badge.off{background:var(--rust-pale);color:var(--rust);margin-left:0;}
+  .badge.admin{background:var(--gold-pale);color:#8A6215;}
+  .code-box{font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:700;letter-spacing:0.08em;text-align:center;padding:16px 10px;background:var(--gold-pale);border:1px dashed var(--gold);border-radius:8px;user-select:all;word-break:break-all;}
+  .pw-row{display:flex;gap:8px;}
+  .pw-row input{flex:1;min-width:0;}
+  @media (max-width:640px){
+    .acct-row{grid-template-columns:26px 1fr auto;}
+    .acct-row .acct-actions{grid-column:2 / -1;justify-content:flex-start;}
+  }
+
+  main{max-width:1100px;margin:0 auto;padding:22px 20px 70px;}
+  .view{display:none;}
+  .view.active{display:block;}
+
+  /* Stats */
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px;}
+  @media (max-width:700px){ .stats{grid-template-columns:repeat(2,1fr);} }
+  .tab-btn{white-space:nowrap;}
+  @media (max-width:520px){ .tab-btn{padding:8px 11px;font-size:12px;} }
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px;}
+  .stat .label{font-size:11px;color:var(--faint);text-transform:uppercase;letter-spacing:0.05em;font-weight:600;}
+  .stat .value{font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:700;margin-top:4px;}
+
+  /* Controls */
+  .controls{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;}
+  .search{flex:1;min-width:200px;position:relative;}
+  .search input{width:100%;padding:10px 12px 10px 36px;border-radius:8px;border:1px solid var(--line2);background:var(--card);font-size:14px;color:var(--ink);font-family:inherit;}
+  .search input:focus,.field input:focus,.field select:focus{outline:2px solid var(--green);outline-offset:-1px;border-color:var(--green);}
+  .search svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--faint);}
+  .btn{border:1px solid var(--line2);background:var(--card);color:var(--ink);padding:10px 16px;border-radius:8px;font-size:13.5px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:7px;}
+  .btn:hover{background:var(--green-pale);}
+  .btn.primary{background:var(--green);border-color:var(--green);color:#fff;}
+  .btn.primary:hover{background:var(--green-dark);}
+  .btn.danger{background:var(--rust);border-color:var(--rust);color:#fff;}
+  .btn.danger:hover{background:#9A3A22;}
+
+  /* Tables */
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;}
+  .row{display:grid;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line);}
+  .row:last-child{border-bottom:none;}
+  .row.head{padding:9px 16px;font-size:11px;text-transform:uppercase;letter-spacing:0.05em;color:var(--faint);font-weight:700;background:#FBFAF6;}
+  .inv-row{grid-template-columns:2.4fr 0.8fr 0.8fr 0.9fr 1fr 78px;}
+  .group-row{background:#F7F5EC;cursor:pointer;}
+  .group-row:hover{background:var(--green-pale);}
+  .group-row .name{font-size:14.5px;font-weight:700;}
+  .g-title{display:flex;align-items:center;gap:10px;}
+  .chev{display:inline-flex;color:var(--faint);transition:transform .12s;flex-shrink:0;}
+  .chev.open{transform:rotate(90deg);color:var(--green);}
+  .xs{font-family:'JetBrains Mono',monospace;font-weight:500;font-size:12.5px;color:var(--soft);margin-left:9px;}
+  .child-row{background:#FFFFFF;}
+  .child-row .c-title{padding-left:34px;}
+  .child-row .name{font-family:'JetBrains Mono',monospace;font-size:14px;}
+  .btn:disabled{opacity:0.45;cursor:not-allowed;}
+  .name{font-weight:600;font-size:14px;}
+  .name.unspec{color:var(--soft);font-weight:500;font-style:italic;}
+  .meta{font-size:12px;color:var(--faint);font-family:'JetBrains Mono',monospace;margin-top:2px;}
+  .num{font-family:'JetBrains Mono',monospace;font-size:14px;}
+  .num.strong{font-weight:700;}
+  .num.zero{color:var(--faint);}
+  .badge{display:inline-block;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;text-transform:uppercase;letter-spacing:0.04em;margin-left:6px;vertical-align:middle;}
+  .badge.out{background:var(--rust-pale);color:var(--rust);}
+  .badge.low{background:var(--gold-pale);color:#8A6215;}
+  .btn.toggle.active{background:var(--gold-pale);border-color:var(--gold);color:#8A6215;}
+  .stat.warn .value{color:var(--rust);}
+  .actions{display:flex;gap:6px;justify-content:flex-end;}
+  .icon-btn{width:30px;height:30px;border-radius:6px;border:1px solid var(--line2);background:var(--card);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--soft);}
+  .icon-btn:hover{background:var(--green-pale);color:var(--green);border-color:var(--green);}
+  .icon-btn.danger:hover{background:var(--rust-pale);color:var(--rust);border-color:var(--rust);}
+  .empty{padding:56px 20px;text-align:center;color:var(--faint);}
+  .empty .big{font-size:16px;font-weight:600;color:var(--ink);margin-bottom:6px;}
+  .empty .btn{margin-top:16px;}
+
+  /* Bill out */
+  .bill-grid{display:grid;grid-template-columns:1.45fr 1fr;gap:18px;align-items:start;}
+  h2.section{font-size:15px;margin:0 0 12px;font-weight:700;}
+  .pick-row{display:grid;grid-template-columns:1fr 64px 64px 58px;gap:8px;align-items:center;padding:12px 16px;border-bottom:1px solid var(--line);}
+  .pick-row:last-child{border-bottom:none;}
+  .pick-row.dim{opacity:0.5;}
+  .pick-group{display:flex;align-items:center;gap:10px;padding:12px 16px;background:#F7F5EC;border-bottom:1px solid var(--line);cursor:pointer;}
+  .pick-group:hover{background:var(--green-pale);}
+  .pick-group.dim{opacity:0.55;}
+  .pick-group .name{font-size:14.5px;font-weight:700;}
+  .pick-row .c-title{padding-left:34px;}
+  .pick-row .name.len{font-family:'JetBrains Mono',monospace;font-size:14px;}
+  .pick-row input,.cart-price input{width:100%;padding:7px 8px;border-radius:6px;border:1px solid var(--line2);font-size:13px;font-family:'JetBrains Mono',monospace;background:#FCFBF8;}
+  .pick-row input:disabled{background:#EFEDE4;}
+  .pick-row .lbl{font-size:10px;color:var(--faint);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:3px;font-weight:600;}
+  .pick-row .add{background:var(--green);color:#fff;border:none;padding:8px 0;border-radius:6px;font-size:12.5px;font-weight:600;cursor:pointer;align-self:end;}
+  .pick-row .add:hover{background:var(--green-dark);}
+  .pick-row .add:disabled{opacity:0.4;cursor:not-allowed;}
+
+  .ticket{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px;position:sticky;top:16px;}
+  .ticket h3{margin:0 0 12px;font-size:15px;}
+  .field label{display:block;font-size:12px;font-weight:600;color:var(--soft);margin-bottom:5px;}
+  .field input,.field select{width:100%;padding:9px 11px;border-radius:7px;border:1px solid var(--line2);font-size:14px;background:#FCFBF8;color:var(--ink);font-family:inherit;}
+  .cart-line{padding:12px 0;border-bottom:1px solid var(--line);}
+  .cart-line:last-of-type{border-bottom:none;}
+  .cart-top{display:flex;justify-content:space-between;gap:8px;align-items:flex-start;}
+  .cart-name{font-weight:600;font-size:13.5px;}
+  .cart-qty{font-size:12px;color:var(--faint);font-family:'JetBrains Mono',monospace;margin-top:2px;}
+  .cart-amt{font-family:'JetBrains Mono',monospace;font-weight:700;white-space:nowrap;}
+  .cart-remove{background:none;border:none;color:var(--rust);cursor:pointer;font-size:18px;line-height:1;padding:0 2px;}
+  .cart-price{display:flex;align-items:center;gap:6px;margin-top:8px;font-size:12px;color:var(--faint);}
+  .cart-price input{width:84px;}
+  .cart-price input.missing{border-color:var(--rust);background:var(--rust-pale);}
+  .cart-price select{padding:6px 8px;border-radius:6px;border:1px solid var(--line2);font-size:12.5px;background:#FCFBF8;font-family:inherit;}
+  .cart-empty{padding:22px 0;text-align:center;color:var(--faint);}
+  .totals{margin-top:10px;padding-top:12px;border-top:2px solid var(--ink);display:flex;flex-direction:column;gap:5px;}
+  .totals .t-row{display:flex;justify-content:space-between;font-size:13px;color:var(--soft);}
+  .totals .t-row.grand{font-size:21px;color:var(--ink);font-weight:700;font-family:'JetBrains Mono',monospace;}
+  .complete{width:100%;margin-top:14px;padding:13px;font-size:14px;justify-content:center;}
+  .err{color:var(--rust);font-size:12.5px;margin-top:10px;display:none;}
+  .err.show{display:block;}
+
+  /* Sales */
+  .sale-row{grid-template-columns:34px 90px 1.6fr 1fr 1fr 1fr;cursor:pointer;}
+  .sale-row input[type=checkbox]{width:16px;height:16px;accent-color:var(--green);cursor:pointer;}
+  .sale-row.selected{background:var(--gold-pale);}
+  .sale-row:hover{background:var(--green-pale);}
+  .sale-row.head{cursor:default;}
+  .sale-row.head:hover{background:#FBFAF6;}
+
+  /* Modals */
+  .overlay{position:fixed;inset:0;background:rgba(31,36,32,0.5);display:none;align-items:flex-start;justify-content:center;padding:40px 20px;z-index:50;overflow-y:auto;}
+  .overlay.open{display:flex;}
+  .modal{background:var(--card);border-radius:12px;width:100%;max-width:460px;box-shadow:0 20px 50px rgba(0,0,0,0.25);}
+  .modal.wide{max-width:620px;}
+  .modal-head{padding:16px 22px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;}
+  .modal-head h2{margin:0;font-size:16px;}
+  .modal-head button{background:none;border:none;cursor:pointer;color:var(--faint);padding:4px;}
+  .modal-body{padding:20px 22px;display:flex;flex-direction:column;gap:14px;max-height:72vh;overflow-y:auto;}
+  .modal-foot{padding:14px 22px 18px;display:flex;justify-content:flex-end;gap:10px;border-top:1px solid var(--line);}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
+  .total-box{display:flex;justify-content:space-between;align-items:baseline;padding:11px 14px;background:var(--gold-pale);border:1px dashed var(--gold);border-radius:8px;font-size:13px;font-weight:600;color:var(--soft);}
+  .total-box .big{font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:700;color:var(--ink);}
+  .total-box .math{font-family:'JetBrains Mono',monospace;font-size:11.5px;font-weight:400;color:var(--faint);margin-left:6px;}
+  .form-err{color:var(--rust);font-size:12.5px;display:none;}
+  .form-err.show{display:block;}
+
+  /* Restock option */
+  .check-row{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;background:var(--gold-pale);border:1px solid var(--gold);border-radius:8px;cursor:pointer;font-size:13.5px;font-weight:600;}
+  .check-row input{width:17px;height:17px;margin-top:1px;accent-color:var(--green);flex-shrink:0;}
+  .check-row .hint{display:block;font-weight:400;font-size:12px;color:var(--soft);margin-top:3px;}
+
+  /* Customers */
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .field textarea{width:100%;padding:9px 11px;border-radius:7px;border:1px solid var(--line2);font-size:14px;background:#FCFBF8;color:var(--ink);font-family:inherit;resize:vertical;}
+  .field textarea:focus{outline:2px solid var(--green);outline-offset:-1px;border-color:var(--green);}
+  .cust-pick{display:flex;gap:8px;}
+  .cust-pick select{flex:1;min-width:0;}
+  .cust-pick .btn{padding:0 14px;font-size:18px;line-height:1;justify-content:center;}
+  .cust-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px;}
+  .cust-card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px;cursor:pointer;}
+  .cust-card:hover{border-color:var(--green);}
+  .cust-card .contact{font-size:12px;color:var(--faint);margin-top:3px;min-height:16px;word-break:break-word;}
+  .cust-stats{display:flex;gap:18px;margin-top:12px;padding-top:12px;border-top:1px solid var(--line);}
+  .cust-stats .k{font-size:10.5px;color:var(--faint);text-transform:uppercase;letter-spacing:0.04em;font-weight:600;}
+  .cust-stats .v{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:14px;margin-top:2px;}
+  .hist-row{display:grid;grid-template-columns:90px 1fr auto auto;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line);cursor:pointer;}
+  .hist-row:last-child{border-bottom:none;}
+  .hist-row:hover{background:var(--green-pale);}
+
+  /* Printed ticket */
+  .paper{font-family:'JetBrains Mono',monospace;font-size:12.5px;}
+  .paper .p-head{display:flex;justify-content:space-between;gap:12px;padding-bottom:12px;border-bottom:2px solid var(--ink);margin-bottom:10px;}
+  .paper .shop{font-family:'Inter',sans-serif;font-weight:700;font-size:17px;}
+  .paper table{width:100%;border-collapse:collapse;}
+  .paper th{text-align:left;font-size:10.5px;text-transform:uppercase;color:var(--faint);padding:5px 0;border-bottom:1px solid var(--line2);}
+  .paper td{padding:8px 0;border-bottom:1px solid var(--line);vertical-align:top;}
+  .paper .r{text-align:right;}
+  .paper .sub{color:var(--faint);font-size:11px;margin-top:2px;}
+  .paper .p-total{display:flex;justify-content:space-between;font-size:17px;font-weight:700;margin-top:12px;padding-top:10px;border-top:2px solid var(--ink);}
+
+  @media print{
+    header.top,main,.overlay:not(#ticket-overlay),.modal-foot,.modal-head button{display:none !important;}
+    body{background:#fff;}
+    #ticket-overlay{position:static;display:block !important;background:none;padding:0;}
+    #ticket-overlay .modal{box-shadow:none;max-width:100%;}
+    #ticket-overlay .modal-body{max-height:none;overflow:visible;padding:0;}
+  }
+  @media (max-width:860px){
+    .bill-grid{grid-template-columns:1fr;}
+    .ticket{position:static;}
+    .inv-row.head,.sale-row.head{display:none;}
+    .inv-row{grid-template-columns:1fr 78px;row-gap:6px;}
+    .inv-row .c-num{display:none;}
+    .inv-row .c-sum{display:block !important;}
+    .sale-row{grid-template-columns:28px 72px 1fr auto;row-gap:2px;}
+    .sale-row .hide-sm{display:none;}
+  }
+  .inv-row .c-sum{display:none;font-size:12.5px;color:var(--soft);font-family:'JetBrains Mono',monospace;grid-column:1;}
+  .loading{padding:40px;text-align:center;color:var(--faint);font-family:'JetBrains Mono',monospace;font-size:13px;}
+</style>
+</head>
+<body>
+
+<div class="toast" id="toast" hidden></div>
+<div class="gate" id="gate">
+  <div class="gate-card">
+    <div class="gate-brand"><div class="mark">APS</div><h1>Advanced Precut Systems Lumber Tally</h1></div>
+
+    <form id="gate-login" hidden>
+      <h2>Sign in</h2>
+      <p class="lead">Use the username and password your admin gave you.</p>
+      <div class="field"><label for="g-user">Username</label><input type="text" id="g-user" autocomplete="username" autocapitalize="none" spellcheck="false"></div>
+      <div class="field"><label for="g-pass">Password</label><input type="password" id="g-pass" autocomplete="current-password"></div>
+      <div class="form-err" id="g-err"></div>
+      <button class="btn primary" type="submit">Sign in</button>
+      <div class="gate-links"><button type="button" class="link-btn" id="g-forgot">Forgot the admin password?</button></div>
+    </form>
+
+    <form id="gate-setup" hidden>
+      <h2>Create the admin account</h2>
+      <p class="lead">No accounts exist yet. The admin can open every tab and sets up the 10 user accounts. Anything already in the app is kept.</p>
+      <div class="field"><label for="s-name">Your name</label><input type="text" id="s-name" autocomplete="name"></div>
+      <div class="field"><label for="s-user">Username</label><input type="text" id="s-user" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="admin"></div>
+      <div class="field"><label for="s-pass">Password</label><input type="password" id="s-pass" autocomplete="new-password" placeholder="At least 6 characters"></div>
+      <div class="field"><label for="s-pass2">Confirm password</label><input type="password" id="s-pass2" autocomplete="new-password"></div>
+      <div class="form-err" id="s-err"></div>
+      <button class="btn primary" type="submit">Create admin account</button>
+    </form>
+
+    <form id="gate-recover" hidden>
+      <h2>Reset the admin password</h2>
+      <p class="lead">Enter the recovery code that was shown when the admin account was created.</p>
+      <div class="field"><label for="r-code">Recovery code</label><input type="text" id="r-code" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="XXXX-XXXX-XXXX-XXXX"></div>
+      <div class="field"><label for="r-pass">New password</label><input type="password" id="r-pass" autocomplete="new-password" placeholder="At least 6 characters"></div>
+      <div class="field"><label for="r-pass2">Confirm new password</label><input type="password" id="r-pass2" autocomplete="new-password"></div>
+      <div class="form-err" id="r-err"></div>
+      <button class="btn primary" type="submit">Reset password</button>
+      <div class="gate-links"><button type="button" class="link-btn" id="r-back">Back to sign in</button></div>
+    </form>
+  </div>
+</div>
+
+<header class="top">
+  <div class="inner">
+    <div class="brand">
+      <div class="mark">APS</div>
+      <div><h1>Advanced Precut Systems Lumber Tally</h1><p id="sub">loading…</p></div>
+    </div>
+    <div class="tabs" id="tabs">
+      <button class="tab-btn" data-view="inventory">Inventory</button>
+      <button class="tab-btn" data-view="bill">Bill out</button>
+      <button class="tab-btn" data-view="customers">Customers</button>
+      <button class="tab-btn" data-view="sales">Sales</button>
+      <button class="tab-btn" data-view="accounts">Accounts</button>
+    </div>
+    <div class="hdr-btns"><button class="btn signout" id="chpw">Change password</button><button class="btn signout" id="signout">Sign out</button></div>
+  </div>
+</header>
+
+<main>
+
+  <!-- INVENTORY -->
+  <section class="view active" id="view-inventory">
+    <div class="stats">
+      <div class="stat"><div class="label">Items</div><div class="value" id="stat-items">—</div></div>
+      <div class="stat"><div class="label">Pieces in stock</div><div class="value" id="stat-pieces">—</div></div>
+      <div class="stat"><div class="label">Board feet</div><div class="value" id="stat-bf">—</div></div>
+      <div class="stat" id="stat-low-box"><div class="label">Low stock</div><div class="value" id="stat-low">—</div></div>
+    </div>
+    <div class="controls">
+      <div class="search">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        <input type="text" id="inv-search" placeholder="Search by species or size">
+      </div>
+      <button class="btn" id="expand-toggle">Expand all</button>
+      <button class="btn toggle" id="low-toggle">Low stock only</button>
+      <button class="btn primary" id="add-stock-btn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+        Add stock
+      </button>
+    </div>
+    <div id="inv-list"><div class="loading">Loading inventory…</div></div>
+  </section>
+
+  <!-- BILL OUT -->
+  <section class="view" id="view-bill">
+    <div class="bill-grid">
+      <div>
+        <h2 class="section">Pull from stock</h2>
+        <div class="controls" style="margin-bottom:12px;">
+          <div class="search">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+            <input type="text" id="pick-search" placeholder="Find species or size">
+          </div>
+          <button class="btn" id="pick-expand-toggle">Expand all</button>
+        </div>
+        <div class="card" id="picker"></div>
+      </div>
+      <div class="ticket">
+        <h3>Sale ticket</h3>
+        <div class="field" style="margin-bottom:6px;">
+          <label for="cust-select">Customer</label>
+          <div class="cust-pick">
+            <select id="cust-select"><option value="">Walk-in / one-time</option></select>
+            <button class="btn" id="quick-add-cust" title="New customer" aria-label="New customer">+</button>
+          </div>
+          <input type="text" id="customer" placeholder="Name (optional)" style="margin-top:8px;">
+        </div>
+        <div id="cart"></div>
+        <div class="totals">
+          <div class="t-row"><span>Board feet</span><span class="mono" id="t-bf">0</span></div>
+          <div class="t-row grand"><span>Pieces</span><span id="t-pieces">0</span></div>
+        </div>
+        <div class="err" id="cart-err"></div>
+        <button class="btn primary complete" id="complete-btn">Complete sale</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- CUSTOMERS -->
+  <section class="view" id="view-customers">
+    <div class="controls">
+      <div class="search">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        <input type="text" id="cust-search" placeholder="Search customers">
+      </div>
+      <button class="btn primary" id="add-cust-btn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+        Add customer
+      </button>
+    </div>
+    <div id="cust-list"><div class="loading">Loading customers…</div></div>
+  </section>
+
+  <!-- SALES -->
+  <section class="view" id="view-sales">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px;min-height:38px;">
+      <h2 class="section" style="margin:0;">Past sales</h2>
+      <button class="btn danger" id="sales-del-btn" style="display:none;">Delete selected</button>
+    </div>
+    <div id="sales-list"><div class="loading">Loading sales…</div></div>
+  </section>
+
+  <!-- ACCOUNTS (admin only) -->
+  <section class="view" id="view-accounts">
+    <div class="flash" id="acct-flash" hidden></div>
+    <h2 class="section">Your account</h2>
+    <div class="card" id="me-card"></div>
+    <h2 class="section" style="margin-top:24px;">Other admin</h2>
+    <div class="card" id="admin2-card"></div>
+    <div class="acct-head"><h2 class="section" style="margin:0;">User accounts</h2><span class="meta" id="acct-count" style="margin:0;"></span></div>
+    <p class="acct-note">User accounts can open Bill out and Customers only. Inventory, Sales, and Accounts are admin-only.</p>
+    <div class="card" id="acct-list"></div>
+  </section>
+
+</main>
+
+<!-- Stock modal -->
+<div class="overlay" id="stock-overlay">
+  <div class="modal">
+    <div class="modal-head"><h2 id="stock-title">Add stock</h2><button id="stock-close" aria-label="Close"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+    <div class="modal-body">
+      <div class="field"><label for="f-species">Species (optional)</label><input type="text" id="f-species" placeholder="Doug fir"></div>
+      <div class="grid3">
+        <div class="field"><label for="f-t">Thickness (in)</label><input type="number" id="f-t" min="0" step="0.125" placeholder="2"></div>
+        <div class="field"><label for="f-w">Width (in)</label><input type="number" id="f-w" min="0" step="0.125" placeholder="4"></div>
+        <div class="field"><label for="f-l">Length (ft)</label><input type="number" id="f-l" min="0" step="0.5" placeholder="8"></div>
+      </div>
+      <div class="grid3">
+        <div class="field"><label for="f-bunksize">Pieces per bunk</label><input type="number" id="f-bunksize" min="0" step="1" placeholder="e.g. 294"></div>
+        <div class="field"><label for="f-bunks">Number of bunks</label><input type="number" id="f-bunks" min="0" step="1" placeholder="0"></div>
+        <div class="field"><label for="f-loose">Loose pieces</label><input type="number" id="f-loose" min="0" step="1" placeholder="0"></div>
+      </div>
+      <div class="total-box">
+        <span>Pieces in stock</span>
+        <span><span class="big" id="f-total">0</span><span class="math" id="f-math"></span></span>
+      </div>
+      <div class="field"><label for="f-low">Low stock alert at or below (pieces) — optional</label><input type="number" id="f-low" min="0" step="1" placeholder="Leave blank for no alert"></div>
+      <div class="form-err" id="stock-err"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" id="stock-cancel">Cancel</button>
+      <button class="btn primary" id="stock-save">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete modal -->
+<div class="overlay" id="del-overlay">
+  <div class="modal" style="max-width:380px;">
+    <div class="modal-head"><h2>Remove item</h2><button id="del-close" aria-label="Close"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+    <div class="modal-body"><p style="margin:0;color:var(--soft);">Remove <strong id="del-name" style="color:var(--ink);"></strong> from inventory? This can't be undone.</p></div>
+    <div class="modal-foot"><button class="btn" id="del-cancel">Cancel</button><button class="btn danger" id="del-confirm">Remove</button></div>
+  </div>
+</div>
+
+<!-- Delete sales confirm -->
+<div class="overlay" id="sdel-overlay">
+  <div class="modal" style="max-width:400px;">
+    <div class="modal-head"><h2>Delete tickets</h2><button id="sdel-close" aria-label="Close"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+    <div class="modal-body">
+      <p style="margin:0;color:var(--soft);">Delete <strong id="sdel-count" style="color:var(--ink);"></strong>? They'll be removed from Sales and from customer history. This can't be undone.</p>
+      <label class="check-row"><input type="checkbox" id="sdel-restock"><span>Put these pieces back in inventory<span class="hint" id="sdel-hint"></span></span></label>
+    </div>
+    <div class="modal-foot"><button class="btn" id="sdel-cancel">Cancel</button><button class="btn danger" id="sdel-confirm">Delete</button></div>
+  </div>
+</div>
+
+<!-- Customer add/edit modal -->
+<div class="overlay" id="cust-overlay">
+  <div class="modal">
+    <div class="modal-head"><h2 id="cust-title">Add customer</h2><button id="cust-close" aria-label="Close"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+    <div class="modal-body">
+      <div class="field"><label for="c-name">Name / company</label><input type="text" id="c-name" placeholder="Riverside Construction"></div>
+      <div class="grid2">
+        <div class="field"><label for="c-phone">Phone</label><input type="text" id="c-phone" placeholder="(555) 555-0100"></div>
+        <div class="field"><label for="c-email">Email</label><input type="text" id="c-email" placeholder="orders@riverside.co"></div>
+      </div>
+      <div class="field"><label for="c-notes">Notes</label><textarea id="c-notes" rows="3" placeholder="Delivery preferences, job sites, etc."></textarea></div>
+      <div class="form-err" id="cust-err"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" id="cust-cancel">Cancel</button>
+      <button class="btn primary" id="cust-save">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Customer detail modal -->
+<div class="overlay" id="cdetail-overlay">
+  <div class="modal wide">
+    <div class="modal-head"><h2 id="cdetail-name">Customer</h2><button id="cdetail-close" aria-label="Close"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+    <div class="modal-body" id="cdetail-body"></div>
+    <div class="modal-foot">
+      <button class="btn danger" id="cdetail-delete" style="margin-right:auto;">Delete</button>
+      <button class="btn" id="cdetail-edit">Edit</button>
+      <button class="btn" id="cdetail-close-2">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Customer delete confirm -->
+<div class="overlay" id="cdel-overlay">
+  <div class="modal" style="max-width:380px;">
+    <div class="modal-head"><h2>Delete customer</h2><button id="cdel-close" aria-label="Close"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+    <div class="modal-body"><p style="margin:0;color:var(--soft);">Delete <strong id="cdel-name" style="color:var(--ink);"></strong>? Their past tickets stay in Sales under this name.</p></div>
+    <div class="modal-foot"><button class="btn" id="cdel-cancel">Cancel</button><button class="btn danger" id="cdel-confirm">Delete</button></div>
+  </div>
+</div>
+
+<!-- Ticket modal -->
+<div class="overlay" id="ticket-overlay">
+  <div class="modal wide">
+    <div class="modal-head"><h2>Sale ticket</h2><button id="ticket-close" aria-label="Close"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+    <div class="modal-body"><div class="paper" id="paper"></div></div>
+    <div class="modal-foot"><button class="btn" id="ticket-close-2">Close</button><button class="btn primary" id="ticket-print">Print</button></div>
+  </div>
+</div>
+
+<!-- Create / edit user account -->
+<div class="overlay" id="acct-overlay">
+  <div class="modal">
+    <div class="modal-head"><h2 id="acct-title">Create user account</h2><button id="acct-close" aria-label="Close"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+    <div class="modal-body">
+      <div class="field"><label for="a-name">Full name</label><input type="text" id="a-name" placeholder="Jordan Lee"></div>
+      <div class="field"><label for="a-user">Username</label><input type="text" id="a-user" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="jlee"></div>
+      <div class="field" id="a-pass-wrap"><label for="a-pass">Password</label>
+        <div class="pw-row"><input type="text" id="a-pass" autocomplete="off" spellcheck="false" placeholder="At least 6 characters"><button type="button" class="btn sm" id="a-gen">Generate</button></div>
+      </div>
+      <div id="acct-note" style="font-size:12.5px;color:var(--soft);"></div>
+      <div class="form-err" id="a-err"></div>
+    </div>
+    <div class="modal-foot"><button class="btn" id="acct-cancel">Cancel</button><button class="btn primary" id="acct-save">Save</button></div>
+  </div>
+</div>
+
+<!-- Change / reset password -->
+<div class="overlay" id="pw-overlay">
+  <div class="modal">
+    <div class="modal-head"><h2 id="pw-title">Change password</h2><button id="pw-close" aria-label="Close"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+    <div class="modal-body">
+      <div class="field" id="pw-cur-wrap"><label for="pw-cur">Current password</label><input type="password" id="pw-cur" autocomplete="current-password"></div>
+      <div class="field"><label for="pw-new">New password</label>
+        <div class="pw-row"><input type="password" id="pw-new" autocomplete="new-password" placeholder="At least 6 characters"><button type="button" class="btn sm" id="pw-gen" hidden>Generate</button></div>
+      </div>
+      <div class="field" id="pw-conf-wrap"><label for="pw-conf">Confirm new password</label><input type="password" id="pw-conf" autocomplete="new-password"></div>
+      <div class="form-err" id="pw-err"></div>
+    </div>
+    <div class="modal-foot"><button class="btn" id="pw-cancel">Cancel</button><button class="btn primary" id="pw-save">Save password</button></div>
+  </div>
+</div>
+
+<!-- Recovery code (shown once) -->
+<div class="overlay" id="recov-overlay">
+  <div class="modal">
+    <div class="modal-head"><h2>Your recovery code</h2></div>
+    <div class="modal-body">
+      <p id="rc-intro" style="margin:0;color:var(--soft);font-size:13.5px;line-height:1.5;"></p>
+      <div class="code-box" id="rc-code"></div>
+      <p style="margin:0;color:var(--soft);font-size:12.5px;line-height:1.5;">If you forget the admin password, this code is the only way back in without clearing the browser, which would erase the inventory. It will not be shown again.</p>
+    </div>
+    <div class="modal-foot"><button class="btn" id="rc-copy">Copy</button><button class="btn primary" id="rc-ok">I saved it</button></div>
+  </div>
+</div>
+
+<!-- Generic confirm -->
+<div class="overlay" id="cf-overlay">
+  <div class="modal" style="max-width:400px;">
+    <div class="modal-head"><h2 id="cf-title">Are you sure?</h2><button id="cf-close" aria-label="Close"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+    <div class="modal-body"><p id="cf-msg" style="margin:0;color:var(--soft);line-height:1.5;"></p></div>
+    <div class="modal-foot"><button class="btn" id="cf-cancel">Cancel</button><button class="btn danger" id="cf-ok">Confirm</button></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  'use strict';
+  var KEYS = { stock:'tally:stock', sales:'tally:sales', cust:'tally:customers', seq:'tally:nextno', acct:'tally:accounts' };
+  var nextNo = 1001;
+  var stock = [], sales = [], cart = [], customers = [];
+  var editingId = null, deletingId = null;
+  var invSearch = '', pickSearch = '', lowOnly = false;
+  function isLow(i){ return i.lowAt!==null && i.lowAt!==undefined && i.lowAt!=='' && Number(i.quantity) <= Number(i.lowAt); }
+
+  /* ---------- helpers ---------- */
+  function $(id){ return document.getElementById(id); }
+  function uid(p){ return p+'_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,7); }
+  function esc(s){ var d=document.createElement('div'); d.textContent = s==null ? '' : String(s); return d.innerHTML; }
+  function money(n){ return '$'+Number(n||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}); }
+  function round2(n){ return Math.round(n*100)/100; }
+  function fmt(n){ return Number(n||0).toLocaleString(undefined,{maximumFractionDigits:2}); }
+  function fmtDate(iso){ var d=new Date(iso); return d.toLocaleDateString()+' '+d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}); }
+  function spName(s){ return (s && String(s).trim()) ? s : 'Unspecified'; }
+  function dims(i){ return i.thickness+'" × '+i.width+'" × '+i.length+"'"; }
+  function bfPer(i){ return (Number(i.thickness)*Number(i.width)*Number(i.length))/12; }
+  function bunksOf(i){ var bs=Number(i.bunkSize)||0; return bs>0 ? Math.floor(i.quantity/bs) : 0; }
+  function looseOf(i){ var bs=Number(i.bunkSize)||0; return bs>0 ? i.quantity % bs : i.quantity; }
+  function qtyText(bs, pieces){
+    bs = Number(bs)||0;
+    if(bs>0 && pieces>=bs){
+      var b=Math.floor(pieces/bs), r=pieces%bs;
+      return b+(b===1?' bunk':' bunks')+(r>0 ? ' + '+r+(r===1?' pc':' pcs') : '');
+    }
+    return pieces+(pieces===1?' pc':' pcs');
+  }
+
+  /* ---------- storage (uses the host's storage when present, else localStorage) ---------- */
+  async function load(key){
+    try{
+      if(window.storage && window.storage.get){
+        var r = await window.storage.get(key, false);
+        return (r && r.value) ? JSON.parse(r.value) : [];
+      }
+    }catch(e){}
+    try{ var v = localStorage.getItem(key); return v ? JSON.parse(v) : []; }catch(e){ return []; }
+  }
+  function save(key, data){
+    var s = JSON.stringify(data);
+    try{
+      if(window.storage && window.storage.set){ window.storage.set(key, s, false).catch(function(){}); return; }
+    }catch(e){}
+    try{ localStorage.setItem(key, s); }catch(e){}
+  }
+
+  /* =====================================================
+     PASSWORD HASHING (salted, iterated SHA-256, no libraries)
+  ===================================================== */
+  /*SHA_START*/
+  var K256 = [
+    0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,
+    0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,
+    0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,
+    0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,
+    0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,
+    0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,
+    0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,
+    0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2
+  ];
+  function utf8Bytes(str){
+    var out = [];
+    for(var i=0;i<str.length;i++){
+      var c = str.charCodeAt(i);
+      if(c<0x80) out.push(c);
+      else if(c<0x800) out.push(0xc0|(c>>6), 0x80|(c&63));
+      else if(c>=0xd800 && c<0xdc00 && i+1<str.length){
+        var c2 = str.charCodeAt(++i);
+        c = 0x10000 + (((c&0x3ff)<<10) | (c2&0x3ff));
+        out.push(0xf0|(c>>18), 0x80|((c>>12)&63), 0x80|((c>>6)&63), 0x80|(c&63));
+      } else out.push(0xe0|(c>>12), 0x80|((c>>6)&63), 0x80|(c&63));
+    }
+    return out;
+  }
+  function sha256hex(str){
+    var m = utf8Bytes(str), bitLen = m.length*8, i, t;
+    m.push(0x80);
+    while(m.length%64!==56) m.push(0);
+    var hi = Math.floor(bitLen/4294967296), lo = bitLen>>>0;
+    m.push((hi>>>24)&255,(hi>>>16)&255,(hi>>>8)&255,hi&255,(lo>>>24)&255,(lo>>>16)&255,(lo>>>8)&255,lo&255);
+    var H = [0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19];
+    var w = new Array(64);
+    for(var off=0; off<m.length; off+=64){
+      for(t=0;t<16;t++) w[t] = (m[off+4*t]<<24)|(m[off+4*t+1]<<16)|(m[off+4*t+2]<<8)|m[off+4*t+3];
+      for(t=16;t<64;t++){
+        var s0 = ((w[t-15]>>>7)|(w[t-15]<<25)) ^ ((w[t-15]>>>18)|(w[t-15]<<14)) ^ (w[t-15]>>>3);
+        var s1 = ((w[t-2]>>>17)|(w[t-2]<<15)) ^ ((w[t-2]>>>19)|(w[t-2]<<13)) ^ (w[t-2]>>>10);
+        w[t] = (w[t-16] + s0 + w[t-7] + s1) | 0;
+      }
+      var a=H[0],b=H[1],c=H[2],d=H[3],e=H[4],f=H[5],g=H[6],h=H[7];
+      for(t=0;t<64;t++){
+        var S1 = ((e>>>6)|(e<<26)) ^ ((e>>>11)|(e<<21)) ^ ((e>>>25)|(e<<7));
+        var ch = (e&f) ^ (~e&g);
+        var t1 = (h + S1 + ch + K256[t] + w[t]) | 0;
+        var S0 = ((a>>>2)|(a<<30)) ^ ((a>>>13)|(a<<19)) ^ ((a>>>22)|(a<<10));
+        var maj = (a&b) ^ (a&c) ^ (b&c);
+        var t2 = (S0 + maj) | 0;
+        h=g; g=f; f=e; e=(d+t1)|0; d=c; c=b; b=a; a=(t1+t2)|0;
+      }
+      H[0]=(H[0]+a)|0; H[1]=(H[1]+b)|0; H[2]=(H[2]+c)|0; H[3]=(H[3]+d)|0;
+      H[4]=(H[4]+e)|0; H[5]=(H[5]+f)|0; H[6]=(H[6]+g)|0; H[7]=(H[7]+h)|0;
+    }
+    var hex = '';
+    for(i=0;i<8;i++) hex += ('00000000'+(H[i]>>>0).toString(16)).slice(-8);
+    return hex;
+  }
+  function hashSecret(secret, salt){
+    var h = sha256hex(salt+':'+secret);
+    for(var n=0;n<10000;n++) h = sha256hex(h+salt);
+    return h;
+  }
+  /*SHA_END*/
+
+  function randBytes(n){
+    var a = new Uint8Array(n);
+    try{ crypto.getRandomValues(a); }catch(e){ for(var i=0;i<n;i++) a[i] = Math.floor(Math.random()*256); }
+    return a;
+  }
+  function newSalt(){ return Array.prototype.map.call(randBytes(16), function(b){ return ('0'+b.toString(16)).slice(-2); }).join(''); }
+  var CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  function newRecoveryCode(){
+    var b = randBytes(16), out = '';
+    for(var i=0;i<16;i++){ out += CODE_CHARS.charAt(b[i] % CODE_CHARS.length); if(i%4===3 && i<15) out += '-'; }
+    return out;
+  }
+  function newPassword(){
+    var b = randBytes(8), out = '';
+    for(var i=0;i<8;i++) out += CODE_CHARS.toLowerCase().charAt(b[i] % CODE_CHARS.length);
+    return out;
+  }
+  function normCode(x){ return String(x||'').toUpperCase().replace(/[^A-Z0-9]/g,''); }
+  function makeSecret(secret){ var salt = newSalt(); return { salt:salt, hash:hashSecret(secret, salt) }; }
+
+  /* =====================================================
+     ACCOUNTS + SIGN-IN
+  ===================================================== */
+  var accounts = null;   // { admin:{...}, users:[{id,slot,name,username,salt,hash,active}] }
+  var session = null;    // { role, id, name, username }
+  var MAX_USERS = 10;
+  var USERNAME_RULE = 'Username must be 3 to 30 characters: letters, numbers, dot, dash, or underscore.';
+  var PASS_RULE = 'Password must be at least 6 characters.';
+  var ROLE_VIEWS = { admin:['inventory','bill','customers','sales','accounts'], user:['bill','customers'] };
+  function can(view){ return !!session && ROLE_VIEWS[session.role].indexOf(view)>-1; }
+  function saveAccounts(){ save(KEYS.acct, accounts); }
+  function adminRec(id){ return id==='admin' ? accounts.admin : (id==='admin2' && accounts.admin2) ? accounts.admin2 : null; }
+  function normUser(x){ return String(x||'').trim().toLowerCase(); }
+  function validUsername(x){ return /^[a-z0-9._-]{3,30}$/.test(normUser(x)); }
+  function findByUsername(x){
+    var n = normUser(x);
+    if(normUser(accounts.admin.username)===n) return { role:'admin', rec:accounts.admin };
+    if(accounts.admin2 && normUser(accounts.admin2.username)===n) return { role:'admin', rec:accounts.admin2 };
+    var u = accounts.users.find(function(a){ return normUser(a.username)===n; });
+    return u ? { role:'user', rec:u } : null;
+  }
+  function usernameTaken(x, exceptId){
+    var n = normUser(x);
+    if(normUser(accounts.admin.username)===n && exceptId!=='admin') return true;
+    if(accounts.admin2 && normUser(accounts.admin2.username)===n && exceptId!=='admin2') return true;
+    return accounts.users.some(function(a){ return normUser(a.username)===n && a.id!==exceptId; });
+  }
+  function ferr(id, msg){ var e = $(id); e.textContent = msg; e.classList.add('show'); }
+  function fclear(id){ $(id).classList.remove('show'); }
+
+  /* session lives only in this tab: closing the tab signs you out */
+  function storeSession(){
+    try{
+      if(session) sessionStorage.setItem('tally:session', JSON.stringify({role:session.role, id:session.id}));
+      else sessionStorage.removeItem('tally:session');
+    }catch(e){}
+  }
+  function readSession(){ try{ var v = sessionStorage.getItem('tally:session'); return v ? JSON.parse(v) : null; }catch(e){ return null; } }
+  function restoreSession(){
+    var s = readSession();
+    if(!s || !accounts) return false;
+    if(s.role==='admin'){ var ar = adminRec(s.id); if(ar){ startSession('admin', ar); return true; } return false; }
+    var u = accounts.users.find(function(x){ return x.id===s.id && x.active; });
+    if(u){ startSession('user', u); return true; }
+    return false;
+  }
+  function startSession(role, rec){
+    session = { role:role, id:rec.id, name:rec.name, username:rec.username };
+    storeSession();
+    applySession();
+  }
+  function applySession(){
+    document.body.classList.add('authed');
+    $('sub').textContent = 'Signed in as '+session.name+' · '+(session.role==='admin' ? 'Admin' : 'User');
+    document.querySelectorAll('.tab-btn').forEach(function(b){ b.hidden = !can(b.dataset.view); });
+    document.querySelectorAll('.view').forEach(function(v){ v.hidden = !can(v.id.replace('view-','')); });
+    renderAll();
+    go(session.role==='admin' ? 'inventory' : 'bill');
+  }
+  function go(view){
+    if(!can(view)) return;
+    document.querySelectorAll('.tab-btn').forEach(function(b){ b.classList.toggle('active', b.dataset.view===view); });
+    document.querySelectorAll('.view').forEach(function(v){ v.classList.toggle('active', v.id==='view-'+view); });
+    if(view==='inventory') renderInventory();
+    if(view==='bill'){ renderPicker(); renderCustSelect(); }
+    if(view==='customers') renderCustomers();
+    if(view==='sales') renderSales();
+    if(view==='accounts') renderAccounts();
+  }
+  document.querySelectorAll('.tab-btn').forEach(function(btn){
+    btn.addEventListener('click', function(){ go(btn.dataset.view); });
+  });
+
+  function showGate(mode){
+    ['login','setup','recover'].forEach(function(m){ $('gate-'+m).hidden = (m!==mode); });
+    document.querySelectorAll('#gate .form-err').forEach(function(e){ e.classList.remove('show'); });
+    document.querySelectorAll('#gate input').forEach(function(i){ i.value = ''; });
+    var first = { login:'g-user', setup:'s-name', recover:'r-code' }[mode];
+    setTimeout(function(){ try{ $(first).focus(); }catch(e){} }, 0);
+  }
+
+  $('gate-login').addEventListener('submit', function(e){
+    e.preventDefault();
+    fclear('g-err');
+    var u = $('g-user').value, p = $('g-pass').value;
+    var hit = (u && p) ? findByUsername(u) : null;
+    var ok = hit ? hashSecret(p, hit.rec.salt)===hit.rec.hash : (hashSecret(p, 'x'), false);
+    if(!ok){ ferr('g-err', 'Username or password is incorrect.'); $('g-pass').value = ''; return; }
+    if(hit.role==='user' && !hit.rec.active){ ferr('g-err', 'This account is turned off. Ask the admin to turn it back on.'); $('g-pass').value = ''; return; }
+    $('g-pass').value = ''; $('g-user').value = '';
+    startSession(hit.role, hit.rec);
+  });
+  $('g-forgot').addEventListener('click', function(){ showGate('recover'); });
+  $('r-back').addEventListener('click', function(){ showGate('login'); });
+
+  $('gate-setup').addEventListener('submit', function(e){
+    e.preventDefault();
+    fclear('s-err');
+    var name = $('s-name').value.trim(), user = $('s-user').value, p1 = $('s-pass').value, p2 = $('s-pass2').value;
+    var msg = !name ? 'Enter your name.' : !validUsername(user) ? USERNAME_RULE : p1.length<6 ? PASS_RULE : p1!==p2 ? "Passwords don't match." : '';
+    if(msg){ ferr('s-err', msg); return; }
+    var code = newRecoveryCode(), pw = makeSecret(p1), rc = makeSecret(normCode(code));
+    accounts = { admin:{ id:'admin', name:name, username:normUser(user), salt:pw.salt, hash:pw.hash, recSalt:rc.salt, recHash:rc.hash }, users:[] };
+    saveAccounts();
+    showRecovery(code, 'The admin account is ready. Save this recovery code somewhere safe.', function(){ startSession('admin', accounts.admin); });
+  });
+
+  $('gate-recover').addEventListener('submit', function(e){
+    e.preventDefault();
+    fclear('r-err');
+    var code = normCode($('r-code').value), p1 = $('r-pass').value, p2 = $('r-pass2').value;
+    var ok = code && hashSecret(code, accounts.admin.recSalt)===accounts.admin.recHash;
+    var msg = !ok ? "That recovery code isn't right." : p1.length<6 ? PASS_RULE : p1!==p2 ? "Passwords don't match." : '';
+    if(msg){ ferr('r-err', msg); return; }
+    var pw = makeSecret(p1), ncode = newRecoveryCode(), rc = makeSecret(normCode(ncode));
+    accounts.admin.salt = pw.salt; accounts.admin.hash = pw.hash;
+    accounts.admin.recSalt = rc.salt; accounts.admin.recHash = rc.hash;
+    saveAccounts();
+    showRecovery(ncode, 'Password reset. Your old recovery code no longer works, so save this new one.', function(){ startSession('admin', accounts.admin); });
+  });
+
+  /* ---------- recovery code dialog ---------- */
+  var recovDone = null, recovCode = '';
+  function showRecovery(code, intro, onDone){
+    recovCode = code; recovDone = onDone;
+    $('rc-intro').textContent = intro;
+    $('rc-code').textContent = code;
+    $('rc-copy').textContent = 'Copy';
+    $('recov-overlay').classList.add('open');
+  }
+  $('rc-copy').addEventListener('click', function(){
+    var btn = this;
+    try{ navigator.clipboard.writeText(recovCode).then(function(){ btn.textContent = 'Copied'; }, function(){ btn.textContent = 'Select and copy'; }); }
+    catch(e){ btn.textContent = 'Select and copy'; }
+  });
+  $('rc-ok').addEventListener('click', function(){
+    $('recov-overlay').classList.remove('open');
+    $('rc-code').textContent = ''; recovCode = '';
+    var f = recovDone; recovDone = null;
+    if(f) f();
+  });
+
+  /* ---------- sign out ---------- */
+  $('signout').addEventListener('click', function(){
+    session = null; storeSession();
+    cart = [];
+    $('customer').value = ''; $('cust-select').value = '';
+    closeStock(); closeDelete(); closeTicket(); closeCust(); closeCustDetail(); closeCdel(); closeSdel();
+    closeAcct(); closePw(); closeCf();
+    document.body.classList.remove('authed');
+    showGate('login');
+  });
+
+  /* ---------- generic confirm ---------- */
+  var cfAction = null;
+  function askConfirm(title, msg, okLabel, fn){
+    $('cf-title').textContent = title; $('cf-msg').textContent = msg; $('cf-ok').textContent = okLabel;
+    cfAction = fn; $('cf-overlay').classList.add('open');
+  }
+  function closeCf(){ $('cf-overlay').classList.remove('open'); cfAction = null; }
+  $('cf-cancel').addEventListener('click', closeCf);
+  $('cf-close').addEventListener('click', closeCf);
+  $('cf-overlay').addEventListener('click', function(e){ if(e.target.id==='cf-overlay') closeCf(); });
+  $('cf-ok').addEventListener('click', function(){ var f = cfAction; closeCf(); if(f) f(); });
+
+  /* ---------- Accounts tab (admin) ---------- */
+  var flashTimer = null;
+  function flash(msg){
+    var el = $('acct-flash');
+    el.textContent = msg; el.hidden = false;
+    clearTimeout(flashTimer);
+    flashTimer = setTimeout(function(){ el.hidden = true; }, 5000);
+  }
+
+  function renderAccounts(){
+    if(!can('accounts') || !accounts) return;
+    var a = accounts.admin;
+    $('me-card').innerHTML =
+      '<div class="me-row"><div><div class="name">'+esc(a.name)+' <span class="badge admin" style="margin-left:6px;">Admin</span></div>'+
+        '<div class="meta">'+esc(a.username)+'</div></div>'+
+        '<div class="acct-actions"><button class="btn sm" data-act="me-pw">Change password</button>'+
+        (session.id==='admin' ? '<button class="btn sm" data-act="me-code">New recovery code</button>' : '')+'</div></div>';
+    var other = session.id==='admin' ? accounts.admin2 : accounts.admin, a2 = '';
+    if(session.id==='admin'){
+      a2 = other
+        ? '<div class="acct-row" style="grid-template-columns:1fr auto;"><div><div class="name">'+esc(other.name)+' <span class="badge admin" style="margin-left:6px;">Admin</span></div><div class="meta">'+esc(other.username)+'</div></div>'+
+          '<div class="acct-actions"><button class="btn sm" data-act="a2-edit">Edit</button><button class="btn sm" data-act="a2-pw">Password</button><button class="btn sm" data-act="a2-del">Delete</button></div></div>'
+        : '<div class="acct-row empty-slot" style="grid-template-columns:1fr auto;"><div class="name">No second admin yet</div><div class="acct-actions"><button class="btn sm primary" data-act="a2-create">Create 2nd admin</button></div></div>';
+    } else {
+      a2 = '<div class="acct-row" style="grid-template-columns:1fr;"><div><div class="name">'+esc(other.name)+' <span class="badge admin" style="margin-left:6px;">Admin</span></div><div class="meta">'+esc(other.username)+' · main admin, managed by them</div></div></div>';
+    }
+    $('admin2-card').innerHTML = a2;
+    $('acct-count').textContent = accounts.users.length+' of '+MAX_USERS+' used';
+    var rows = '';
+    for(var slot=1; slot<=MAX_USERS; slot++){
+      var u = accounts.users.find(function(x){ return x.slot===slot; });
+      if(u){
+        rows += '<div class="acct-row" data-id="'+u.id+'">'+
+          '<div class="slot-no">'+slot+'</div>'+
+          '<div><div class="name">'+esc(u.name)+'</div><div class="meta">'+esc(u.username)+'</div></div>'+
+          '<div><span class="badge '+(u.active?'on':'off')+'">'+(u.active?'Active':'Off')+'</span></div>'+
+          '<div class="acct-actions">'+
+            '<button class="btn sm" data-act="edit" data-id="'+u.id+'">Edit</button>'+
+            '<button class="btn sm" data-act="pw" data-id="'+u.id+'">Password</button>'+
+            '<button class="btn sm" data-act="toggle" data-id="'+u.id+'">'+(u.active?'Turn off':'Turn on')+'</button>'+
+            '<button class="btn sm" data-act="del" data-id="'+u.id+'">Delete</button>'+
+          '</div></div>';
+      } else {
+        rows += '<div class="acct-row empty-slot"><div class="slot-no">'+slot+'</div><div class="name">Empty slot</div><div></div>'+
+          '<div class="acct-actions"><button class="btn sm primary" data-act="create" data-slot="'+slot+'">Create account</button></div></div>';
+      }
+    }
+    $('acct-list').innerHTML = rows;
+  }
+
+  $('view-accounts').addEventListener('click', function(e){
+    var btn = e.target.closest('[data-act]');
+    if(!btn || !can('accounts')) return;
+    var act = btn.dataset.act;
+    var u = btn.dataset.id ? accounts.users.find(function(x){ return x.id===btn.dataset.id; }) : null;
+    if(act==='create') openAcct(null, Number(btn.dataset.slot));
+    else if(act==='edit' && u) openAcct(u, u.slot);
+    else if(act==='pw' && u) openPw(u);
+    else if(act==='me-pw') openPw(null);
+    else if(act==='a2-create' && session.id==='admin') openAcct(null, 'admin2');
+    else if(act==='a2-edit' && session.id==='admin' && accounts.admin2) openAcct(accounts.admin2, 'admin2');
+    else if(act==='a2-pw' && session.id==='admin' && accounts.admin2) openPw(accounts.admin2);
+    else if(act==='a2-del' && session.id==='admin' && accounts.admin2){
+      askConfirm('Delete 2nd admin', 'Delete '+accounts.admin2.name+'? They will no longer be able to sign in. Their past tickets stay in Sales with their name.', 'Delete', function(){
+        accounts.admin2 = null; delete accounts.admin2; saveAccounts(); renderAccounts(); flash('Deleted the 2nd admin.');
+      });
+    }
+    else if(act==='toggle' && u){
+      u.active = !u.active; saveAccounts(); renderAccounts();
+      flash(u.name+' is now '+(u.active ? 'active.' : 'turned off. They can no longer sign in.'));
+    }
+    else if(act==='del' && u){
+      askConfirm('Delete account', 'Delete '+u.name+' ('+u.username+')? Their past tickets stay in Sales with their name. This cannot be undone.', 'Delete', function(){
+        accounts.users = accounts.users.filter(function(x){ return x.id!==u.id; });
+        saveAccounts(); renderAccounts(); flash('Deleted '+u.name+'.');
+      });
+    }
+    else if(act==='me-code'){
+      askConfirm('New recovery code', 'This replaces your current recovery code. The old one will stop working.', 'Make new code', function(){
+        var code = newRecoveryCode(), rc = makeSecret(normCode(code));
+        accounts.admin.recSalt = rc.salt; accounts.admin.recHash = rc.hash;
+        saveAccounts();
+        showRecovery(code, 'Here is your new recovery code. The old one no longer works.', function(){ flash('Recovery code replaced.'); });
+      });
+    }
+  });
+
+  /* ---------- create / edit user ---------- */
+  var editingAcct = null, acctSlot = null;
+  function openAcct(user, slot){
+    editingAcct = user ? user.id : null; acctSlot = slot || null;
+    var isA2 = slot==='admin2';
+    $('acct-title').textContent = isA2 ? (user ? 'Edit 2nd admin' : 'Create 2nd admin') : user ? 'Edit user account' : 'Create user account (slot '+slot+')';
+    $('acct-note').textContent = isA2 ? 'A 2nd admin can open every tab and manage the 10 user accounts.' : 'This account can open Bill out and Customers only.';
+    $('a-name').value = user ? user.name : '';
+    $('a-user').value = user ? user.username : '';
+    $('a-pass').value = '';
+    $('a-pass-wrap').hidden = !!user;
+    fclear('a-err');
+    $('acct-overlay').classList.add('open');
+    $('a-name').focus();
+  }
+  function closeAcct(){ $('acct-overlay').classList.remove('open'); }
+  $('a-gen').addEventListener('click', function(){ $('a-pass').value = newPassword(); });
+  $('acct-save').addEventListener('click', function(){
+    if(!can('accounts')) return;
+    fclear('a-err');
+    var name = $('a-name').value.trim(), user = $('a-user').value, pass = $('a-pass').value;
+    var msg = !name ? 'Enter a name.' :
+      !validUsername(user) ? USERNAME_RULE :
+      usernameTaken(user, editingAcct) ? 'That username is already taken.' :
+      (!editingAcct && pass.length<6) ? PASS_RULE : '';
+    if(!msg && !editingAcct && acctSlot!=='admin2' && (accounts.users.length>=MAX_USERS || accounts.users.some(function(x){ return x.slot===acctSlot; }))) msg = 'All 10 user slots are in use.';
+    if(msg){ ferr('a-err', msg); return; }
+    if(acctSlot==='admin2'){
+      if(editingAcct){ accounts.admin2.name = name; accounts.admin2.username = normUser(user); flash('Saved changes to '+name+'.'); }
+      else {
+        var s2 = makeSecret(pass);
+        accounts.admin2 = { id:'admin2', name:name, username:normUser(user), salt:s2.salt, hash:s2.hash };
+        flash('Created 2nd admin '+name+'. Give them the username '+normUser(user)+' and the password you set.');
+      }
+      saveAccounts(); closeAcct(); renderAccounts(); return;
+    }
+    if(editingAcct){
+      var u = accounts.users.find(function(x){ return x.id===editingAcct; });
+      if(u){ u.name = name; u.username = normUser(user); }
+      flash('Saved changes to '+name+'.');
+    } else {
+      var sec = makeSecret(pass);
+      accounts.users.push({ id:uid('us'), slot:acctSlot, name:name, username:normUser(user), salt:sec.salt, hash:sec.hash, active:true });
+      flash('Created '+name+'. Give them the username '+normUser(user)+' and the password you set.');
+    }
+    saveAccounts(); closeAcct(); renderAccounts();
+  });
+  $('acct-cancel').addEventListener('click', closeAcct);
+  $('acct-close').addEventListener('click', closeAcct);
+  $('acct-overlay').addEventListener('click', function(e){ if(e.target.id==='acct-overlay') closeAcct(); });
+
+  /* ---------- change / reset password ---------- */
+  var toastTimer = null;
+  function toast(msg){ var t = $('toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(function(){ t.hidden = true; }, 3500); }
+  $('chpw').addEventListener('click', function(){ if(session) openPw(null); });
+  var pwTarget = null;
+  function openPw(user){
+    pwTarget = user ? user.id : session.id;
+    $('pw-title').textContent = user ? 'Reset password for '+user.name : 'Change your password';
+    $('pw-cur-wrap').hidden = !!user;
+    $('pw-conf-wrap').hidden = !!user;
+    $('pw-gen').hidden = !user;
+    $('pw-new').type = user ? 'text' : 'password';
+    $('pw-cur').value = ''; $('pw-new').value = ''; $('pw-conf').value = '';
+    fclear('pw-err');
+    $('pw-overlay').classList.add('open');
+    (user ? $('pw-new') : $('pw-cur')).focus();
+  }
+  function closePw(){ $('pw-overlay').classList.remove('open'); $('pw-cur').value = ''; $('pw-new').value = ''; $('pw-conf').value = ''; }
+  $('pw-gen').addEventListener('click', function(){ $('pw-new').value = newPassword(); });
+  $('pw-save').addEventListener('click', function(){
+    if(!session) return;
+    fclear('pw-err');
+    var self = pwTarget===session.id;
+    if(!self && !can('accounts')) return;
+    var rec = adminRec(pwTarget) || accounts.users.find(function(x){ return x.id===pwTarget; });
+    if(!rec) return;
+    var np = $('pw-new').value;
+    var msg = '';
+    if(self && hashSecret($('pw-cur').value, rec.salt)!==rec.hash) msg = 'Current password is incorrect.';
+    else if(np.length<6) msg = PASS_RULE;
+    else if(self && np!==$('pw-conf').value) msg = "Passwords don't match.";
+    if(msg){ ferr('pw-err', msg); return; }
+    var sec = makeSecret(np);
+    rec.salt = sec.salt; rec.hash = sec.hash;
+    saveAccounts(); closePw();
+    if(self) toast('Your password was changed.');
+    else flash(self ? 'Your password was changed.' : 'Password reset for '+rec.name+'. Give them the new password.');
+  });
+  $('pw-cancel').addEventListener('click', closePw);
+  $('pw-close').addEventListener('click', closePw);
+  $('pw-overlay').addEventListener('click', function(e){ if(e.target.id==='pw-overlay') closePw(); });
+
+  /* =====================================================
+     INVENTORY
+  ===================================================== */
+  var openTypes = {};
+  var pickOpen = {};
+  function typeKey(i){ return (i.species||'').trim().toLowerCase()+'|'+i.thickness+'x'+i.width; }
+  function allTypeKeys(){
+    var seen = {}, out = [];
+    stock.forEach(function(i){ var k = typeKey(i); if(!seen[k]){ seen[k]=true; out.push(k); } });
+    return out;
+  }
+  function renderInventory(){
+    var pieces=0, bf=0;
+    var lowCount=0;
+    stock.forEach(function(i){ pieces+=Number(i.quantity); bf+=bfPer(i)*Number(i.quantity); if(isLow(i)) lowCount++; });
+    $('stat-low').textContent = lowCount;
+    $('stat-low-box').classList.toggle('warn', lowCount>0);
+    $('stat-items').textContent = stock.length;
+    $('stat-pieces').textContent = pieces.toLocaleString();
+    $('stat-bf').textContent = fmt(bf);
+
+    var el = $('inv-list');
+    if(stock.length===0){
+      el.innerHTML = '<div class="card"><div class="empty"><div class="big">No lumber yet</div><div>Add your first item to start tracking stock.</div><button class="btn primary" id="empty-add">Add stock</button></div></div>';
+      $('empty-add').addEventListener('click', function(){ openStock(null); });
+      return;
+    }
+    var q = invSearch;
+    var list = stock.filter(function(i){
+      var hay = ((i.species||'')+' '+i.thickness+'x'+i.width+'x'+i.length).toLowerCase();
+      return (!q || hay.indexOf(q)>-1) && (!lowOnly || isLow(i));
+    }).sort(function(a,b){
+      return (a.species||'').localeCompare(b.species||'') || (a.thickness-b.thickness) || (a.width-b.width) || (a.length-b.length);
+    });
+    if(list.length===0){
+      el.innerHTML = '<div class="card"><div class="empty"><div class="big">Nothing matches</div><div>'+(lowOnly && !q ? 'No items are at or below their low stock alert.' : 'Try a different search.')+'</div></div></div>';
+      return;
+    }
+    // Layer 1: type (species + thickness x width). Layer 2: length.
+    var groups = {};
+    list.forEach(function(i){
+      var k = typeKey(i);
+      if(!groups[k]) groups[k] = { key:k, species:i.species, thickness:i.thickness, width:i.width, items:[] };
+      groups[k].items.push(i);
+    });
+    var glist = Object.keys(groups).map(function(k){ return groups[k]; }).sort(function(a,b){
+      return (a.species||'').localeCompare(b.species||'') || (a.thickness-b.thickness) || (a.width-b.width);
+    });
+    var forceOpen = !!q || lowOnly;
+    var allKeys = allTypeKeys();
+    var allOpen = allKeys.length>0 && allKeys.every(function(k){ return openTypes[k]; });
+    var tog = $('expand-toggle');
+    tog.textContent = (forceOpen || allOpen) ? 'Collapse all' : 'Expand all';
+    tog.disabled = forceOpen;
+
+    var editSvg = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
+    var delSvg = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6h16Z"/></svg>';
+    var chevSvg = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m9 6 6 6-6 6"/></svg>';
+
+    var html = glist.map(function(g, gi){
+      g.items.sort(function(a,b){ return a.length-b.length; });
+      var gp=0, gbf=0, gb=0, gl=0, flagged=false, allOut=true;
+      g.items.forEach(function(i){
+        gp += Number(i.quantity); gbf += bfPer(i)*i.quantity; gb += bunksOf(i); gl += looseOf(i);
+        if(isLow(i) || i.quantity<=0) flagged = true;
+        if(i.quantity>0) allOut = false;
+      });
+      var open = forceOpen || !!openTypes[g.key];
+      var named = (g.species||'').trim();
+      var head = '<div class="row inv-row group-row" data-gi="'+gi+'">'+
+        '<div class="g-title"><span class="chev'+(open?' open':'')+'">'+chevSvg+'</span>'+
+          '<div><div class="name'+(named?'':' unspec')+'">'+esc(spName(g.species))+'<span class="xs">'+g.thickness+'" × '+g.width+'"</span>'+
+            (allOut ? '<span class="badge out">Out</span>' : (flagged ? '<span class="badge low">Low</span>' : ''))+'</div>'+
+          '<div class="meta">'+g.items.length+(g.items.length===1?' length':' lengths')+'</div></div></div>'+
+        '<div class="num c-num'+(gb?'':' zero')+'">'+gb+'</div>'+
+        '<div class="num c-num'+(gl?'':' zero')+'">'+gl+'</div>'+
+        '<div class="num c-num strong">'+gp.toLocaleString()+'</div>'+
+        '<div class="num c-num">'+fmt(gbf)+'</div>'+
+        '<div></div>'+
+        '<div class="c-sum">'+gp.toLocaleString()+' pcs · '+fmt(gbf)+' bd ft</div>'+
+      '</div>';
+      if(!open) return head;
+      var kids = g.items.map(function(i){
+        var b=bunksOf(i), l=looseOf(i), out = i.quantity<=0;
+        return '<div class="row inv-row child-row" data-id="'+i.id+'">'+
+          '<div class="c-title"><div class="name">'+i.length+"'"+(out?'<span class="badge out">Out</span>':(isLow(i)?'<span class="badge low">Low</span>':''))+'</div>'+
+            '<div class="meta">'+(i.bunkSize>0 ? i.bunkSize+' per bunk' : 'loose only')+'</div></div>'+
+          '<div class="num c-num'+(b?'':' zero')+'">'+b+'</div>'+
+          '<div class="num c-num'+(l?'':' zero')+'">'+l+'</div>'+
+          '<div class="num c-num strong">'+Number(i.quantity).toLocaleString()+'</div>'+
+          '<div class="num c-num">'+fmt(bfPer(i)*i.quantity)+'</div>'+
+          '<div class="actions">'+
+            '<button class="icon-btn" data-act="edit" aria-label="Edit">'+editSvg+'</button>'+
+            '<button class="icon-btn danger" data-act="del" aria-label="Remove">'+delSvg+'</button>'+
+          '</div>'+
+          '<div class="c-sum">'+qtyText(i.bunkSize, i.quantity)+' · '+fmt(bfPer(i)*i.quantity)+' bd ft</div>'+
+        '</div>';
+      }).join('');
+      return head + kids;
+    }).join('');
+
+    el.innerHTML = '<div class="card"><div class="row inv-row head"><div>Type / length</div><div>Bunks</div><div>Loose</div><div>Pieces</div><div>Board ft</div><div></div></div>'+html+'</div>';
+
+    el.querySelectorAll('.group-row').forEach(function(row){
+      row.addEventListener('click', function(){
+        var g = glist[Number(row.dataset.gi)];
+        if(!g) return;
+        if(openTypes[g.key]) delete openTypes[g.key]; else openTypes[g.key] = true;
+        renderInventory();
+      });
+    });
+    el.querySelectorAll('[data-act]').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var id = btn.closest('.inv-row').dataset.id;
+        var item = stock.find(function(i){ return i.id===id; });
+        if(!item) return;
+        if(btn.dataset.act==='edit') openStock(item); else openDelete(item);
+      });
+    });
+  }
+
+  $('expand-toggle').addEventListener('click', function(){
+    var keys = allTypeKeys();
+    var allOpen = keys.length>0 && keys.every(function(k){ return openTypes[k]; });
+    openTypes = {};
+    if(!allOpen) keys.forEach(function(k){ openTypes[k] = true; });
+    renderInventory();
+  });
+
+  $('inv-search').addEventListener('input', function(e){ invSearch = e.target.value.trim().toLowerCase(); renderInventory(); });
+  $('add-stock-btn').addEventListener('click', function(){ openStock(null); });
+  $('low-toggle').addEventListener('click', function(){ lowOnly = !lowOnly; this.classList.toggle('active', lowOnly); renderInventory(); });
+
+  /* ---------- stock modal ---------- */
+  function readCounts(){
+    var bs = Number($('f-bunksize').value)||0;
+    var bunks = Number($('f-bunks').value)||0;
+    var loose = Number($('f-loose').value)||0;
+    return { bs:bs, bunks:bunks, loose:loose, total: bunks*bs + loose };
+  }
+  function updateTotal(){
+    var c = readCounts();
+    $('f-total').textContent = c.total.toLocaleString();
+    $('f-math').textContent = (c.bunks>0 && c.bs>0)
+      ? '= '+c.bunks+' × '+c.bs+(c.loose>0 ? ' + '+c.loose+' loose' : '')
+      : (c.loose>0 ? '= '+c.loose+' loose' : '');
+    $('stock-err').classList.remove('show');
+  }
+  ['f-bunksize','f-bunks','f-loose'].forEach(function(id){ $(id).addEventListener('input', updateTotal); });
+
+  function openStock(item){
+    editingId = item ? item.id : null;
+    $('stock-title').textContent = item ? 'Edit stock' : 'Add stock';
+    $('f-species').value = item ? (item.species||'') : '';
+    $('f-t').value = item ? item.thickness : '';
+    $('f-w').value = item ? item.width : '';
+    $('f-l').value = item ? item.length : '';
+    var bs = item ? (Number(item.bunkSize)||0) : 0;
+    $('f-bunksize').value = bs>0 ? bs : '';
+    $('f-bunks').value = item ? bunksOf(item) : '';
+    $('f-loose').value = item ? looseOf(item) : '';
+    $('f-low').value = (item && item.lowAt!==null && item.lowAt!==undefined) ? item.lowAt : '';
+    updateTotal();
+    $('stock-overlay').classList.add('open');
+    $('f-species').focus();
+  }
+  function closeStock(){ $('stock-overlay').classList.remove('open'); }
+
+  function saveStock(){
+    var species = $('f-species').value.trim();
+    var t = Number($('f-t').value), w = Number($('f-w').value), l = Number($('f-l').value);
+    var c = readCounts();
+    var err = '';
+    if(!(t>0 && w>0 && l>0)) err = 'Enter thickness, width and length.';
+    else if([c.bs,c.bunks,c.loose].some(function(n){ return n<0 || Math.floor(n)!==n; })) err = 'Bunk and piece counts must be whole numbers.';
+    else if(c.bunks>0 && c.bs<=0) err = 'Enter how many pieces are in each bunk.';
+    var lowRaw = $('f-low').value.trim();
+    var lowAt = lowRaw==='' ? null : Number(lowRaw);
+    if(!err && lowAt!==null && (isNaN(lowAt) || lowAt<0 || Math.floor(lowAt)!==lowAt)) err = 'Low stock alert must be a whole number, or leave it blank.';
+    if(err){ $('stock-err').textContent = err; $('stock-err').classList.add('show'); return; }
+
+    if(editingId){
+      var idx = stock.findIndex(function(i){ return i.id===editingId; });
+      if(idx>-1) stock[idx] = Object.assign({}, stock[idx], {species:species, thickness:t, width:w, length:l, bunkSize:c.bs, quantity:c.total, lowAt:lowAt});
+    } else {
+      stock.push({id:uid('lu'), species:species, thickness:t, width:w, length:l, bunkSize:c.bs, quantity:c.total, lowAt:lowAt});
+    }
+    var savedItem = editingId ? stock.find(function(i){ return i.id===editingId; }) : stock[stock.length-1];
+    if(savedItem) openTypes[typeKey(savedItem)] = true;
+    save(KEYS.stock, stock);
+    closeStock();
+    syncCart();
+    renderAll();
+  }
+  $('stock-save').addEventListener('click', saveStock);
+  $('stock-cancel').addEventListener('click', closeStock);
+  $('stock-close').addEventListener('click', closeStock);
+  $('stock-overlay').addEventListener('click', function(e){ if(e.target.id==='stock-overlay') closeStock(); });
+
+  /* ---------- delete ---------- */
+  function openDelete(item){
+    deletingId = item.id;
+    $('del-name').textContent = spName(item.species)+' '+dims(item);
+    $('del-overlay').classList.add('open');
+  }
+  function closeDelete(){ $('del-overlay').classList.remove('open'); deletingId = null; }
+  $('del-confirm').addEventListener('click', function(){
+    stock = stock.filter(function(i){ return i.id!==deletingId; });
+    save(KEYS.stock, stock);
+    closeDelete();
+    syncCart();
+    renderAll();
+  });
+  $('del-cancel').addEventListener('click', closeDelete);
+  $('del-close').addEventListener('click', closeDelete);
+  $('del-overlay').addEventListener('click', function(e){ if(e.target.id==='del-overlay') closeDelete(); });
+
+  /* =====================================================
+     BILL OUT
+  ===================================================== */
+  function inCart(stockId){ var c = cart.find(function(x){ return x.stockId===stockId; }); return c ? c.pieces : 0; }
+  function syncCart(){
+    cart = cart.filter(function(c){
+      var item = stock.find(function(i){ return i.id===c.stockId; });
+      if(!item) return false;
+      if(c.pieces > item.quantity) c.pieces = item.quantity;
+      return c.pieces > 0;
+    });
+  }
+
+  function renderPicker(){
+    var el = $('picker');
+    if(stock.length===0){
+      el.innerHTML = '<div class="empty"><div class="big">No stock to sell</div><div>Add lumber on the Inventory tab first.</div></div>';
+      return;
+    }
+    var q = pickSearch;
+    var list = stock.filter(function(i){
+      var hay = ((i.species||'')+' '+i.thickness+'x'+i.width+'x'+i.length).toLowerCase();
+      return !q || hay.indexOf(q)>-1;
+    }).sort(function(a,b){
+      return (a.species||'').localeCompare(b.species||'') || (a.thickness-b.thickness) || (a.width-b.width) || (a.length-b.length);
+    });
+    if(list.length===0){ el.innerHTML = '<div class="empty"><div class="big">No matches</div></div>'; return; }
+
+    // Layer 1: type (species + thickness x width). Layer 2: length.
+    var groups = {};
+    list.forEach(function(i){
+      var k = typeKey(i);
+      if(!groups[k]) groups[k] = { key:k, species:i.species, thickness:i.thickness, width:i.width, items:[] };
+      groups[k].items.push(i);
+    });
+    var glist = Object.keys(groups).map(function(k){ return groups[k]; }).sort(function(a,b){
+      return (a.species||'').localeCompare(b.species||'') || (a.thickness-b.thickness) || (a.width-b.width);
+    });
+    var forceOpen = !!q;
+    var allKeys = allTypeKeys();
+    var allOpen = allKeys.length>0 && allKeys.every(function(k){ return pickOpen[k]; });
+    var tog = $('pick-expand-toggle');
+    tog.textContent = (forceOpen || allOpen) ? 'Collapse all' : 'Expand all';
+    tog.disabled = forceOpen;
+    var chevSvg = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m9 6 6 6-6 6"/></svg>';
+
+    el.innerHTML = glist.map(function(g, gi){
+      g.items.sort(function(a,b){ return a.length-b.length; });
+      var availTotal = 0;
+      g.items.forEach(function(i){ availTotal += Math.max(0, i.quantity - inCart(i.id)); });
+      var open = forceOpen || !!pickOpen[g.key];
+      var named = (g.species||'').trim();
+      var head = '<div class="pick-group'+(availTotal<=0?' dim':'')+'" data-gi="'+gi+'">'+
+        '<span class="chev'+(open?' open':'')+'">'+chevSvg+'</span>'+
+        '<div><div class="name'+(named?'':' unspec')+'">'+esc(spName(g.species))+'<span class="xs">'+g.thickness+'" × '+g.width+'"</span></div>'+
+          '<div class="meta">'+g.items.length+(g.items.length===1?' length':' lengths')+' · '+(availTotal>0 ? availTotal.toLocaleString()+' pcs available' : 'none left')+'</div></div>'+
+      '</div>';
+      if(!open) return head;
+      return head + g.items.map(function(i){
+        var avail = i.quantity - inCart(i.id);
+        var hasBunk = i.bunkSize>0;
+        var off = avail<=0;
+        return '<div class="pick-row'+(off?' dim':'')+'" data-id="'+i.id+'">'+
+          '<div class="c-title"><div class="name len">'+i.length+"'"+'</div>'+
+            '<div class="meta">'+(off ? 'none left' : qtyText(i.bunkSize, avail)+' avail')+'</div></div>'+
+          '<div><div class="lbl">Bunks</div><input type="number" class="pk-bunks" min="0" step="1" placeholder="0" '+((off||!hasBunk)?'disabled':'')+'></div>'+
+          '<div><div class="lbl">Pieces</div><input type="number" class="pk-pcs" min="0" step="1" placeholder="0" '+(off?'disabled':'')+'></div>'+
+          '<button class="add" '+(off?'disabled':'')+'>Add</button>'+
+        '</div>';
+      }).join('');
+    }).join('');
+
+    el.querySelectorAll('.pick-group').forEach(function(row){
+      row.addEventListener('click', function(){
+        var g = glist[Number(row.dataset.gi)];
+        if(!g) return;
+        if(pickOpen[g.key]) delete pickOpen[g.key]; else pickOpen[g.key] = true;
+        renderPicker();
+      });
+    });
+
+    el.querySelectorAll('.pick-row').forEach(function(row){
+      var add = row.querySelector('.add');
+      function doAdd(){
+        var item = stock.find(function(i){ return i.id===row.dataset.id; });
+        if(!item) return;
+        var bunks = Number(row.querySelector('.pk-bunks').value)||0;
+        var loose = Number(row.querySelector('.pk-pcs').value)||0;
+        if(bunks<0 || loose<0 || Math.floor(bunks)!==bunks || Math.floor(loose)!==loose) return;
+        var pieces = bunks*(Number(item.bunkSize)||0) + loose;
+        var avail = item.quantity - inCart(item.id);
+        if(pieces<=0) return;
+        if(pieces>avail){
+          row.querySelector('.meta').innerHTML = '<span style="color:var(--rust)">only '+qtyText(item.bunkSize, avail)+' available</span>';
+          return;
+        }
+        var existing = cart.find(function(c){ return c.stockId===item.id; });
+        if(existing) existing.pieces += pieces;
+        else cart.push({stockId:item.id, pieces:pieces});
+        renderPicker(); renderCart();
+      }
+      add.addEventListener('click', doAdd);
+      row.querySelectorAll('input').forEach(function(inp){
+        inp.addEventListener('keydown', function(e){ if(e.key==='Enter'){ e.preventDefault(); doAdd(); } });
+      });
+    });
+  }
+  $('pick-expand-toggle').addEventListener('click', function(){
+    var keys = allTypeKeys();
+    var allOpen = keys.length>0 && keys.every(function(k){ return pickOpen[k]; });
+    pickOpen = {};
+    if(!allOpen) keys.forEach(function(k){ pickOpen[k] = true; });
+    renderPicker();
+  });
+  $('pick-search').addEventListener('input', function(e){ pickSearch = e.target.value.trim().toLowerCase(); renderPicker(); });
+
+  function renderCart(){
+    var el = $('cart');
+    if(cart.length===0){
+      el.innerHTML = '<div class="cart-empty">Nothing on the ticket yet</div>';
+      updateTotals();
+      return;
+    }
+    el.innerHTML = cart.map(function(c){
+      var item = stock.find(function(i){ return i.id===c.stockId; });
+      if(!item) return '';
+      return '<div class="cart-line" data-id="'+c.stockId+'">'+
+        '<div class="cart-top"><div><div class="cart-name">'+esc(spName(item.species))+' <span class="mono" style="font-weight:400;color:var(--faint);font-size:12px;">'+esc(dims(item))+'</span></div>'+
+          '<div class="cart-qty">'+qtyText(item.bunkSize, c.pieces)+(item.bunkSize>0 && c.pieces>=item.bunkSize ? ' ('+c.pieces+' pcs)' : '')+' · '+fmt(bfPer(item)*c.pieces)+' bd ft</div></div>'+
+          '<button class="cart-remove" aria-label="Remove">&times;</button></div>'+
+      '</div>';
+    }).join('');
+
+    el.querySelectorAll('.cart-line').forEach(function(row){
+      var id = row.dataset.id;
+      function line(){ return cart.find(function(c){ return c.stockId===id; }); }
+      row.querySelector('.cart-remove').addEventListener('click', function(){
+        cart = cart.filter(function(c){ return c.stockId!==id; });
+        renderPicker(); renderCart();
+      });
+    });
+    updateTotals();
+  }
+
+  function updateTotals(){
+    var pieces=0, bf=0;
+    cart.forEach(function(c){
+      var item = stock.find(function(i){ return i.id===c.stockId; });
+      if(!item) return;
+      pieces += c.pieces; bf += bfPer(item)*c.pieces;
+    });
+    $('t-pieces').textContent = pieces.toLocaleString();
+    $('t-bf').textContent = fmt(bf);
+  }
+
+  $('complete-btn').addEventListener('click', function(){
+    var err = $('cart-err');
+    err.classList.remove('show');
+    if(cart.length===0){ err.textContent = 'Add at least one item to the ticket.'; err.classList.add('show'); return; }
+    var lines = cart.map(function(c){
+      var item = stock.find(function(i){ return i.id===c.stockId; });
+      return {
+        species:item.species, thickness:item.thickness, width:item.width, length:item.length,
+        bunkSize:Number(item.bunkSize)||0, pieces:c.pieces, bf:round2(bfPer(item)*c.pieces)
+      };
+    });
+    var custId = $('cust-select').value || null;
+    var chosen = custId ? customers.find(function(x){ return x.id===custId; }) : null;
+    if(!chosen) custId = null;
+    var custName = chosen ? chosen.name : ($('customer').value.trim() || 'Walk-in');
+    var sale = {
+      id:uid('sale'), number:'T-'+nextNo, date:new Date().toISOString(),
+      by: session ? session.name : '',
+      customerId: custId, customer: custName,
+      lines:lines,
+      pieces:lines.reduce(function(s,l){ return s+l.pieces; },0),
+      bf:round2(lines.reduce(function(s,l){ return s+l.bf; },0))
+    };
+    sales.unshift(sale);
+    nextNo++;
+    save(KEYS.seq, {n:nextNo});
+    cart.forEach(function(c){
+      var item = stock.find(function(i){ return i.id===c.stockId; });
+      if(item) item.quantity = Math.max(0, item.quantity - c.pieces);
+    });
+    save(KEYS.stock, stock);
+    save(KEYS.sales, sales);
+    cart = [];
+    $('customer').value = '';
+    $('cust-select').value = '';
+    toggleWalkin();
+    renderAll();
+    showTicket(sale);
+  });
+
+  /* =====================================================
+     SALES + TICKET
+  ===================================================== */
+  function renderSales(){
+    var el = $('sales-list');
+    if(sales.length===0){
+      el.innerHTML = '<div class="card"><div class="empty"><div class="big">No sales yet</div><div>Completed tickets will show up here.</div></div></div>';
+      selSales = {};
+      updateSalesBar();
+      return;
+    }
+    Object.keys(selSales).forEach(function(id){ if(!sales.some(function(s){ return s.id===id; })) delete selSales[id]; });
+    el.innerHTML = '<div class="card"><div class="row sale-row head"><div><input type="checkbox" id="sel-all" aria-label="Select all"></div><div>Ticket</div><div>Customer</div><div class="hide-sm">Date</div><div class="hide-sm">Pieces</div><div style="text-align:right;">Board ft</div></div>'+
+      sales.map(function(s){
+        return '<div class="row sale-row'+(selSales[s.id]?' selected':'')+'" data-id="'+s.id+'">'+
+          '<div class="c-check"><input type="checkbox" aria-label="Select ticket"'+(selSales[s.id]?' checked':'')+'></div>'+
+          '<div class="num strong">'+esc(s.number)+'</div>'+
+          '<div><div class="name">'+esc(s.customer)+'</div>'+(s.by ? '<div class="meta" style="margin-top:1px;">by '+esc(s.by)+'</div>' : '')+'</div>'+
+          '<div class="meta hide-sm" style="margin:0;">'+fmtDate(s.date)+'</div>'+
+          '<div class="num hide-sm">'+s.pieces.toLocaleString()+'</div>'+
+          '<div class="num strong" style="text-align:right;">'+fmt(s.bf)+'</div>'+
+        '</div>';
+      }).join('')+'</div>';
+    el.querySelectorAll('.sale-row[data-id]').forEach(function(row){
+      var cb = row.querySelector('input[type=checkbox]');
+      cb.addEventListener('click', function(e){ e.stopPropagation(); });
+      cb.addEventListener('change', function(){
+        if(cb.checked) selSales[row.dataset.id] = true; else delete selSales[row.dataset.id];
+        row.classList.toggle('selected', cb.checked);
+        updateSalesBar();
+      });
+      row.querySelector('.c-check').addEventListener('click', function(e){ e.stopPropagation(); });
+      row.addEventListener('click', function(){
+        var s = sales.find(function(x){ return x.id===row.dataset.id; });
+        if(s) showTicket(s);
+      });
+    });
+    $('sel-all').addEventListener('change', function(e){
+      var on = e.target.checked;
+      selSales = {};
+      if(on) sales.forEach(function(s){ selSales[s.id] = true; });
+      el.querySelectorAll('.sale-row[data-id]').forEach(function(row){
+        row.querySelector('input[type=checkbox]').checked = on;
+        row.classList.toggle('selected', on);
+      });
+      updateSalesBar();
+    });
+    updateSalesBar();
+  }
+
+  var selSales = {};
+  function updateSalesBar(){
+    var n = Object.keys(selSales).length;
+    var btn = $('sales-del-btn');
+    btn.style.display = n ? 'inline-flex' : 'none';
+    btn.textContent = 'Delete selected ('+n+')';
+    var all = $('sel-all');
+    if(all){ all.checked = n>0 && n===sales.length; all.indeterminate = n>0 && n<sales.length; }
+  }
+  $('sales-del-btn').addEventListener('click', function(){
+    var n = Object.keys(selSales).length;
+    if(!n) return;
+    $('sdel-count').textContent = n+(n===1?' ticket':' tickets');
+    $('sdel-restock').checked = false;
+    updateSdelHint();
+    $('sdel-overlay').classList.add('open');
+  });
+  function selectedSales(){ return sales.filter(function(s){ return selSales[s.id]; }); }
+  function updateSdelHint(){
+    var pieces = selectedSales().reduce(function(sum, s){ return sum + s.pieces; }, 0);
+    $('sdel-hint').textContent = $('sdel-restock').checked
+      ? pieces.toLocaleString()+' pieces will be added back to stock.'
+      : 'Leave unchecked to keep inventory as it is.';
+  }
+  $('sdel-restock').addEventListener('change', updateSdelHint);
+  function sameSpec(a, b){
+    return (a.species||'').trim().toLowerCase()===(b.species||'').trim().toLowerCase() &&
+      Number(a.thickness)===Number(b.thickness) && Number(a.width)===Number(b.width) && Number(a.length)===Number(b.length);
+  }
+  function restockFrom(list){
+    list.forEach(function(s){
+      s.lines.forEach(function(l){
+        var item = stock.find(function(i){ return sameSpec(i, l); });
+        if(item) item.quantity = Number(item.quantity) + l.pieces;
+        else stock.push({id:uid('lu'), species:l.species, thickness:l.thickness, width:l.width, length:l.length, bunkSize:Number(l.bunkSize)||0, quantity:l.pieces, lowAt:null});
+      });
+    });
+    save(KEYS.stock, stock);
+  }
+  function closeSdel(){ $('sdel-overlay').classList.remove('open'); }
+  $('sdel-cancel').addEventListener('click', closeSdel);
+  $('sdel-close').addEventListener('click', closeSdel);
+  $('sdel-overlay').addEventListener('click', function(e){ if(e.target.id==='sdel-overlay') closeSdel(); });
+  $('sdel-confirm').addEventListener('click', function(){
+    if($('sdel-restock').checked) restockFrom(selectedSales());
+    sales = sales.filter(function(s){ return !selSales[s.id]; });
+    selSales = {};
+    save(KEYS.sales, sales);
+    closeSdel();
+    renderAll();
+  });
+
+  function showTicket(s){
+    var rows = s.lines.map(function(l){
+      return '<tr>'+
+        '<td><div>'+esc(spName(l.species))+'</div><div class="sub">'+esc(dims(l))+'</div></td>'+
+        '<td>'+qtyText(l.bunkSize, l.pieces)+(l.bunkSize>0 && l.pieces>=l.bunkSize ? '<div class="sub">'+l.pieces+' pcs</div>' : '')+'</td>'+
+        '<td class="r">'+fmt(l.bf)+'</td>'+
+      '</tr>';
+    }).join('');
+    $('paper').innerHTML =
+      '<div class="p-head"><div><div class="shop">Advanced Precut Systems Lumber Tally</div><div class="sub">'+esc(s.number)+' · '+fmtDate(s.date)+'</div>'+(s.by ? '<div class="sub">Served by '+esc(s.by)+'</div>' : '')+'</div>'+
+        '<div style="text-align:right;"><div class="sub">Sold to</div><div style="font-weight:700;">'+esc(s.customer)+'</div></div></div>'+
+      '<table><thead><tr><th>Item</th><th>Qty</th><th class="r">Bd ft</th></tr></thead><tbody>'+rows+'</tbody></table>'+
+      '<div class="p-total"><span>'+s.pieces.toLocaleString()+' pieces</span><span>'+fmt(s.bf)+' bd ft</span></div>';
+    $('ticket-overlay').classList.add('open');
+  }
+  function closeTicket(){ $('ticket-overlay').classList.remove('open'); }
+  $('ticket-close').addEventListener('click', closeTicket);
+  $('ticket-close-2').addEventListener('click', closeTicket);
+  $('ticket-print').addEventListener('click', function(){ window.print(); });
+  $('ticket-overlay').addEventListener('click', function(e){ if(e.target.id==='ticket-overlay') closeTicket(); });
+
+  /* =====================================================
+     CUSTOMERS
+  ===================================================== */
+  var editingCustId = null, viewingCustId = null, custSearch = '', selectAfterSave = false;
+
+  function custStats(id){
+    var list = sales.filter(function(s){ return s.customerId===id; });
+    var pieces=0, bf=0, last=null;
+    list.forEach(function(s){
+      pieces += s.pieces; bf += s.bf;
+      if(!last || new Date(s.date) > new Date(last)) last = s.date;
+    });
+    return { orders:list.length, pieces:pieces, bf:round2(bf), last:last, list:list };
+  }
+
+  function renderCustomers(){
+    var el = $('cust-list');
+    if(customers.length===0){
+      el.innerHTML = '<div class="card"><div class="empty"><div class="big">No customers yet</div><div>Add a customer to keep their pickups together.</div><button class="btn primary" id="empty-add-cust">Add customer</button></div></div>';
+      $('empty-add-cust').addEventListener('click', function(){ openCust(null, false); });
+      return;
+    }
+    var q = custSearch;
+    var list = customers.filter(function(c){
+      return !q || (c.name+' '+(c.phone||'')+' '+(c.email||'')).toLowerCase().indexOf(q)>-1;
+    }).sort(function(a,b){ return a.name.localeCompare(b.name); });
+    if(list.length===0){
+      el.innerHTML = '<div class="card"><div class="empty"><div class="big">No matches</div></div></div>';
+      return;
+    }
+    el.innerHTML = '<div class="cust-grid">'+list.map(function(c){
+      var s = custStats(c.id);
+      var contact = [c.phone, c.email].filter(Boolean).map(esc).join(' · ');
+      return '<div class="cust-card" data-id="'+c.id+'">'+
+        '<div class="name">'+esc(c.name)+'</div>'+
+        '<div class="contact">'+(contact || 'No contact info')+'</div>'+
+        '<div class="cust-stats">'+
+          '<div><div class="k">Orders</div><div class="v">'+s.orders+'</div></div>'+
+          '<div><div class="k">Pieces</div><div class="v">'+s.pieces.toLocaleString()+'</div></div>'+
+          '<div><div class="k">Board ft</div><div class="v">'+fmt(s.bf)+'</div></div>'+
+        '</div></div>';
+    }).join('')+'</div>';
+    el.querySelectorAll('.cust-card').forEach(function(card){
+      card.addEventListener('click', function(){ openCustDetail(card.dataset.id); });
+    });
+  }
+  $('cust-search').addEventListener('input', function(e){ custSearch = e.target.value.trim().toLowerCase(); renderCustomers(); });
+  $('add-cust-btn').addEventListener('click', function(){ openCust(null, false); });
+
+  /* ---------- bill-out customer picker ---------- */
+  function renderCustSelect(){
+    var sel = $('cust-select');
+    var current = sel.value;
+    sel.innerHTML = '<option value="">Walk-in / one-time</option>'+
+      customers.slice().sort(function(a,b){ return a.name.localeCompare(b.name); }).map(function(c){
+        return '<option value="'+c.id+'">'+esc(c.name)+'</option>';
+      }).join('');
+    sel.value = customers.some(function(c){ return c.id===current; }) ? current : '';
+    toggleWalkin();
+  }
+  function toggleWalkin(){ $('customer').style.display = $('cust-select').value ? 'none' : 'block'; }
+  $('cust-select').addEventListener('change', toggleWalkin);
+  $('quick-add-cust').addEventListener('click', function(){ openCust(null, true); });
+
+  /* ---------- add / edit ---------- */
+  function openCust(c, thenSelect){
+    editingCustId = c ? c.id : null;
+    selectAfterSave = !!thenSelect;
+    $('cust-title').textContent = c ? 'Edit customer' : 'Add customer';
+    $('c-name').value = c ? c.name : '';
+    $('c-phone').value = c ? (c.phone||'') : '';
+    $('c-email').value = c ? (c.email||'') : '';
+    $('c-notes').value = c ? (c.notes||'') : '';
+    $('cust-err').classList.remove('show');
+    $('cust-overlay').classList.add('open');
+    $('c-name').focus();
+  }
+  function closeCust(){ $('cust-overlay').classList.remove('open'); }
+  function saveCust(){
+    var name = $('c-name').value.trim();
+    if(!name){ $('cust-err').textContent = 'Enter a name.'; $('cust-err').classList.add('show'); return; }
+    var data = { name:name, phone:$('c-phone').value.trim(), email:$('c-email').value.trim(), notes:$('c-notes').value.trim() };
+    var id = editingCustId;
+    if(id){
+      var idx = customers.findIndex(function(x){ return x.id===id; });
+      if(idx>-1) customers[idx] = Object.assign({}, customers[idx], data);
+      sales.forEach(function(s){ if(s.customerId===id) s.customer = name; });
+      save(KEYS.sales, sales);
+    } else {
+      id = uid('cu');
+      customers.push(Object.assign({id:id}, data));
+    }
+    save(KEYS.cust, customers);
+    var pick = selectAfterSave;
+    closeCust();
+    renderCustomers(); renderCustSelect(); renderSales();
+    if(pick){ $('cust-select').value = id; toggleWalkin(); }
+    if(editingCustId && viewingCustId===id) openCustDetail(id);
+  }
+  $('cust-save').addEventListener('click', saveCust);
+  $('cust-cancel').addEventListener('click', closeCust);
+  $('cust-close').addEventListener('click', closeCust);
+  $('cust-overlay').addEventListener('click', function(e){ if(e.target.id==='cust-overlay') closeCust(); });
+
+  /* ---------- detail ---------- */
+  function openCustDetail(id){
+    var c = customers.find(function(x){ return x.id===id; });
+    if(!c) return;
+    viewingCustId = id;
+    var s = custStats(id);
+    $('cdetail-name').textContent = c.name;
+    var contact = [c.phone, c.email].filter(Boolean).map(esc).join(' · ');
+    var hist = s.list.slice().sort(function(a,b){ return new Date(b.date)-new Date(a.date); }).map(function(t){
+      return '<div class="hist-row" data-id="'+t.id+'"><div class="num strong">'+esc(t.number)+'</div>'+
+        '<div class="meta" style="margin:0;">'+fmtDate(t.date)+'</div>'+
+        '<div class="num">'+t.pieces.toLocaleString()+' pcs</div>'+
+        '<div class="num strong">'+fmt(t.bf)+' bd ft</div></div>';
+    }).join('') || '<div class="empty" style="padding:26px 0;"><div class="big">No tickets yet</div><div>Pick this customer on the Bill out tab.</div></div>';
+    $('cdetail-body').innerHTML =
+      '<div style="color:var(--soft);">'+(contact || 'No contact info on file')+'</div>'+
+      (c.notes ? '<div style="color:var(--soft);white-space:pre-wrap;">'+esc(c.notes)+'</div>' : '')+
+      '<div class="stats" style="grid-template-columns:repeat(4,1fr);margin:0;">'+
+        '<div class="stat"><div class="label">Orders</div><div class="value">'+s.orders+'</div></div>'+
+        '<div class="stat"><div class="label">Pieces</div><div class="value">'+s.pieces.toLocaleString()+'</div></div>'+
+        '<div class="stat"><div class="label">Board ft</div><div class="value">'+fmt(s.bf)+'</div></div>'+
+        '<div class="stat"><div class="label">Last order</div><div class="value" style="font-size:13px;margin-top:8px;">'+(s.last ? new Date(s.last).toLocaleDateString() : '—')+'</div></div>'+
+      '</div>'+
+      '<div><div class="label" style="font-size:11px;color:var(--faint);text-transform:uppercase;letter-spacing:0.05em;font-weight:700;margin-bottom:4px;">Ticket history</div>'+hist+'</div>';
+    $('cdetail-body').querySelectorAll('.hist-row').forEach(function(row){
+      row.addEventListener('click', function(){
+        var t = sales.find(function(x){ return x.id===row.dataset.id; });
+        if(t) showTicket(t);
+      });
+    });
+    $('cdetail-overlay').classList.add('open');
+  }
+  function closeCustDetail(){ $('cdetail-overlay').classList.remove('open'); }
+  $('cdetail-close').addEventListener('click', closeCustDetail);
+  $('cdetail-close-2').addEventListener('click', closeCustDetail);
+  $('cdetail-overlay').addEventListener('click', function(e){ if(e.target.id==='cdetail-overlay') closeCustDetail(); });
+  $('cdetail-edit').addEventListener('click', function(){
+    var c = customers.find(function(x){ return x.id===viewingCustId; });
+    if(c){ closeCustDetail(); openCust(c, false); }
+  });
+  $('cdetail-delete').addEventListener('click', function(){
+    var c = customers.find(function(x){ return x.id===viewingCustId; });
+    if(!c) return;
+    $('cdel-name').textContent = c.name;
+    $('cdel-overlay').classList.add('open');
+  });
+  function closeCdel(){ $('cdel-overlay').classList.remove('open'); }
+  $('cdel-cancel').addEventListener('click', closeCdel);
+  $('cdel-close').addEventListener('click', closeCdel);
+  $('cdel-overlay').addEventListener('click', function(e){ if(e.target.id==='cdel-overlay') closeCdel(); });
+  $('cdel-confirm').addEventListener('click', function(){
+    var id = viewingCustId;
+    customers = customers.filter(function(c){ return c.id!==id; });
+    sales.forEach(function(s){ if(s.customerId===id) s.customerId = null; });
+    save(KEYS.cust, customers); save(KEYS.sales, sales);
+    viewingCustId = null;
+    closeCdel(); closeCustDetail();
+    renderCustomers(); renderCustSelect(); renderSales();
+  });
+
+  document.addEventListener('keydown', function(e){
+    if(e.key==='Escape'){ closeStock(); closeDelete(); closeTicket(); closeCust(); closeCustDetail(); closeCdel(); closeSdel(); closeAcct(); closePw(); closeCf(); }
+  });
+
+  /* ---------- boot ---------- */
+  function renderAll(){
+    if(!session) return;
+    if(can('inventory')) renderInventory();
+    renderPicker(); renderCart(); renderCustomers(); renderCustSelect();
+    if(can('sales')) renderSales();
+    if(can('accounts')) renderAccounts();
+  }
+  (async function init(){
+    stock = await load(KEYS.stock);
+    sales = await load(KEYS.sales);
+    customers = await load(KEYS.cust);
+    var q = await load(KEYS.seq);
+    if(q && typeof q.n==='number') nextNo = q.n;
+    sales.forEach(function(s){
+      var m = /(\d+)$/.exec(s.number||'');
+      if(m && Number(m[1]) >= nextNo) nextNo = Number(m[1]) + 1;
+    });
+    var a = await load(KEYS.acct);
+    accounts = (a && !Array.isArray(a) && a.admin) ? a : null;
+    if(!(accounts && restoreSession())) showGate(accounts ? 'login' : 'setup');
+  })();
+})();
+</script>
+</body>
+</html>
