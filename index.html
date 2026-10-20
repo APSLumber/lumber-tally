@@ -127,7 +127,6 @@
   .child-row .name{font-family:'JetBrains Mono',monospace;font-size:14px;}
   .btn:disabled{opacity:0.45;cursor:not-allowed;}
   .name{font-weight:600;font-size:14px;}
-  .name.unspec{color:var(--soft);font-weight:500;font-style:italic;}
   .meta{font-size:12px;color:var(--faint);font-family:'JetBrains Mono',monospace;margin-top:2px;}
   .num{font-family:'JetBrains Mono',monospace;font-size:14px;}
   .num.strong{font-weight:700;}
@@ -282,12 +281,11 @@
   .imp-row.off .imp-fields{opacity:0.45;}
   .imp-inc{display:flex;flex-direction:column;align-items:center;gap:4px;padding-top:15px;cursor:pointer;}
   .imp-inc input{width:17px;height:17px;margin:0;accent-color:var(--green);cursor:pointer;}
-  .imp-fields{display:grid;grid-template-columns:minmax(110px,1.8fr) repeat(5,minmax(48px,1fr));gap:6px;}
-  .imp-fields.stock{grid-template-columns:minmax(110px,1.8fr) repeat(6,minmax(48px,1fr));}
+  .imp-fields{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;}
+  .imp-fields.stock{grid-template-columns:repeat(6,minmax(0,1fr));}
   .imp-f{min-width:0;}
   .imp-f .lbl{font-size:10px;color:var(--faint);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:3px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .imp-f input{width:100%;padding:6px 7px;border-radius:6px;border:1px solid var(--line2);font-size:13px;font-family:'JetBrains Mono',monospace;background:#FCFBF8;color:var(--ink);}
-  .imp-f-species input{font-family:inherit;}
   .imp-f input:focus{outline:2px solid var(--green);outline-offset:-1px;border-color:var(--green);}
   .imp-out{grid-column:2;display:flex;justify-content:space-between;gap:4px 12px;flex-wrap:wrap;font-size:12.5px;}
   .imp-res{color:var(--faint);}
@@ -295,7 +293,6 @@
   .imp-res.ok{color:var(--green);}
   @media (max-width:700px){
     .imp-fields,.imp-fields.stock{grid-template-columns:repeat(3,minmax(0,1fr));}
-    .imp-f-species{grid-column:1 / -1;}
   }
 </style>
 </head>
@@ -370,7 +367,7 @@
     <div class="controls">
       <div class="search">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
-        <input type="text" id="inv-search" placeholder="Search by species or size">
+        <input type="text" id="inv-search" placeholder="Search by size, like 2x4 or 2x4x8">
       </div>
       <button class="btn" id="expand-toggle">Expand all</button>
       <button class="btn toggle" id="low-toggle">Low stock only</button>
@@ -394,7 +391,7 @@
         <div class="controls" style="margin-bottom:12px;">
           <div class="search">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
-            <input type="text" id="pick-search" placeholder="Find species or size">
+            <input type="text" id="pick-search" placeholder="Find a size, like 2x4">
           </div>
           <button class="btn" id="pick-expand-toggle">Expand all</button>
           <button class="btn" id="imp-bill-btn">
@@ -468,7 +465,6 @@
   <div class="modal">
     <div class="modal-head"><h2 id="stock-title">Add stock</h2><button id="stock-close" aria-label="Close"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
     <div class="modal-body">
-      <div class="field"><label for="f-species">Species (optional)</label><input type="text" id="f-species" placeholder="Doug fir"></div>
       <div class="grid3">
         <div class="field"><label for="f-t">Thickness (in)</label><input type="number" id="f-t" min="0" step="0.125" placeholder="2"></div>
         <div class="field"><label for="f-w">Width (in)</label><input type="number" id="f-w" min="0" step="0.125" placeholder="4"></div>
@@ -658,7 +654,6 @@
   function round2(n){ return Math.round(n*100)/100; }
   function fmt(n){ return Number(n||0).toLocaleString(undefined,{maximumFractionDigits:2}); }
   function fmtDate(iso){ var d=new Date(iso); return d.toLocaleDateString()+' '+d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}); }
-  function spName(s){ return (s && String(s).trim()) ? s : 'Unspecified'; }
   function dims(i){ return i.thickness+'" × '+i.width+'" × '+i.length+"'"; }
   function bfPer(i){ return (Number(i.thickness)*Number(i.width)*Number(i.length))/12; }
   function bunksOf(i){ var bs=Number(i.bunkSize)||0; return bs>0 ? Math.floor(i.quantity/bs) : 0; }
@@ -1127,7 +1122,7 @@
   ===================================================== */
   var openTypes = {};
   var pickOpen = {};
-  function typeKey(i){ return (i.species||'').trim().toLowerCase()+'|'+i.thickness+'x'+i.width; }
+  function typeKey(i){ return i.thickness+'x'+i.width; }
   function allTypeKeys(){
     var seen = {}, out = [];
     stock.forEach(function(i){ var k = typeKey(i); if(!seen[k]){ seen[k]=true; out.push(k); } });
@@ -1151,24 +1146,24 @@
     }
     var q = invSearch;
     var list = stock.filter(function(i){
-      var hay = ((i.species||'')+' '+i.thickness+'x'+i.width+'x'+i.length).toLowerCase();
-      return (!q || hay.indexOf(q)>-1) && (!lowOnly || isLow(i));
+      var hay = i.thickness+'x'+i.width+'x'+i.length;
+      return (!q || hay.indexOf(q.replace(/\s+/g,''))>-1) && (!lowOnly || isLow(i));
     }).sort(function(a,b){
-      return (a.species||'').localeCompare(b.species||'') || (a.thickness-b.thickness) || (a.width-b.width) || (a.length-b.length);
+      return (a.thickness-b.thickness) || (a.width-b.width) || (a.length-b.length);
     });
     if(list.length===0){
       el.innerHTML = '<div class="card"><div class="empty"><div class="big">Nothing matches</div><div>'+(lowOnly && !q ? 'No items are at or below their low stock alert.' : 'Try a different search.')+'</div></div></div>';
       return;
     }
-    // Layer 1: type (species + thickness x width). Layer 2: length.
+    // Layer 1: thickness x width. Layer 2: length.
     var groups = {};
     list.forEach(function(i){
       var k = typeKey(i);
-      if(!groups[k]) groups[k] = { key:k, species:i.species, thickness:i.thickness, width:i.width, items:[] };
+      if(!groups[k]) groups[k] = { key:k, thickness:i.thickness, width:i.width, items:[] };
       groups[k].items.push(i);
     });
     var glist = Object.keys(groups).map(function(k){ return groups[k]; }).sort(function(a,b){
-      return (a.species||'').localeCompare(b.species||'') || (a.thickness-b.thickness) || (a.width-b.width);
+      return (a.thickness-b.thickness) || (a.width-b.width);
     });
     var forceOpen = !!q || lowOnly;
     var allKeys = allTypeKeys();
@@ -1190,10 +1185,9 @@
         if(i.quantity>0) allOut = false;
       });
       var open = forceOpen || !!openTypes[g.key];
-      var named = (g.species||'').trim();
       var head = '<div class="row inv-row group-row" data-gi="'+gi+'">'+
         '<div class="g-title"><span class="chev'+(open?' open':'')+'">'+chevSvg+'</span>'+
-          '<div><div class="name'+(named?'':' unspec')+'">'+esc(spName(g.species))+'<span class="xs">'+g.thickness+'" × '+g.width+'"</span>'+
+          '<div><div class="name">'+g.thickness+'" × '+g.width+'"'+
             (allOut ? '<span class="badge out">Out</span>' : (flagged ? '<span class="badge low">Low</span>' : ''))+'</div>'+
           '<div class="meta">'+g.items.length+(g.items.length===1?' length':' lengths')+'</div></div></div>'+
         '<div class="num c-num'+(gb?'':' zero')+'">'+gb+'</div>'+
@@ -1223,7 +1217,7 @@
       return head + kids;
     }).join('');
 
-    el.innerHTML = '<div class="card"><div class="row inv-row head"><div>Type / length</div><div>Bunks</div><div>Loose</div><div>Pieces</div><div>Board ft</div><div></div></div>'+html+'</div>';
+    el.innerHTML = '<div class="card"><div class="row inv-row head"><div>Size / length</div><div>Bunks</div><div>Loose</div><div>Pieces</div><div>Board ft</div><div></div></div>'+html+'</div>';
 
     el.querySelectorAll('.group-row').forEach(function(row){
       row.addEventListener('click', function(){
@@ -1275,7 +1269,6 @@
   function openStock(item){
     editingId = item ? item.id : null;
     $('stock-title').textContent = item ? 'Edit stock' : 'Add stock';
-    $('f-species').value = item ? (item.species||'') : '';
     $('f-t').value = item ? item.thickness : '';
     $('f-w').value = item ? item.width : '';
     $('f-l').value = item ? item.length : '';
@@ -1286,12 +1279,11 @@
     $('f-low').value = (item && item.lowAt!==null && item.lowAt!==undefined) ? item.lowAt : '';
     updateTotal();
     $('stock-overlay').classList.add('open');
-    $('f-species').focus();
+    $('f-t').focus();
   }
   function closeStock(){ $('stock-overlay').classList.remove('open'); }
 
   function saveStock(){
-    var species = $('f-species').value.trim();
     var t = Number($('f-t').value), w = Number($('f-w').value), l = Number($('f-l').value);
     var c = readCounts();
     var err = '';
@@ -1301,13 +1293,15 @@
     var lowRaw = $('f-low').value.trim();
     var lowAt = lowRaw==='' ? null : Number(lowRaw);
     if(!err && lowAt!==null && (isNaN(lowAt) || lowAt<0 || Math.floor(lowAt)!==lowAt)) err = 'Low stock alert must be a whole number, or leave it blank.';
+    var spec = { thickness:t, width:w, length:l };
+    if(!err && stock.some(function(i){ return i.id!==editingId && sameSpec(i, spec); })) err = dims(spec)+' is already in inventory. Edit that item instead.';
     if(err){ $('stock-err').textContent = err; $('stock-err').classList.add('show'); return; }
 
     if(editingId){
       var idx = stock.findIndex(function(i){ return i.id===editingId; });
-      if(idx>-1) stock[idx] = Object.assign({}, stock[idx], {species:species, thickness:t, width:w, length:l, bunkSize:c.bs, quantity:c.total, lowAt:lowAt});
+      if(idx>-1) stock[idx] = Object.assign({}, stock[idx], {thickness:t, width:w, length:l, bunkSize:c.bs, quantity:c.total, lowAt:lowAt});
     } else {
-      stock.push({id:uid('lu'), species:species, thickness:t, width:w, length:l, bunkSize:c.bs, quantity:c.total, lowAt:lowAt});
+      stock.push({id:uid('lu'), thickness:t, width:w, length:l, bunkSize:c.bs, quantity:c.total, lowAt:lowAt});
     }
     var savedItem = editingId ? stock.find(function(i){ return i.id===editingId; }) : stock[stock.length-1];
     if(savedItem) openTypes[typeKey(savedItem)] = true;
@@ -1324,7 +1318,7 @@
   /* ---------- delete ---------- */
   function openDelete(item){
     deletingId = item.id;
-    $('del-name').textContent = spName(item.species)+' '+dims(item);
+    $('del-name').textContent = dims(item);
     $('del-overlay').classList.add('open');
   }
   function closeDelete(){ $('del-overlay').classList.remove('open'); deletingId = null; }
@@ -1360,22 +1354,22 @@
     }
     var q = pickSearch;
     var list = stock.filter(function(i){
-      var hay = ((i.species||'')+' '+i.thickness+'x'+i.width+'x'+i.length).toLowerCase();
-      return !q || hay.indexOf(q)>-1;
+      var hay = i.thickness+'x'+i.width+'x'+i.length;
+      return !q || hay.indexOf(q.replace(/\s+/g,''))>-1;
     }).sort(function(a,b){
-      return (a.species||'').localeCompare(b.species||'') || (a.thickness-b.thickness) || (a.width-b.width) || (a.length-b.length);
+      return (a.thickness-b.thickness) || (a.width-b.width) || (a.length-b.length);
     });
     if(list.length===0){ el.innerHTML = '<div class="empty"><div class="big">No matches</div></div>'; return; }
 
-    // Layer 1: type (species + thickness x width). Layer 2: length.
+    // Layer 1: thickness x width. Layer 2: length.
     var groups = {};
     list.forEach(function(i){
       var k = typeKey(i);
-      if(!groups[k]) groups[k] = { key:k, species:i.species, thickness:i.thickness, width:i.width, items:[] };
+      if(!groups[k]) groups[k] = { key:k, thickness:i.thickness, width:i.width, items:[] };
       groups[k].items.push(i);
     });
     var glist = Object.keys(groups).map(function(k){ return groups[k]; }).sort(function(a,b){
-      return (a.species||'').localeCompare(b.species||'') || (a.thickness-b.thickness) || (a.width-b.width);
+      return (a.thickness-b.thickness) || (a.width-b.width);
     });
     var forceOpen = !!q;
     var allKeys = allTypeKeys();
@@ -1390,10 +1384,9 @@
       var availTotal = 0;
       g.items.forEach(function(i){ availTotal += Math.max(0, i.quantity - inCart(i.id)); });
       var open = forceOpen || !!pickOpen[g.key];
-      var named = (g.species||'').trim();
       var head = '<div class="pick-group'+(availTotal<=0?' dim':'')+'" data-gi="'+gi+'">'+
         '<span class="chev'+(open?' open':'')+'">'+chevSvg+'</span>'+
-        '<div><div class="name'+(named?'':' unspec')+'">'+esc(spName(g.species))+'<span class="xs">'+g.thickness+'" × '+g.width+'"</span></div>'+
+        '<div><div class="name">'+g.thickness+'" × '+g.width+'"</div>'+
           '<div class="meta">'+g.items.length+(g.items.length===1?' length':' lengths')+' · '+(availTotal>0 ? availTotal.toLocaleString()+' pcs available' : 'none left')+'</div></div>'+
       '</div>';
       if(!open) return head;
@@ -1466,7 +1459,7 @@
       var item = stock.find(function(i){ return i.id===c.stockId; });
       if(!item) return '';
       return '<div class="cart-line" data-id="'+c.stockId+'">'+
-        '<div class="cart-top"><div><div class="cart-name">'+esc(spName(item.species))+' <span class="mono" style="font-weight:400;color:var(--faint);font-size:12px;">'+esc(dims(item))+'</span></div>'+
+        '<div class="cart-top"><div><div class="cart-name mono">'+esc(dims(item))+'</div>'+
           '<div class="cart-qty">'+qtyText(item.bunkSize, c.pieces)+(item.bunkSize>0 && c.pieces>=item.bunkSize ? ' ('+c.pieces+' pcs)' : '')+' · '+fmt(bfPer(item)*c.pieces)+' bd ft</div></div>'+
           '<button class="cart-remove" aria-label="Remove">&times;</button></div>'+
       '</div>';
@@ -1501,7 +1494,7 @@
     var lines = cart.map(function(c){
       var item = stock.find(function(i){ return i.id===c.stockId; });
       return {
-        species:item.species, thickness:item.thickness, width:item.width, length:item.length,
+        thickness:item.thickness, width:item.width, length:item.length,
         bunkSize:Number(item.bunkSize)||0, pieces:c.pieces, bf:round2(bfPer(item)*c.pieces)
       };
     });
@@ -1610,15 +1603,14 @@
   }
   $('sdel-restock').addEventListener('change', updateSdelHint);
   function sameSpec(a, b){
-    return (a.species||'').trim().toLowerCase()===(b.species||'').trim().toLowerCase() &&
-      Number(a.thickness)===Number(b.thickness) && Number(a.width)===Number(b.width) && Number(a.length)===Number(b.length);
+    return Number(a.thickness)===Number(b.thickness) && Number(a.width)===Number(b.width) && Number(a.length)===Number(b.length);
   }
   function restockFrom(list){
     list.forEach(function(s){
       s.lines.forEach(function(l){
         var item = stock.find(function(i){ return sameSpec(i, l); });
         if(item) item.quantity = Number(item.quantity) + l.pieces;
-        else stock.push({id:uid('lu'), species:l.species, thickness:l.thickness, width:l.width, length:l.length, bunkSize:Number(l.bunkSize)||0, quantity:l.pieces, lowAt:null});
+        else stock.push({id:uid('lu'), thickness:l.thickness, width:l.width, length:l.length, bunkSize:Number(l.bunkSize)||0, quantity:l.pieces, lowAt:null});
       });
     });
     save(KEYS.stock, stock);
@@ -1639,7 +1631,7 @@
   function showTicket(s){
     var rows = s.lines.map(function(l){
       return '<tr>'+
-        '<td><div>'+esc(spName(l.species))+'</div><div class="sub">'+esc(dims(l))+'</div></td>'+
+        '<td>'+esc(dims(l))+'</td>'+
         '<td>'+qtyText(l.bunkSize, l.pieces)+(l.bunkSize>0 && l.pieces>=l.bunkSize ? '<div class="sub">'+l.pieces+' pcs</div>' : '')+'</td>'+
         '<td class="r">'+fmt(l.bf)+'</td>'+
       '</tr>';
@@ -1830,7 +1822,6 @@
   var impMode = null, impPlan = [];
   // Accepted headings, after lowercasing and dropping spaces, punctuation and "(in)"-style notes
   var IMP_COLS = {
-    species:['species','wood','lumber','material','product','type'],
     desc:['description','desc','item','size','dimensions','dims','dimension'],
     t:['thickness','thick','thk','t'],
     w:['width','wide','w'],
@@ -1841,8 +1832,8 @@
     low:['lowstock','lowat','lowstockalert','alert','reorder','reorderat','reorderpoint']
   };
   var IMP_TEMPLATES = {
-    stock:['Species','Thickness (in)','Width (in)','Length (ft)','Pieces per bunk','Bunks','Loose pieces','Low stock alert'],
-    bill:['Species','Thickness (in)','Width (in)','Length (ft)','Bunks','Pieces']
+    stock:['Thickness (in)','Width (in)','Length (ft)','Pieces per bunk','Bunks','Loose pieces','Low stock alert'],
+    bill:['Thickness (in)','Width (in)','Length (ft)','Bunks','Pieces']
   };
 
   // Loads a library only when someone uploads that kind of file
@@ -1914,7 +1905,7 @@
     var n = Number(s);
     return isFinite(n) ? n : NaN;
   }
-  // "Doug fir 2x4x8", "2 x 6 SPF 16'", "5/4x6 cedar" -> {species, t, w, l}
+  // "Doug fir 2x4x8", "2 x 6 SPF 16'", "5/4x6 cedar" -> {t, w, l}; any other words are ignored
   var DIM_RE = /(\d+(?:\.\d+)?(?:\s*\/\s*\d+)?)\s*[x×*]\s*(\d+(?:\.\d+)?)(?:\s*[x×*]\s*(\d+(?:\.\d+)?)\s*(?:'|ft\b|feet\b)?)?/i;
   function parseDesc(s){
     s = String(s==null ? '' : s);
@@ -1922,12 +1913,10 @@
     if(!m) return out;
     out.t = impNum(m[1]); out.w = impNum(m[2]);
     if(m[3]) out.l = Number(m[3]);
-    var rest = s.slice(0, m.index)+' '+s.slice(m.index + m[0].length);
-    if(!m[3]){
-      var lm = /(\d+(?:\.\d+)?)\s*(?:'|ft\b|feet\b)/i.exec(rest);
-      if(lm){ out.l = Number(lm[1]); rest = rest.replace(lm[0], ' '); }
+    else {
+      var lm = /(\d+(?:\.\d+)?)\s*(?:'|ft\b|feet\b)/i.exec(s.slice(m.index + m[0].length));
+      if(lm) out.l = Number(lm[1]);
     }
-    out.species = rest.replace(/[-,;:|]+/g,' ').replace(/\s+/g,' ').trim();
     return out;
   }
 
@@ -1951,7 +1940,6 @@
       var d = map.desc!==undefined ? parseDesc(cell('desc')) : {};
       lines.push(checkLine({
         row: hi + ri + 2,
-        species: String(cell('species')==null ? '' : cell('species')).trim() || d.species || '',
         t: val('t', d.t), w: val('w', d.w), l: val('l', d.l),
         bs: val('bs'), bunks: val('bunks'), pcs: val('pcs'), low: val('low')
       }));
@@ -2013,10 +2001,9 @@
       var t = impNum(dm[1]), w = impNum(dm[2]), l = dm[3] ? Number(dm[3]) : null;
       if(l===null){
         var lm = /(\d+(?:\.\d+)?)\s*(?:'|ft\b|feet\b)/i.exec(after);
-        if(lm){ l = Number(lm[1]); after = after.replace(lm[0], ' '); }
+        if(lm) l = Number(lm[1]);
       }
-      var clean = function(x){ return x.replace(/^[\s\-,;:|]+|[\s\-,;:|]+$/g,'').replace(/\s+/g,' '); };
-      var L = { row: lines.length+1, species: clean(desc.slice(0, dm.index)) || clean(after), t:t, w:w, l:l, bs:null, bunks:null, pcs:null, low:null };
+      var L = { row: lines.length+1, t:t, w:w, l:l, bs:null, bunks:null, pcs:null, low:null };
       var per = (t>0 && w>0 && l>0) ? t*w*l/12 : 0;
       var fromBf = (bf && per) ? Math.round(bf/per) : null;
       if(PACK_UNITS.test(unit)){
@@ -2030,14 +2017,10 @@
     return lines;
   }
 
-  function lineSpec(L){ return { species:L.species, thickness:L.t, width:L.w, length:L.l }; }
-  // Exact match first; a row with no species matches the one item of that size, if there is only one
+  function lineSpec(L){ return { thickness:L.t, width:L.w, length:L.l }; }
   function findStock(L){
     var spec = lineSpec(L);
-    var hit = stock.find(function(i){ return sameSpec(i, spec); });
-    if(hit || L.species) return hit || null;
-    var bySize = stock.filter(function(i){ return Number(i.thickness)===L.t && Number(i.width)===L.w && Number(i.length)===L.l; });
-    return bySize.length===1 ? bySize[0] : null;
+    return stock.find(function(i){ return sameSpec(i, spec); }) || null;
   }
 
   function planStock(lines){
@@ -2046,7 +2029,7 @@
       if(L.skip) return { L:L, skip:true };
       if(L.err) return { L:L, err:L.err };
       var item = findStock(L);
-      var key = (L.species||'').trim().toLowerCase()+'|'+L.t+'x'+L.w+'x'+L.l;
+      var key = L.t+'x'+L.w+'x'+L.l;
       var bs = L.bs || (item && Number(item.bunkSize)) || (fresh[key] && fresh[key].bs) || 0;
       if(L.bunks>0 && !bs) return { L:L, err:'Needs pieces per bunk' };
       var p = { L:L, item:item, key:key, bs:bs, add:(L.bunks||0)*bs + (L.pcs||0) };
@@ -2080,17 +2063,17 @@
 
   // Editable preview: the inputs are drawn once, and only the results refresh while typing so focus stays put
   var IMP_FIELDS = {
-    stock:[['species','Species'],['t','Thick (in)'],['w','Width (in)'],['l','Length (ft)'],['bs','Pcs / bunk'],['bunks','Bunks'],['pcs','Loose pcs']],
-    bill:[['species','Species'],['t','Thick (in)'],['w','Width (in)'],['l','Length (ft)'],['bunks','Bunks'],['pcs','Pieces']]
+    stock:[['t','Thick (in)'],['w','Width (in)'],['l','Length (ft)'],['bs','Pcs / bunk'],['bunks','Bunks'],['pcs','Loose pcs']],
+    bill:[['t','Thick (in)'],['w','Width (in)'],['l','Length (ft)'],['bunks','Bunks'],['pcs','Pieces']]
   };
   function shownNum(n){ return n==null ? '' : isNaN(n) ? '?' : String(n); }
   function renderImp(){
     var rows = impPlan.map(function(p, i){
       var L = p.L;
       var fields = IMP_FIELDS[impMode].map(function(fd){
-        var f = fd[0], v = f==='species' ? (L.species||'') : shownNum(L[f]);
-        return '<div class="imp-f imp-f-'+f+'"><div class="lbl">'+fd[1]+'</div>'+
-          '<input type="text" data-f="'+f+'" value="'+esc(v)+'"'+(f==='species' ? '' : ' inputmode="decimal"')+' aria-label="'+fd[1]+', row '+L.row+'"></div>';
+        var f = fd[0];
+        return '<div class="imp-f"><div class="lbl">'+fd[1]+'</div>'+
+          '<input type="text" data-f="'+f+'" value="'+esc(shownNum(L[f]))+'" inputmode="decimal" aria-label="'+fd[1]+', row '+L.row+'"></div>';
       }).join('');
       return '<div class="imp-row" data-i="'+i+'">'+
         '<label class="imp-inc"><input type="checkbox" data-f="inc"'+(L.skip?'':' checked')+' aria-label="Include row '+L.row+'"><span class="num zero">'+L.row+'</span></label>'+
@@ -2116,7 +2099,7 @@
         ready++;
         q.textContent = qtyText(p.bs, p.add)+(p.bs>0 && p.add>=p.bs ? ' ('+p.add.toLocaleString()+' pcs)' : '')+' · '+fmt(bfPer(lineSpec(L))*p.add)+' bd ft';
         r.className = 'imp-res ok';
-        r.textContent = (impMode==='bill' && p.item ? spName(p.item.species)+' · ' : '')+p.note;
+        r.textContent = p.note;
       }
       var bsIn = row.querySelector('[data-f=bs]');
       if(bsIn) bsIn.placeholder = (L.bs==null && p.bs) ? String(p.bs) : '';
@@ -2135,7 +2118,6 @@
     if(!p) return;
     var L = p.L;
     if(f==='inc') L.skip = !el.checked;
-    else if(f==='species') L.species = el.value.trim();
     else L[f] = impNum(el.value);
     delete L.err;
     checkLine(L);
@@ -2172,7 +2154,7 @@
     readRows(file).then(function(rows){
       if(impMode!==mode) return;
       var lines = parseLines(rows);
-      if(!lines) return impFail("Couldn't find the column headings. The first row needs headings like Species, Thickness, Width, Length and Pieces (or one Size column like 2x4x8). Download the template to see the layout.");
+      if(!lines) return impFail("Couldn't find the column headings. The first row needs headings like Thickness, Width, Length and Pieces (or one Size column like 2x4x8). Download the template to see the layout.");
       if(!lines.length) return impFail('The file has headings but no rows under them.');
       impPlan = mode==='stock' ? planStock(lines) : planBill(lines);
       renderImp();
@@ -2212,7 +2194,7 @@
           if(!(Number(item.bunkSize)>0) && p.bs) item.bunkSize = p.bs;
           if(L.low!==null) item.lowAt = L.low;
         } else {
-          item = { id:uid('lu'), species:L.species, thickness:L.t, width:L.w, length:L.l, bunkSize:p.bs, quantity:p.add, lowAt:L.low };
+          item = { id:uid('lu'), thickness:L.t, width:L.w, length:L.l, bunkSize:p.bs, quantity:p.add, lowAt:L.low };
           stock.push(item);
           created[p.key] = item;
         }
@@ -2276,8 +2258,29 @@
     if(can('sales')) renderSales();
     if(can('accounts')) renderAccounts();
   }
+  // Lumber is tracked by size only. Items saved back when species was kept are combined by size, once.
+  function mergeBySize(list){
+    var bySize = {}, out = [];
+    list.forEach(function(i){
+      var k = Number(i.thickness)+'x'+Number(i.width)+'x'+Number(i.length), m = bySize[k];
+      if(!m){
+        m = Object.assign({}, i);
+        delete m.species;
+        bySize[k] = m; out.push(m);
+        return;
+      }
+      m.quantity = Number(m.quantity) + Number(i.quantity);
+      if(!(Number(m.bunkSize)>0)) m.bunkSize = i.bunkSize;
+      if(m.lowAt==null || m.lowAt==='') m.lowAt = i.lowAt;
+    });
+    return out;
+  }
   (async function init(){
     stock = await load(KEYS.stock);
+    if(stock.some(function(i){ return 'species' in i; })){
+      stock = mergeBySize(stock);
+      save(KEYS.stock, stock);
+    }
     sales = await load(KEYS.sales);
     customers = await load(KEYS.cust);
     var q = await load(KEYS.seq);
