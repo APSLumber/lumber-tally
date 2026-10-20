@@ -265,6 +265,27 @@
   }
   .inv-row .c-sum{display:none;font-size:12.5px;color:var(--soft);font-family:'JetBrains Mono',monospace;grid-column:1;}
   .loading{padding:40px;text-align:center;color:var(--faint);font-family:'JetBrains Mono',monospace;font-size:13px;}
+
+  /* File upload */
+  .imp-lead{margin:0;color:var(--soft);font-size:13px;line-height:1.5;}
+  .drop{display:flex;flex-direction:column;align-items:center;gap:6px;padding:22px 16px;border:2px dashed var(--line2);border-radius:10px;background:#FCFBF8;cursor:pointer;text-align:center;color:var(--soft);}
+  .drop:hover,.drop.over{border-color:var(--green);background:var(--green-pale);color:var(--green-dark);}
+  .drop-main{font-weight:600;font-size:14px;color:var(--ink);word-break:break-all;}
+  .drop-sub{font-size:12px;color:var(--faint);}
+  .imp-help{display:flex;justify-content:center;margin-top:-8px;}
+  .imp-sum{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;}
+  .imp-sum .badge{font-size:11px;padding:3px 9px;}
+  .imp-row{display:grid;grid-template-columns:40px 1.5fr 1fr 1.4fr;gap:10px;align-items:center;padding:9px 12px;border-bottom:1px solid var(--line);font-size:13px;}
+  .imp-row:last-child{border-bottom:none;}
+  .imp-row.head{padding:7px 12px;font-size:11px;text-transform:uppercase;letter-spacing:0.05em;color:var(--faint);font-weight:700;background:#FBFAF6;}
+  .imp-row.bad{background:var(--rust-pale);}
+  .imp-row .why{color:var(--rust);font-weight:600;font-size:12.5px;}
+  .imp-row .ok{color:var(--green);font-size:12.5px;}
+  @media (max-width:640px){
+    .imp-row{grid-template-columns:32px 1fr;row-gap:3px;}
+    .imp-row > :nth-child(n+3){grid-column:2;}
+    .imp-row.head{display:none;}
+  }
 </style>
 </head>
 <body>
@@ -342,6 +363,10 @@
       </div>
       <button class="btn" id="expand-toggle">Expand all</button>
       <button class="btn toggle" id="low-toggle">Low stock only</button>
+      <button class="btn" id="imp-stock-btn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 15V3M7 8l5-5 5 5M5 21h14"/></svg>
+        Upload file
+      </button>
       <button class="btn primary" id="add-stock-btn">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
         Add stock
@@ -361,6 +386,10 @@
             <input type="text" id="pick-search" placeholder="Find species or size">
           </div>
           <button class="btn" id="pick-expand-toggle">Expand all</button>
+          <button class="btn" id="imp-bill-btn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 15V3M7 8l5-5 5 5M5 21h14"/></svg>
+            Upload file
+          </button>
         </div>
         <div class="card" id="picker"></div>
       </div>
@@ -568,6 +597,26 @@
       <p style="margin:0;color:var(--soft);font-size:12.5px;line-height:1.5;">If you forget the admin password, this code is the only way back in without clearing the browser, which would erase the inventory. It will not be shown again.</p>
     </div>
     <div class="modal-foot"><button class="btn" id="rc-copy">Copy</button><button class="btn primary" id="rc-ok">I saved it</button></div>
+  </div>
+</div>
+
+<!-- File upload (inventory + bill out) -->
+<div class="overlay" id="imp-overlay">
+  <div class="modal wide">
+    <div class="modal-head"><h2 id="imp-title">Upload file</h2><button id="imp-close" aria-label="Close"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+    <div class="modal-body">
+      <p class="imp-lead" id="imp-lead"></p>
+      <label class="drop" id="imp-drop">
+        <input type="file" id="imp-file" accept=".csv,.tsv,.txt,.xlsx,.xlsm,.xls,.ods" hidden>
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 15V3M7 8l5-5 5 5M5 21h14"/></svg>
+        <span class="drop-main" id="imp-drop-main">Choose a file or drop it here</span>
+        <span class="drop-sub">Excel (.xlsx, .xls) or CSV · first row is the headings</span>
+      </label>
+      <div class="imp-help"><button type="button" class="link-btn" id="imp-template">Download a blank template</button></div>
+      <div class="form-err" id="imp-err"></div>
+      <div id="imp-preview"></div>
+    </div>
+    <div class="modal-foot"><button class="btn" id="imp-cancel">Cancel</button><button class="btn primary" id="imp-apply" disabled>Add</button></div>
   </div>
 </div>
 
@@ -865,7 +914,7 @@
     cart = [];
     $('customer').value = ''; $('cust-select').value = '';
     closeStock(); closeDelete(); closeTicket(); closeCust(); closeCustDetail(); closeCdel(); closeSdel();
-    closeAcct(); closePw(); closeCf();
+    closeAcct(); closePw(); closeCf(); closeImp();
     document.body.classList.remove('authed');
     showGate('login');
   });
@@ -1761,8 +1810,321 @@
     renderCustomers(); renderCustSelect(); renderSales();
   });
 
+  /* =====================================================
+     FILE UPLOAD (Inventory: add stock · Bill out: fill the ticket)
+  ===================================================== */
+  var XLSX_SRC = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+  var impMode = null, impPlan = [];
+  // Accepted headings, after lowercasing and dropping spaces, punctuation and "(in)"-style notes
+  var IMP_COLS = {
+    species:['species','wood','lumber','material','product','type'],
+    desc:['description','desc','item','size','dimensions','dims','dimension'],
+    t:['thickness','thick','thk','t'],
+    w:['width','wide','w'],
+    l:['length','len','l','lengthft','ft','feet'],
+    bs:['piecesperbunk','pcsperbunk','perbunk','bunksize','pcsbunk','piecesperlift','pcsperlift','perlift'],
+    bunks:['bunks','bunk','lifts','lift'],
+    pcs:['pieces','pcs','piece','pc','qty','quantity','count','loose','loosepieces','loosepcs'],
+    low:['lowstock','lowat','lowstockalert','alert','reorder','reorderat','reorderpoint']
+  };
+  var IMP_TEMPLATES = {
+    stock:['Species','Thickness (in)','Width (in)','Length (ft)','Pieces per bunk','Bunks','Loose pieces','Low stock alert'],
+    bill:['Species','Thickness (in)','Width (in)','Length (ft)','Bunks','Pieces']
+  };
+
+  function loadXlsx(){
+    if(window.XLSX) return Promise.resolve(window.XLSX);
+    return new Promise(function(resolve, reject){
+      var s = document.createElement('script');
+      s.src = XLSX_SRC;
+      s.onload = function(){ window.XLSX ? resolve(window.XLSX) : reject(new Error('xlsx')); };
+      s.onerror = function(){ s.remove(); reject(new Error('xlsx')); };
+      document.head.appendChild(s);
+    });
+  }
+  function parseCsv(text){
+    text = text.replace(/^﻿/, '');
+    var first = text.split(/\r?\n/, 1)[0] || '';
+    var commas = first.split(',').length, d = ',';
+    if(first.split('\t').length > commas) d = '\t';
+    else if(first.split(';').length > commas) d = ';';
+    var rows = [], row = [], cell = '', quoted = false;
+    for(var i=0;i<text.length;i++){
+      var ch = text.charAt(i);
+      if(quoted){
+        if(ch==='"'){ if(text.charAt(i+1)==='"'){ cell += '"'; i++; } else quoted = false; }
+        else cell += ch;
+      }
+      else if(ch==='"' && cell==='') quoted = true;   // only a leading quote opens a field, so 2" stays 2"
+      else if(ch===d){ row.push(cell); cell = ''; }
+      else if(ch==='\n' || ch==='\r'){
+        if(ch==='\r' && text.charAt(i+1)==='\n') i++;
+        row.push(cell); rows.push(row); row = []; cell = '';
+      }
+      else cell += ch;
+    }
+    if(cell!=='' || row.length){ row.push(cell); rows.push(row); }
+    return rows;
+  }
+  function readRows(file){
+    if(/\.(xlsx|xlsm|xls|ods)$/i.test(file.name||'')){
+      return loadXlsx().then(function(X){
+        return file.arrayBuffer().then(function(buf){
+          var wb = X.read(buf, {type:'array'});
+          return X.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header:1, raw:true, defval:'', blankrows:false});
+        });
+      });
+    }
+    return file.text().then(parseCsv);
+  }
+
+  function hdrKey(h){ return String(h==null ? '' : h).toLowerCase().replace(/\(.*?\)/g,'').replace(/[^a-z0-9]/g,''); }
+  function mapHeader(row){
+    var map = {};
+    (row||[]).forEach(function(h, ci){
+      var k = hdrKey(h);
+      Object.keys(IMP_COLS).forEach(function(f){ if(map[f]===undefined && IMP_COLS[f].indexOf(k)>-1) map[f] = ci; });
+    });
+    return map;
+  }
+  // "8'", "16 ft", "1,200", "1 1/2", "5/4" -> number; blank -> null; junk -> NaN
+  function impNum(v){
+    if(v==null) return null;
+    if(typeof v==='number') return isFinite(v) ? v : NaN;
+    var s = String(v).trim().toLowerCase().replace(/feet|foot|ft|inches|inch|in|pcs|pc|'|"|,/g,'').trim();
+    if(!s) return null;
+    var m = /^(\d+)\s+(\d+)\s*\/\s*(\d+)$/.exec(s);
+    if(m) return Number(m[1]) + Number(m[2])/Number(m[3]);
+    m = /^(\d+)\s*\/\s*(\d+)$/.exec(s);
+    if(m) return Number(m[1])/Number(m[2]);
+    var n = Number(s);
+    return isFinite(n) ? n : NaN;
+  }
+  // "Doug fir 2x4x8", "2 x 6 SPF 16'", "5/4x6 cedar" -> {species, t, w, l}
+  var DIM_RE = /(\d+(?:\.\d+)?(?:\s*\/\s*\d+)?)\s*[x×*]\s*(\d+(?:\.\d+)?)(?:\s*[x×*]\s*(\d+(?:\.\d+)?)\s*(?:'|ft\b|feet\b)?)?/i;
+  function parseDesc(s){
+    s = String(s==null ? '' : s);
+    var m = DIM_RE.exec(s), out = {};
+    if(!m) return out;
+    out.t = impNum(m[1]); out.w = impNum(m[2]);
+    if(m[3]) out.l = Number(m[3]);
+    var rest = s.slice(0, m.index)+' '+s.slice(m.index + m[0].length);
+    if(!m[3]){
+      var lm = /(\d+(?:\.\d+)?)\s*(?:'|ft\b|feet\b)/i.exec(rest);
+      if(lm){ out.l = Number(lm[1]); rest = rest.replace(lm[0], ' '); }
+    }
+    out.species = rest.replace(/[-,;:|]+/g,' ').replace(/\s+/g,' ').trim();
+    return out;
+  }
+
+  function parseLines(rows){
+    var hi = -1, map = null;
+    for(var i=0;i<Math.min(rows.length,15);i++){
+      var m = mapHeader(rows[i]);
+      var hasSize = (m.t!==undefined && m.w!==undefined) || m.desc!==undefined;
+      if(hasSize && (m.pcs!==undefined || m.bunks!==undefined)){ hi = i; map = m; break; }
+    }
+    if(hi<0) return null;
+    var lines = [];
+    rows.slice(hi+1).forEach(function(row, ri){
+      if(!row || row.every(function(c){ return String(c==null ? '' : c).trim()===''; })) return;
+      var cell = function(f){ return map[f]===undefined ? '' : row[map[f]]; };
+      var val = function(f, fallback){
+        var v = cell(f);
+        if(String(v==null ? '' : v).trim()==='') return fallback==null ? null : fallback;
+        return impNum(v);
+      };
+      var d = map.desc!==undefined ? parseDesc(cell('desc')) : {};
+      var L = {
+        row: hi + ri + 2,
+        species: String(cell('species')==null ? '' : cell('species')).trim() || d.species || '',
+        t: val('t', d.t), w: val('w', d.w), l: val('l', d.l),
+        bs: val('bs'), bunks: val('bunks'), pcs: val('pcs'), low: val('low')
+      };
+      if(!(L.t>0 && L.w>0 && L.l>0)) L.err = 'Missing or unreadable size';
+      else if([L.bs, L.bunks, L.pcs, L.low].some(function(n){ return n!==null && (isNaN(n) || n<0 || Math.floor(n)!==n); })) L.err = 'Counts must be whole numbers';
+      else if(!(L.bunks>0) && !(L.pcs>0)) L.err = 'No quantity';
+      lines.push(L);
+    });
+    return lines;
+  }
+
+  function lineSpec(L){ return { species:L.species, thickness:L.t, width:L.w, length:L.l }; }
+  // Exact match first; a row with no species matches the one item of that size, if there is only one
+  function findStock(L){
+    var spec = lineSpec(L);
+    var hit = stock.find(function(i){ return sameSpec(i, spec); });
+    if(hit || L.species) return hit || null;
+    var bySize = stock.filter(function(i){ return Number(i.thickness)===L.t && Number(i.width)===L.w && Number(i.length)===L.l; });
+    return bySize.length===1 ? bySize[0] : null;
+  }
+
+  function planStock(lines){
+    var added = {}, fresh = {};
+    return lines.map(function(L){
+      if(L.err) return { L:L, err:L.err };
+      var item = findStock(L);
+      var key = (L.species||'').trim().toLowerCase()+'|'+L.t+'x'+L.w+'x'+L.l;
+      var bs = L.bs || (item && Number(item.bunkSize)) || (fresh[key] && fresh[key].bs) || 0;
+      if(L.bunks>0 && !bs) return { L:L, err:'Needs pieces per bunk' };
+      var p = { L:L, item:item, key:key, bs:bs, add:(L.bunks||0)*bs + (L.pcs||0) };
+      if(item){
+        var before = Number(item.quantity) + (added[item.id]||0);
+        added[item.id] = (added[item.id]||0) + p.add;
+        p.note = 'In stock: '+before.toLocaleString()+' → '+(before+p.add).toLocaleString()+' pcs';
+      } else {
+        p.note = fresh[key] ? 'Adds to the new item above' : 'New item';
+        fresh[key] = fresh[key] || { bs:bs };
+      }
+      return p;
+    });
+  }
+  function planBill(lines){
+    var taken = {};
+    return lines.map(function(L){
+      if(L.err) return { L:L, err:L.err };
+      var item = findStock(L);
+      if(!item) return { L:L, err:'Not in inventory' };
+      var bs = Number(item.bunkSize)||0;
+      if(L.bunks>0 && !bs) return { L:L, item:item, err:'Sold loose only, no bunk size' };
+      var pieces = (L.bunks||0)*bs + (L.pcs||0);
+      var avail = Number(item.quantity) - inCart(item.id) - (taken[item.id]||0);
+      if(pieces>avail) return { L:L, item:item, err:'Only '+qtyText(bs, Math.max(0, avail))+' available' };
+      taken[item.id] = (taken[item.id]||0) + pieces;
+      return { L:L, item:item, bs:bs, add:pieces, note:'Leaves '+qtyText(bs, avail - pieces) };
+    });
+  }
+
+  function renderImp(){
+    var ready = impPlan.filter(function(p){ return !p.err; }).length, skipped = impPlan.length - ready;
+    var rows = impPlan.map(function(p){
+      var L = p.L, sp = p.item ? p.item.species : L.species;
+      var size = (L.t>0 && L.w>0 && L.l>0) ? dims(lineSpec(L)) : 'size missing';
+      var asked = [L.bunks>0 ? L.bunks+(L.bunks===1?' bunk':' bunks') : '', L.pcs>0 ? L.pcs+(L.pcs===1?' pc':' pcs') : ''].filter(Boolean).join(' + ') || '—';
+      var qty = p.err ? asked : qtyText(p.bs, p.add)+'<div class="meta">'+fmt(bfPer(lineSpec(L))*p.add)+' bd ft</div>';
+      return '<div class="imp-row'+(p.err?' bad':'')+'">'+
+        '<div class="num zero">'+L.row+'</div>'+
+        '<div><div class="name'+((sp||'').trim()?'':' unspec')+'">'+esc(spName(sp))+'</div><div class="meta">'+esc(size)+'</div></div>'+
+        '<div class="num">'+qty+'</div>'+
+        '<div class="'+(p.err?'why':'ok')+'">'+esc(p.err || p.note)+'</div>'+
+      '</div>';
+    }).join('');
+    $('imp-preview').innerHTML =
+      '<div class="imp-sum"><span class="badge on">'+ready+' ready</span>'+(skipped ? '<span class="badge off">'+skipped+' will be skipped</span>' : '')+'</div>'+
+      '<div class="card"><div class="imp-row head"><div>Row</div><div>Item</div><div>Qty</div><div>Result</div></div>'+rows+'</div>';
+    var btn = $('imp-apply');
+    btn.disabled = !ready;
+    btn.textContent = ready ? 'Add '+ready+(ready===1?' row':' rows')+(impMode==='stock' ? ' to inventory' : ' to ticket') : 'Nothing to add';
+  }
+
+  function impFail(msg){
+    impPlan = [];
+    $('imp-preview').innerHTML = '';
+    $('imp-apply').disabled = true;
+    ferr('imp-err', msg);
+  }
+  function handleImpFile(file){
+    if(!file) return;
+    fclear('imp-err');
+    $('imp-drop-main').textContent = file.name;
+    $('imp-apply').disabled = true;
+    $('imp-preview').innerHTML = '<div class="loading">Reading file…</div>';
+    var mode = impMode;
+    readRows(file).then(function(rows){
+      if(impMode!==mode) return;
+      var lines = parseLines(rows);
+      if(!lines) return impFail("Couldn't find the column headings. The first row needs headings like Species, Thickness, Width, Length and Pieces (or one Size column like 2x4x8). Download the template to see the layout.");
+      if(!lines.length) return impFail('The file has headings but no rows under them.');
+      impPlan = mode==='stock' ? planStock(lines) : planBill(lines);
+      renderImp();
+    }).catch(function(){
+      impFail("Couldn't read that file. Use an Excel (.xlsx, .xls) or CSV file. Excel files need an internet connection the first time you upload one.");
+    });
+  }
+
+  function openImp(mode){
+    if(!can(mode==='stock' ? 'inventory' : 'bill')) return;
+    impMode = mode; impPlan = [];
+    $('imp-title').textContent = mode==='stock' ? 'Upload stock' : 'Upload a pull list';
+    $('imp-lead').textContent = mode==='stock'
+      ? 'Upload a spreadsheet of lumber you received. Rows that match an item already in inventory add to its count, and new sizes become new items. You will see a preview before anything changes.'
+      : 'Upload a spreadsheet of lumber to pull. Each row is matched to inventory and added to the sale ticket, where you can check it before completing the sale.';
+    $('imp-file').value = '';
+    $('imp-drop-main').textContent = 'Choose a file or drop it here';
+    $('imp-preview').innerHTML = '';
+    fclear('imp-err');
+    $('imp-apply').disabled = true;
+    $('imp-apply').textContent = 'Add';
+    $('imp-overlay').classList.add('open');
+  }
+  function closeImp(){ $('imp-overlay').classList.remove('open'); $('imp-drop').classList.remove('over'); impMode = null; impPlan = []; }
+
+  function applyImp(){
+    var ok = impPlan.filter(function(p){ return !p.err; });
+    if(!ok.length || !impMode) return;
+    var pieces = ok.reduce(function(s, p){ return s + p.add; }, 0);
+    if(impMode==='stock'){
+      if(!can('inventory')) return;
+      var created = {};
+      ok.forEach(function(p){
+        var L = p.L, item = p.item || created[p.key];
+        if(item){
+          item.quantity = Number(item.quantity) + p.add;
+          if(!(Number(item.bunkSize)>0) && p.bs) item.bunkSize = p.bs;
+          if(L.low!==null) item.lowAt = L.low;
+        } else {
+          item = { id:uid('lu'), species:L.species, thickness:L.t, width:L.w, length:L.l, bunkSize:p.bs, quantity:p.add, lowAt:L.low };
+          stock.push(item);
+          created[p.key] = item;
+        }
+        openTypes[typeKey(item)] = true;
+      });
+      save(KEYS.stock, stock);
+      closeImp();
+      syncCart();
+      renderAll();
+      toast('Added '+pieces.toLocaleString()+' pieces to inventory from '+ok.length+(ok.length===1?' row.':' rows.'));
+    } else {
+      ok.forEach(function(p){
+        var existing = cart.find(function(c){ return c.stockId===p.item.id; });
+        if(existing) existing.pieces += p.add;
+        else cart.push({ stockId:p.item.id, pieces:p.add });
+      });
+      closeImp();
+      renderPicker(); renderCart();
+      toast('Added '+ok.length+(ok.length===1?' line':' lines')+' to the ticket. Check it, then complete the sale.');
+    }
+  }
+
+  function downloadTemplate(){
+    if(!impMode) return;
+    var csv = IMP_TEMPLATES[impMode].join(',')+'\r\n';
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob(['﻿'+csv], {type:'text/csv'}));
+    a.download = impMode==='stock' ? 'stock-upload-template.csv' : 'pull-list-template.csv';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 0);
+  }
+
+  $('imp-stock-btn').addEventListener('click', function(){ openImp('stock'); });
+  $('imp-bill-btn').addEventListener('click', function(){ openImp('bill'); });
+  $('imp-file').addEventListener('change', function(){ handleImpFile(this.files && this.files[0]); });
+  $('imp-drop').addEventListener('dragover', function(e){ e.preventDefault(); this.classList.add('over'); });
+  $('imp-drop').addEventListener('dragleave', function(){ this.classList.remove('over'); });
+  $('imp-drop').addEventListener('drop', function(e){
+    e.preventDefault();
+    this.classList.remove('over');
+    handleImpFile(e.dataTransfer && e.dataTransfer.files[0]);
+  });
+  $('imp-template').addEventListener('click', downloadTemplate);
+  $('imp-apply').addEventListener('click', applyImp);
+  $('imp-cancel').addEventListener('click', closeImp);
+  $('imp-close').addEventListener('click', closeImp);
+  $('imp-overlay').addEventListener('click', function(e){ if(e.target.id==='imp-overlay') closeImp(); });
+
   document.addEventListener('keydown', function(e){
-    if(e.key==='Escape'){ closeStock(); closeDelete(); closeTicket(); closeCust(); closeCustDetail(); closeCdel(); closeSdel(); closeAcct(); closePw(); closeCf(); }
+    if(e.key==='Escape'){ closeStock(); closeDelete(); closeTicket(); closeCust(); closeCustDetail(); closeCdel(); closeSdel(); closeAcct(); closePw(); closeCf(); closeImp(); }
   });
 
   /* ---------- boot ---------- */
