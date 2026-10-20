@@ -607,10 +607,10 @@
     <div class="modal-body">
       <p class="imp-lead" id="imp-lead"></p>
       <label class="drop" id="imp-drop">
-        <input type="file" id="imp-file" accept=".csv,.tsv,.txt,.xlsx,.xlsm,.xls,.ods" hidden>
+        <input type="file" id="imp-file" accept=".pdf,.csv,.tsv,.txt,.xlsx,.xlsm,.xls,.ods" hidden>
         <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 15V3M7 8l5-5 5 5M5 21h14"/></svg>
         <span class="drop-main" id="imp-drop-main">Choose a file or drop it here</span>
-        <span class="drop-sub">Excel (.xlsx, .xls) or CSV · first row is the headings</span>
+        <span class="drop-sub">PDF order or packing list, Excel (.xlsx, .xls), or CSV</span>
       </label>
       <div class="imp-help"><button type="button" class="link-btn" id="imp-template">Download a blank template</button></div>
       <div class="form-err" id="imp-err"></div>
@@ -1814,6 +1814,8 @@
      FILE UPLOAD (Inventory: add stock · Bill out: fill the ticket)
   ===================================================== */
   var XLSX_SRC = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+  var PDFJS_SRC = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+  var PDFJS_WORKER = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
   var impMode = null, impPlan = [];
   // Accepted headings, after lowercasing and dropping spaces, punctuation and "(in)"-style notes
   var IMP_COLS = {
@@ -1832,13 +1834,14 @@
     bill:['Species','Thickness (in)','Width (in)','Length (ft)','Bunks','Pieces']
   };
 
-  function loadXlsx(){
-    if(window.XLSX) return Promise.resolve(window.XLSX);
+  // Loads a library only when someone uploads that kind of file
+  function loadLib(src, globalName){
+    if(window[globalName]) return Promise.resolve(window[globalName]);
     return new Promise(function(resolve, reject){
       var s = document.createElement('script');
-      s.src = XLSX_SRC;
-      s.onload = function(){ window.XLSX ? resolve(window.XLSX) : reject(new Error('xlsx')); };
-      s.onerror = function(){ s.remove(); reject(new Error('xlsx')); };
+      s.src = src;
+      s.onload = function(){ window[globalName] ? resolve(window[globalName]) : reject(new Error(globalName)); };
+      s.onerror = function(){ s.remove(); reject(new Error(globalName)); };
       document.head.appendChild(s);
     });
   }
@@ -1868,7 +1871,7 @@
   }
   function readRows(file){
     if(/\.(xlsx|xlsm|xls|ods)$/i.test(file.name||'')){
-      return loadXlsx().then(function(X){
+      return loadLib(XLSX_SRC, 'XLSX').then(function(X){
         return file.arrayBuffer().then(function(buf){
           var wb = X.read(buf, {type:'array'});
           return X.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header:1, raw:true, defval:'', blankrows:false});
@@ -1935,16 +1938,83 @@
         return impNum(v);
       };
       var d = map.desc!==undefined ? parseDesc(cell('desc')) : {};
-      var L = {
+      lines.push(checkLine({
         row: hi + ri + 2,
         species: String(cell('species')==null ? '' : cell('species')).trim() || d.species || '',
         t: val('t', d.t), w: val('w', d.w), l: val('l', d.l),
         bs: val('bs'), bunks: val('bunks'), pcs: val('pcs'), low: val('low')
-      };
-      if(!(L.t>0 && L.w>0 && L.l>0)) L.err = 'Missing or unreadable size';
-      else if([L.bs, L.bunks, L.pcs, L.low].some(function(n){ return n!==null && (isNaN(n) || n<0 || Math.floor(n)!==n); })) L.err = 'Counts must be whole numbers';
-      else if(!(L.bunks>0) && !(L.pcs>0)) L.err = 'No quantity';
-      lines.push(L);
+      }));
+    });
+    return lines;
+  }
+  function checkLine(L){
+    if(!(L.t>0 && L.w>0 && L.l>0)) L.err = 'Missing or unreadable size';
+    else if([L.bs, L.bunks, L.pcs, L.low].some(function(n){ return n!==null && (isNaN(n) || n<0 || Math.floor(n)!==n); })) L.err = 'Counts must be whole numbers';
+    else if(!(L.bunks>0) && !(L.pcs>0)) L.err = 'No quantity';
+    return L;
+  }
+
+  /* ---------- PDF orders and packing lists ---------- */
+  // Text of each page, rebuilt into lines by position (left to right, top to bottom)
+  function pdfText(file){
+    // The worker script is loaded onto the page itself: a cross-site background worker won't start
+    return loadLib(PDFJS_SRC, 'pdfjsLib').then(function(pdfjs){
+      return loadLib(PDFJS_WORKER, 'pdfjsWorker').then(function(){ return file.arrayBuffer(); }).then(function(buf){
+        return pdfjs.getDocument({data:buf}).promise;
+      });
+    }).then(function(doc){
+      var pages = [];
+      for(var n=1;n<=doc.numPages;n++) pages.push(doc.getPage(n).then(function(pg){ return pg.getTextContent(); }));
+      return Promise.all(pages);
+    }).then(function(contents){
+      var out = [];
+      contents.forEach(function(tc){
+        var rows = [];
+        tc.items.forEach(function(it){
+          if(!it.str || !it.str.trim()) return;
+          var x = it.transform[4], y = it.transform[5];
+          var r = rows.find(function(r){ return Math.abs(r.y - y) < 3; });
+          if(!r){ r = { y:y, parts:[] }; rows.push(r); }
+          r.parts.push({ x:x, s:it.str.trim() });
+        });
+        rows.sort(function(a,b){ return b.y - a.y; }).forEach(function(r){
+          out.push(r.parts.sort(function(a,b){ return a.x - b.x; }).map(function(p){ return p.s; }).join(' '));
+        });
+      });
+      return out;
+    });
+  }
+  // An order line: quantity, optional unit (PK294 = packs of 294), description with a size, optional footage.
+  // e.g. "1 PK294 SPF 2x4 - #2 & BTR S4S KD PW 8' 1,568 BF 644.00 /MBF 1,009.79"
+  var PDF_LINE_RE = /^(\d[\d,]*)\s+(?:(PKGS?|PKS?|PCKS?|PACKS?|BDLS?|BUNKS?|LIFTS?|UNITS?|UN|TL|PCS|PC|EA|PIECES?)\s*(\d+)?(?=\s)\s*)?(.+)$/i;
+  var PACK_UNITS = /^(PKGS?|PKS?|PCKS?|PACKS?|BDLS?|BUNKS?|LIFTS?|UNITS?|UN|TL)$/i;
+  function pdfToLines(textLines){
+    var lines = [];
+    textLines.forEach(function(s){
+      var m = PDF_LINE_RE.exec(s.trim());
+      if(!m) return;
+      var desc = m[4], dm = DIM_RE.exec(desc);
+      if(!dm) return;
+      var qty = Number(m[1].replace(/,/g,'')), unit = m[2] || '', perUnit = m[3] ? Number(m[3]) : null;
+      var after = desc.slice(dm.index + dm[0].length), bf = null;
+      var fm = /([\d,]+(?:\.\d+)?)\s*(?:BF|FBM)\b/i.exec(after);
+      if(fm){ bf = Number(fm[1].replace(/,/g,'')); after = after.slice(0, fm.index); }
+      var t = impNum(dm[1]), w = impNum(dm[2]), l = dm[3] ? Number(dm[3]) : null;
+      if(l===null){
+        var lm = /(\d+(?:\.\d+)?)\s*(?:'|ft\b|feet\b)/i.exec(after);
+        if(lm){ l = Number(lm[1]); after = after.replace(lm[0], ' '); }
+      }
+      var clean = function(x){ return x.replace(/^[\s\-,;:|]+|[\s\-,;:|]+$/g,'').replace(/\s+/g,' '); };
+      var L = { row: lines.length+1, species: clean(desc.slice(0, dm.index)) || clean(after), t:t, w:w, l:l, bs:null, bunks:null, pcs:null, low:null };
+      var per = (t>0 && w>0 && l>0) ? t*w*l/12 : 0;
+      var fromBf = (bf && per) ? Math.round(bf/per) : null;
+      if(PACK_UNITS.test(unit)){
+        L.bunks = qty;
+        L.bs = perUnit || (fromBf && qty && fromBf % qty===0 ? fromBf/qty : null);
+      }
+      else if(unit) L.pcs = qty;
+      else L.pcs = (fromBf && Math.abs(qty*per - bf) > bf*0.02) ? fromBf : qty;   // bare number: trust the footage if it disagrees
+      lines.push(checkLine(L));
     });
     return lines;
   }
@@ -2030,6 +2100,18 @@
     $('imp-apply').disabled = true;
     $('imp-preview').innerHTML = '<div class="loading">Reading file…</div>';
     var mode = impMode;
+    if(/\.pdf$/i.test(file.name||'') || file.type==='application/pdf'){
+      pdfText(file).then(function(text){
+        if(impMode!==mode) return;
+        var lines = pdfToLines(text);
+        if(!lines.length) return impFail("Couldn't find any lumber lines in this PDF. Each line needs a quantity and a size like 2x4 with a length. Scanned or photographed PDFs can't be read, only ones made by a computer.");
+        impPlan = mode==='stock' ? planStock(lines) : planBill(lines);
+        renderImp();
+      }).catch(function(){
+        impFail("Couldn't open that PDF. Opening PDFs needs an internet connection the first time.");
+      });
+      return;
+    }
     readRows(file).then(function(rows){
       if(impMode!==mode) return;
       var lines = parseLines(rows);
@@ -2047,8 +2129,8 @@
     impMode = mode; impPlan = [];
     $('imp-title').textContent = mode==='stock' ? 'Upload stock' : 'Upload a pull list';
     $('imp-lead').textContent = mode==='stock'
-      ? 'Upload a spreadsheet of lumber you received. Rows that match an item already in inventory add to its count, and new sizes become new items. You will see a preview before anything changes.'
-      : 'Upload a spreadsheet of lumber to pull. Each row is matched to inventory and added to the sale ticket, where you can check it before completing the sale.';
+      ? 'Upload an order confirmation, packing list, or spreadsheet of lumber you received. Lines that match an item already in inventory add to its count, and new sizes become new items. You will see a preview before anything changes.'
+      : 'Upload an order, pull list, or spreadsheet of lumber to pull. Each line is matched to inventory and added to the sale ticket, where you can check it before completing the sale.';
     $('imp-file').value = '';
     $('imp-drop-main').textContent = 'Choose a file or drop it here';
     $('imp-preview').innerHTML = '';
