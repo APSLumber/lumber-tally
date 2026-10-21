@@ -317,6 +317,18 @@
     .bo-row{grid-template-columns:minmax(0,1fr) auto;row-gap:6px;}
     .bo-row .bo-status{grid-column:1;}
   }
+  .ret-row{display:grid;grid-template-columns:minmax(0,1fr) 64px 64px 52px;gap:8px;align-items:end;padding:10px 14px;border-bottom:1px solid var(--line);}
+  .ret-row:last-child{border-bottom:none;}
+  .ret-row .lbl{font-size:10px;color:var(--faint);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:3px;font-weight:600;}
+  .ret-row input{width:100%;padding:7px 8px;border-radius:6px;border:1px solid var(--line2);font-size:13px;font-family:'JetBrains Mono',monospace;background:#FCFBF8;}
+  .ret-row input:disabled{background:#EFEDE4;}
+  .ret-row .btn{padding:7px 0;justify-content:center;}
+  @media (max-width:520px){
+    .ret-row{grid-template-columns:repeat(3,minmax(0,1fr));}
+    .ret-row > :first-child{grid-column:1 / -1;}
+  }
+  .paper .p-ret{margin-top:16px;padding-top:8px;border-top:1px dashed var(--rust);}
+  .paper .p-ret-title{font-family:'Inter',sans-serif;font-weight:700;font-size:13px;color:var(--rust);margin-bottom:2px;}
   .paper .p-bo{margin-top:16px;padding-top:8px;border-top:1px dashed var(--gold);}
   .paper .p-bo-title{font-family:'Inter',sans-serif;font-weight:700;font-size:13px;color:#8A6215;margin-bottom:4px;}
 </style>
@@ -607,7 +619,21 @@
   <div class="modal wide">
     <div class="modal-head"><h2>Sale ticket</h2><button id="ticket-close" aria-label="Close"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
     <div class="modal-body"><div class="paper" id="paper"></div></div>
-    <div class="modal-foot"><button class="btn" id="ticket-close-2">Close</button><button class="btn primary" id="ticket-print">Print</button></div>
+    <div class="modal-foot"><button class="btn" id="ticket-return" style="margin-right:auto;">Return items</button><button class="btn" id="ticket-close-2">Close</button><button class="btn primary" id="ticket-print">Print</button></div>
+  </div>
+</div>
+
+<!-- Return part of a ticket to inventory -->
+<div class="overlay" id="ret-overlay">
+  <div class="modal wide">
+    <div class="modal-head"><h2>Return items to inventory</h2><button id="ret-close" aria-label="Close"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+    <div class="modal-body">
+      <p class="imp-lead" id="ret-lead"></p>
+      <div class="card" id="ret-lines"></div>
+      <div class="field"><label for="ret-note">Reason (optional)</label><input type="text" id="ret-note" placeholder="Extra, wrong length, damaged…"></div>
+      <div class="form-err" id="ret-err"></div>
+    </div>
+    <div class="modal-foot"><button class="btn" id="ret-cancel">Cancel</button><button class="btn primary" id="ret-save">Return to inventory</button></div>
   </div>
 </div>
 
@@ -1031,7 +1057,7 @@
     cart = []; boCart = [];
     $('customer').value = ''; $('cust-select').value = '';
     closeStock(); closeDelete(); closeTicket(); closeCust(); closeCustDetail(); closeCdel(); closeSdel();
-    closeAcct(); closePw(); closeCf(); closeImp(); closeBoAdd();
+    closeAcct(); closePw(); closeCf(); closeImp(); closeBoAdd(); closeReturn();
     document.body.classList.remove('authed');
     showGate('login');
   });
@@ -1709,13 +1735,15 @@
     Object.keys(selSales).forEach(function(id){ if(!sales.some(function(s){ return s.id===id; })) delete selSales[id]; });
     el.innerHTML = '<div class="card"><div class="row sale-row head"><div><input type="checkbox" id="sel-all" aria-label="Select all"></div><div>Ticket</div><div>Customer</div><div class="hide-sm">Date</div><div class="hide-sm">Pieces</div><div style="text-align:right;">Board ft</div></div>'+
       sales.map(function(s){
+        var net = saleNet(s);
         return '<div class="row sale-row'+(selSales[s.id]?' selected':'')+'" data-id="'+s.id+'">'+
           '<div class="c-check"><input type="checkbox" aria-label="Select ticket"'+(selSales[s.id]?' checked':'')+'></div>'+
           '<div class="num strong">'+esc(s.number)+'</div>'+
-          '<div><div class="name">'+esc(s.customer)+'</div>'+(s.by ? '<div class="meta" style="margin-top:1px;">by '+esc(s.by)+'</div>' : '')+'</div>'+
+          '<div><div class="name">'+esc(s.customer)+'</div><div class="meta" style="margin-top:1px;">'+
+            (s.by ? 'by '+esc(s.by) : '')+(s.returns && s.returns.length ? (s.by ? ' · ' : '')+'<span style="color:var(--rust);">'+(net.pieces ? 'part returned' : 'returned')+'</span>' : '')+'</div></div>'+
           '<div class="meta hide-sm" style="margin:0;">'+fmtDate(s.date)+'</div>'+
-          '<div class="num hide-sm">'+s.pieces.toLocaleString()+'</div>'+
-          '<div class="num strong" style="text-align:right;">'+fmt(s.bf)+'</div>'+
+          '<div class="num hide-sm">'+net.pieces.toLocaleString()+'</div>'+
+          '<div class="num strong" style="text-align:right;">'+fmt(net.bf)+'</div>'+
         '</div>';
       }).join('')+'</div>';
     el.querySelectorAll('.sale-row[data-id]').forEach(function(row){
@@ -1764,7 +1792,7 @@
   });
   function selectedSales(){ return sales.filter(function(s){ return selSales[s.id]; }); }
   function updateSdelHint(){
-    var pieces = selectedSales().reduce(function(sum, s){ return sum + s.pieces; }, 0);
+    var pieces = selectedSales().reduce(function(sum, s){ return sum + saleNet(s).pieces; }, 0);
     $('sdel-hint').textContent = $('sdel-restock').checked
       ? pieces.toLocaleString()+' pieces will be added back to stock.'
       : 'Leave unchecked to keep inventory as it is.';
@@ -1774,13 +1802,21 @@
     return Number(a.thickness)===Number(b.thickness) && Number(a.width)===Number(b.width) && Number(a.length)===Number(b.length) &&
       kindOf(a)===kindOf(b);
   }
+  // Pieces still out with the customer after returns
+  function lineNet(l){ return Math.max(0, Number(l.pieces) - (Number(l.returned)||0)); }
+  function saleNet(s){
+    var pieces = 0, bf = 0;
+    s.lines.forEach(function(l){ var n = lineNet(l); pieces += n; bf += l.pieces ? l.bf*n/l.pieces : 0; });
+    return { pieces:pieces, bf:round2(bf) };
+  }
+  function putBack(spec, pieces){
+    var item = stock.find(function(i){ return sameSpec(i, spec); });
+    if(item) item.quantity = Number(item.quantity) + pieces;
+    else stock.push({id:uid('lu'), thickness:spec.thickness, width:spec.width, length:spec.length, kind:kindOf(spec), bunkSize:Number(spec.bunkSize)||0, quantity:pieces, lowAt:null});
+  }
   function restockFrom(list){
     list.forEach(function(s){
-      s.lines.forEach(function(l){
-        var item = stock.find(function(i){ return sameSpec(i, l); });
-        if(item) item.quantity = Number(item.quantity) + l.pieces;
-        else stock.push({id:uid('lu'), thickness:l.thickness, width:l.width, length:l.length, kind:kindOf(l), bunkSize:Number(l.bunkSize)||0, quantity:l.pieces, lowAt:null});
-      });
+      s.lines.forEach(function(l){ if(lineNet(l)) putBack(l, lineNet(l)); });
     });
     save(KEYS.stock, stock);
   }
@@ -1797,11 +1833,15 @@
     renderAll();
   });
 
+  var ticketSaleId = null;
   function showTicket(s){
+    ticketSaleId = s.id;
+    var net = saleNet(s);
     var rows = s.lines.map(function(l){
       var fills = l.fillsBackorder ? '<div class="sub">Fills back order'+(Array.isArray(l.fillsBackorder) ? ' from '+esc(l.fillsBackorder.join(', ')) : '')+'</div>' : '';
+      var back = Number(l.returned) ? '<div class="sub" style="color:var(--rust);">'+qtyText(l.bunkSize, Number(l.returned))+' returned</div>' : '';
       return '<tr>'+
-        '<td>'+esc(dims(l))+fills+'</td>'+
+        '<td>'+esc(dims(l))+fills+back+'</td>'+
         '<td>'+qtyText(l.bunkSize, l.pieces)+(l.bunkSize>0 && l.pieces>=l.bunkSize ? '<div class="sub">'+l.pieces+' pcs</div>' : '')+'</td>'+
         '<td class="r">'+fmt(l.bf)+'</td>'+
       '</tr>';
@@ -1814,10 +1854,87 @@
         '<div style="text-align:right;"><div class="sub">Sold to</div><div style="font-weight:700;">'+esc(s.customer)+'</div></div></div>'+
       '<table><thead><tr><th>Item</th><th>Qty</th><th class="r">Bd ft</th></tr></thead><tbody>'+rows+'</tbody></table>'+
       '<div class="p-total"><span>'+s.pieces.toLocaleString()+' pieces</span><span>'+fmt(s.bf)+' bd ft</span></div>'+
+      (s.returns && s.returns.length ? '<div class="p-ret"><div class="p-ret-title">Returned to inventory</div>'+
+        s.returns.map(function(r){
+          return '<div class="sub" style="margin-top:6px;">'+fmtDate(r.date)+(r.by ? ' · '+esc(r.by) : '')+(r.note ? ' · '+esc(r.note) : '')+'</div>'+
+            '<table><tbody>'+r.lines.map(function(l){
+              return '<tr><td>'+esc(dims(l))+'</td><td>'+qtyText(l.bunkSize, l.pieces)+'</td><td class="r">−'+fmt(l.bf)+'</td></tr>';
+            }).join('')+'</tbody></table>';
+        }).join('')+
+        '<div class="p-total"><span>Net '+net.pieces.toLocaleString()+' pieces</span><span>'+fmt(net.bf)+' bd ft</span></div></div>' : '')+
       (boRows ? '<div class="p-bo"><div class="p-bo-title">Back ordered (not included above, to follow)</div>'+
         '<table><thead><tr><th>Item</th><th>Qty</th><th class="r">Bd ft</th></tr></thead><tbody>'+boRows+'</tbody></table></div>' : '');
+    $('ticket-return').disabled = !net.pieces;
     $('ticket-overlay').classList.add('open');
   }
+
+  /* ---------- return part of a ticket ---------- */
+  function openReturn(){
+    var s = sales.find(function(x){ return x.id===ticketSaleId; });
+    if(!s || !saleNet(s).pieces) return;
+    $('ret-lead').textContent = 'Ticket '+s.number+' for '+s.customer+'. Enter what came back. It goes back into inventory, and the ticket keeps a record of the return.';
+    $('ret-lines').innerHTML = s.lines.map(function(l, i){
+      var n = lineNet(l), bs = Number(l.bunkSize)||0;
+      if(!n) return '';
+      return '<div class="ret-row" data-li="'+i+'">'+
+        '<div><div class="name mono">'+esc(dims(l))+'</div>'+
+          '<div class="meta">Sold '+qtyText(bs, Number(l.pieces))+(Number(l.returned) ? ' · '+Number(l.returned).toLocaleString()+' already returned' : '')+' · up to '+qtyText(bs, n)+'</div></div>'+
+        '<div><div class="lbl">Bunks</div><input type="number" class="rt-bunks" min="0" step="1" placeholder="0"'+(bs?'':' disabled')+'></div>'+
+        '<div><div class="lbl">Pieces</div><input type="number" class="rt-pcs" min="0" step="1" placeholder="0"></div>'+
+        '<button type="button" class="btn sm rt-all">All</button>'+
+      '</div>';
+    }).join('');
+    $('ret-lines').querySelectorAll('.rt-all').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var row = btn.closest('.ret-row'), l = s.lines[Number(row.dataset.li)], n = lineNet(l), bs = Number(l.bunkSize)||0;
+        row.querySelector('.rt-bunks').value = bs ? Math.floor(n/bs) || '' : '';
+        row.querySelector('.rt-pcs').value = (bs ? n%bs : n) || '';
+      });
+    });
+    $('ret-note').value = '';
+    fclear('ret-err');
+    $('ret-overlay').classList.add('open');
+  }
+  function closeReturn(){ $('ret-overlay').classList.remove('open'); }
+  $('ret-save').addEventListener('click', function(){
+    var s = sales.find(function(x){ return x.id===ticketSaleId; });
+    if(!s) return;
+    fclear('ret-err');
+    var picks = [], msg = '';
+    $('ret-lines').querySelectorAll('.ret-row').forEach(function(row){
+      var l = s.lines[Number(row.dataset.li)], bs = Number(l.bunkSize)||0;
+      var bunks = Number(row.querySelector('.rt-bunks').value)||0, pcs = Number(row.querySelector('.rt-pcs').value)||0;
+      if(bunks<0 || pcs<0 || Math.floor(bunks)!==bunks || Math.floor(pcs)!==pcs){ msg = msg || 'Use whole numbers for bunks and pieces.'; return; }
+      var n = bunks*bs + pcs;
+      if(n > lineNet(l)) msg = msg || dims(l)+': only '+qtyText(bs, lineNet(l))+' can be returned.';
+      else if(n>0) picks.push({ line:l, pieces:n });
+    });
+    if(!msg && !picks.length) msg = 'Enter how much came back.';
+    if(msg){ ferr('ret-err', msg); return; }
+    var ret = { date:new Date().toISOString(), by: session ? session.name : '', note:$('ret-note').value.trim(), lines:[] };
+    var total = 0;
+    picks.forEach(function(p){
+      var l = p.line;
+      putBack(l, p.pieces);
+      l.returned = (Number(l.returned)||0) + p.pieces;
+      total += p.pieces;
+      ret.lines.push({ thickness:l.thickness, width:l.width, length:l.length, kind:kindOf(l), bunkSize:Number(l.bunkSize)||0,
+        pieces:p.pieces, bf:round2(bfPer(l)*p.pieces) });
+    });
+    s.returns = (s.returns||[]).concat(ret);
+    save(KEYS.stock, stock);
+    save(KEYS.sales, sales);
+    closeReturn();
+    syncCart();
+    renderAll();
+    showTicket(s);
+    var ready = boReadyCount();
+    toast('Returned '+total.toLocaleString()+' pcs to inventory.'+(ready ? ' '+ready+(ready===1?' back order':' back orders')+' can be filled now.' : ''));
+  });
+  $('ticket-return').addEventListener('click', openReturn);
+  $('ret-cancel').addEventListener('click', closeReturn);
+  $('ret-close').addEventListener('click', closeReturn);
+  $('ret-overlay').addEventListener('click', function(e){ if(e.target.id==='ret-overlay') closeReturn(); });
   function closeTicket(){ $('ticket-overlay').classList.remove('open'); }
   $('ticket-close').addEventListener('click', closeTicket);
   $('ticket-close-2').addEventListener('click', closeTicket);
@@ -1833,7 +1950,8 @@
     var list = sales.filter(function(s){ return s.customerId===id; });
     var pieces=0, bf=0, last=null;
     list.forEach(function(s){
-      pieces += s.pieces; bf += s.bf;
+      var net = saleNet(s);
+      pieces += net.pieces; bf += net.bf;
       if(!last || new Date(s.date) > new Date(last)) last = s.date;
     });
     return { orders:list.length, pieces:pieces, bf:round2(bf), last:last, list:list };
@@ -1941,8 +2059,8 @@
     var hist = s.list.slice().sort(function(a,b){ return new Date(b.date)-new Date(a.date); }).map(function(t){
       return '<div class="hist-row" data-id="'+t.id+'"><div class="num strong">'+esc(t.number)+'</div>'+
         '<div class="meta" style="margin:0;">'+fmtDate(t.date)+'</div>'+
-        '<div class="num">'+t.pieces.toLocaleString()+' pcs</div>'+
-        '<div class="num strong">'+fmt(t.bf)+' bd ft</div></div>';
+        '<div class="num">'+saleNet(t).pieces.toLocaleString()+' pcs</div>'+
+        '<div class="num strong">'+fmt(saleNet(t).bf)+' bd ft</div></div>';
     }).join('') || '<div class="empty" style="padding:26px 0;"><div class="big">No tickets yet</div><div>Pick this customer on the Bill out tab.</div></div>';
     $('cdetail-body').innerHTML =
       '<div style="color:var(--soft);">'+(contact || 'No contact info on file')+'</div>'+
@@ -2692,7 +2810,7 @@
   $('imp-overlay').addEventListener('click', function(e){ if(e.target.id==='imp-overlay') closeImp(); });
 
   document.addEventListener('keydown', function(e){
-    if(e.key==='Escape'){ closeStock(); closeDelete(); closeTicket(); closeCust(); closeCustDetail(); closeCdel(); closeSdel(); closeAcct(); closePw(); closeCf(); closeImp(); closeBoAdd(); }
+    if(e.key==='Escape'){ closeStock(); closeDelete(); closeTicket(); closeCust(); closeCustDetail(); closeCdel(); closeSdel(); closeAcct(); closePw(); closeCf(); closeImp(); closeBoAdd(); closeReturn(); }
   });
 
   /* ---------- boot ---------- */
