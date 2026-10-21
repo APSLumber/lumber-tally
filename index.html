@@ -327,8 +327,6 @@
     .ret-row{grid-template-columns:repeat(3,minmax(0,1fr));}
     .ret-row > :first-child{grid-column:1 / -1;}
   }
-  .paper .p-ret{margin-top:16px;padding-top:8px;border-top:1px dashed var(--rust);}
-  .paper .p-ret-title{font-family:'Inter',sans-serif;font-weight:700;font-size:13px;color:var(--rust);margin-bottom:2px;}
   .paper .p-bo{margin-top:16px;padding-top:8px;border-top:1px dashed var(--gold);}
   .paper .p-bo-title{font-family:'Inter',sans-serif;font-weight:700;font-size:13px;color:#8A6215;margin-bottom:4px;}
 </style>
@@ -1837,15 +1835,17 @@
   function showTicket(s){
     ticketSaleId = s.id;
     var net = saleNet(s);
+    // Each line shows what the customer kept after returns; fully returned lines drop off
     var rows = s.lines.map(function(l){
+      var n = lineNet(l);
+      if(!n) return '';
       var fills = l.fillsBackorder ? '<div class="sub">Fills back order'+(Array.isArray(l.fillsBackorder) ? ' from '+esc(l.fillsBackorder.join(', ')) : '')+'</div>' : '';
-      var back = Number(l.returned) ? '<div class="sub" style="color:var(--rust);">'+qtyText(l.bunkSize, Number(l.returned))+' returned</div>' : '';
       return '<tr>'+
-        '<td>'+esc(dims(l))+fills+back+'</td>'+
-        '<td>'+qtyText(l.bunkSize, l.pieces)+(l.bunkSize>0 && l.pieces>=l.bunkSize ? '<div class="sub">'+l.pieces+' pcs</div>' : '')+'</td>'+
-        '<td class="r">'+fmt(l.bf)+'</td>'+
+        '<td>'+esc(dims(l))+fills+'</td>'+
+        '<td>'+qtyText(l.bunkSize, n)+(l.bunkSize>0 && n>=l.bunkSize ? '<div class="sub">'+n+' pcs</div>' : '')+'</td>'+
+        '<td class="r">'+fmt(round2(bfPer(l)*n))+'</td>'+
       '</tr>';
-    }).join('') || '<tr><td colspan="3" class="sub">Nothing pulled from stock on this ticket</td></tr>';
+    }).join('') || '<tr><td colspan="3" class="sub">'+(s.lines.length ? 'Everything on this ticket was returned' : 'Nothing pulled from stock on this ticket')+'</td></tr>';
     var boRows = (s.backorders||[]).map(function(b){
       return '<tr><td>'+esc(dims(b))+'</td><td>'+qtyText(b.bunkSize, b.pieces)+'</td><td class="r">'+fmt(round2(bfPer(b)*b.pieces))+'</td></tr>';
     }).join('');
@@ -1853,15 +1853,7 @@
       '<div class="p-head"><div><div class="shop">Advanced Precut Systems Lumber Tally</div><div class="sub">'+esc(s.number)+' · '+fmtDate(s.date)+'</div>'+(s.by ? '<div class="sub">Served by '+esc(s.by)+'</div>' : '')+'</div>'+
         '<div style="text-align:right;"><div class="sub">Sold to</div><div style="font-weight:700;">'+esc(s.customer)+'</div></div></div>'+
       '<table><thead><tr><th>Item</th><th>Qty</th><th class="r">Bd ft</th></tr></thead><tbody>'+rows+'</tbody></table>'+
-      '<div class="p-total"><span>'+s.pieces.toLocaleString()+' pieces</span><span>'+fmt(s.bf)+' bd ft</span></div>'+
-      (s.returns && s.returns.length ? '<div class="p-ret"><div class="p-ret-title">Returned to inventory</div>'+
-        s.returns.map(function(r){
-          return '<div class="sub" style="margin-top:6px;">'+fmtDate(r.date)+(r.by ? ' · '+esc(r.by) : '')+(r.note ? ' · '+esc(r.note) : '')+'</div>'+
-            '<table><tbody>'+r.lines.map(function(l){
-              return '<tr><td>'+esc(dims(l))+'</td><td>'+qtyText(l.bunkSize, l.pieces)+'</td><td class="r">−'+fmt(l.bf)+'</td></tr>';
-            }).join('')+'</tbody></table>';
-        }).join('')+
-        '<div class="p-total"><span>Net '+net.pieces.toLocaleString()+' pieces</span><span>'+fmt(net.bf)+' bd ft</span></div></div>' : '')+
+      '<div class="p-total"><span>'+net.pieces.toLocaleString()+' pieces</span><span>'+fmt(net.bf)+' bd ft</span></div>'+
       (boRows ? '<div class="p-bo"><div class="p-bo-title">Back ordered (not included above, to follow)</div>'+
         '<table><thead><tr><th>Item</th><th>Qty</th><th class="r">Bd ft</th></tr></thead><tbody>'+boRows+'</tbody></table></div>' : '');
     $('ticket-return').disabled = !net.pieces;
