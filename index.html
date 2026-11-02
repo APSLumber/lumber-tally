@@ -335,6 +335,12 @@
     .ret-row{grid-template-columns:repeat(3,minmax(0,1fr));}
     .ret-row > :first-child{grid-column:1 / -1;}
   }
+  /* Review */
+  .rv-line{grid-template-columns:minmax(0,1.6fr) minmax(0,1fr) auto;}
+  .rv-total{display:flex;justify-content:space-between;gap:10px;padding:10px 16px;font-family:'JetBrains Mono',monospace;font-weight:700;background:#FBFAF6;}
+  .rv-why{padding:10px 16px;background:var(--rust-pale);color:var(--rust);font-size:13px;font-weight:600;border-top:1px solid var(--line);}
+  .rv-foot{display:flex;justify-content:flex-end;gap:8px;padding:12px 16px;border-top:1px solid var(--line);}
+
   /* Phone layout. Screen only, so printed tickets are not affected. */
   .tab-btn svg,.btn.signout svg{display:none;}
   .tab-btn svg,.btn.signout svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
@@ -394,6 +400,9 @@
     .pick-row .add{min-height:42px;}
     .ticket-bar{position:fixed;left:8px;right:8px;bottom:calc(66px + env(safe-area-inset-bottom));z-index:25;display:flex;justify-content:space-between;align-items:center;gap:10px;min-height:46px;padding:0 14px;border:none;border-radius:10px;background:var(--ink);color:#fff;font-size:13.5px;box-shadow:0 4px 16px rgba(0,0,0,0.3);cursor:pointer;}
     #view-bill{padding-bottom:58px;}
+    .rv-line{grid-template-columns:minmax(0,1fr) auto;row-gap:2px;}
+    .rv-line > :first-child{grid-column:1 / -1;}
+    .rv-foot .btn{flex:1 1 0;justify-content:center;}
 
     /* Forms fill the screen, with their buttons always showing */
     .overlay{padding:0;}
@@ -415,8 +424,11 @@
     .install{display:flex;align-items:center;gap:10px;padding:10px 12px;margin-bottom:12px;background:var(--green-pale);border:1px solid var(--green);border-radius:8px;font-size:13px;line-height:1.4;}
     .install > div{flex:1;}
   }
-  @media screen and (max-width:340px){
+  @media screen and (max-width:380px){
     .tab-btn{font-size:9px;}
+  }
+  @media screen and (max-width:340px){
+    .tab-btn{font-size:8px;}
   }
   .paper .p-bo{margin-top:16px;padding-top:8px;border-top:1px dashed var(--gold);}
   .paper .p-bo-title{font-family:'Inter',sans-serif;font-weight:700;font-size:13px;color:#8A6215;margin-bottom:4px;}
@@ -472,6 +484,7 @@
     <div class="tabs" id="tabs">
       <button class="tab-btn" data-view="inventory"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h18M3 12h18M3 17h18"/></svg>Inventory</button>
       <button class="tab-btn" data-view="bill"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg>Bill out</button>
+      <button class="tab-btn" data-view="review"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg>Review<span class="tab-count" id="rv-count" hidden></span></button>
       <button class="tab-btn" data-view="backorders"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Back orders<span class="tab-count" id="bo-count" hidden></span></button>
       <button class="tab-btn" data-view="customers"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M3 20c0-3.5 2.7-6 6-6s6 2.5 6 6"/><path d="M16 5a3.5 3.5 0 0 1 0 6.5M18 14.5c2 .8 3 2.8 3 5.5"/></svg>Customers</button>
       <button class="tab-btn" data-view="sales"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Sales</button>
@@ -560,6 +573,13 @@
     <button class="ticket-bar" id="ticket-bar" hidden><span id="ticket-bar-text"></span><strong>View ticket</strong></button>
   </section>
 
+  <!-- REVIEW -->
+  <section class="view" id="view-review">
+    <h2 class="section" style="margin-bottom:4px;">Bill out review</h2>
+    <p class="acct-note" id="rv-lead"></p>
+    <div id="review-list"></div>
+  </section>
+
   <!-- BACK ORDERS -->
   <section class="view" id="view-backorders">
     <div class="stats">
@@ -614,7 +634,7 @@
     <h2 class="section" style="margin-top:24px;">Other admin</h2>
     <div class="card" id="admin2-card"></div>
     <div class="acct-head"><h2 class="section" style="margin:0;">User accounts</h2><span class="meta" id="acct-count" style="margin:0;"></span></div>
-    <p class="acct-note">User accounts can open Bill out, Back orders and Customers only. Inventory, Sales, and Accounts are admin-only.</p>
+    <p class="acct-note">User accounts can open Bill out, Review, Back orders and Customers only, and their bill outs need an admin's approval. Inventory, Sales, and Accounts are admin-only.</p>
     <div class="card" id="acct-list"></div>
   </section>
 
@@ -802,6 +822,18 @@
   </div>
 </div>
 
+<!-- Send a bill out back -->
+<div class="overlay" id="rej-overlay">
+  <div class="modal" style="max-width:400px;">
+    <div class="modal-head"><h2>Send back</h2><button id="rej-close" aria-label="Close"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+    <div class="modal-body">
+      <p style="margin:0;color:var(--soft);">Send back the bill out for <strong id="rej-who" style="color:var(--ink);"></strong>? Its lumber goes back into inventory and no ticket is created.</p>
+      <div class="field"><label for="rej-reason">Reason (optional)</label><input type="text" id="rej-reason" placeholder="Wrong length, check the count…"></div>
+    </div>
+    <div class="modal-foot"><button class="btn" id="rej-cancel">Cancel</button><button class="btn danger" id="rej-confirm">Send back</button></div>
+  </div>
+</div>
+
 <!-- Add back order by hand -->
 <div class="overlay" id="boadd-overlay">
   <div class="modal">
@@ -838,11 +870,13 @@
 <script>
 (function(){
   'use strict';
-  var KEYS = { stock:'tally:stock', sales:'tally:sales', cust:'tally:customers', seq:'tally:nextno', acct:'tally:accounts', bo:'tally:backorders' };
+  var KEYS = { stock:'tally:stock', sales:'tally:sales', cust:'tally:customers', seq:'tally:nextno', acct:'tally:accounts', bo:'tally:backorders', review:'tally:reviews' };
   // Back orders: lumber owed to a customer. { id, date, customerId, customer, by, ticket, thickness, width, length, kind,
   // bunkSize, pieces, filled, fills:[{ticket,date,pieces}], status:'open'|'filled', filledDate }
   var backorders = [];
   var boCart = [];   // lines on the current Bill out ticket that will be back ordered: { thickness, width, length, kind, bunkSize, pieces }
+  // Bill outs from user accounts: { id, date, by, byId, customerId, customer, lines, backorders, status:'pending'|'rejected'|'approved', reason, reviewedBy, saleId, number }
+  var reviews = [];
   var nextNo = 1001;
   var stock = [], sales = [], cart = [], customers = [];
   var editingId = null, deletingId = null;
@@ -1015,7 +1049,7 @@
   var MAX_USERS = 10;
   var USERNAME_RULE = 'Username must be 3 to 30 characters: letters, numbers, dot, dash, or underscore.';
   var PASS_RULE = 'Password must be at least 6 characters.';
-  var ROLE_VIEWS = { admin:['inventory','bill','backorders','customers','sales','accounts'], user:['bill','backorders','customers'] };
+  var ROLE_VIEWS = { admin:['inventory','bill','review','backorders','customers','sales','accounts'], user:['bill','review','backorders','customers'] };
   function can(view){ return !!session && ROLE_VIEWS[session.role].indexOf(view)>-1; }
   function saveAccounts(){ save(KEYS.acct, accounts); }
   function adminRec(id){ return id==='admin' ? accounts.admin : (id==='admin2' && accounts.admin2) ? accounts.admin2 : null; }
@@ -1063,6 +1097,7 @@
     $('sub').textContent = 'Signed in as '+session.name+' · '+(session.role==='admin' ? 'Admin' : 'User');
     document.querySelectorAll('.tab-btn').forEach(function(b){ b.hidden = !can(b.dataset.view); });
     document.querySelectorAll('.view').forEach(function(v){ v.hidden = !can(v.id.replace('view-','')); });
+    $('complete-btn').textContent = session.role==='admin' ? 'Complete sale' : 'Submit for review';
     renderAll();
     go(session.role==='admin' ? 'inventory' : 'bill');
   }
@@ -1076,6 +1111,7 @@
     if(view==='sales') renderSales();
     if(view==='accounts') renderAccounts();
     if(view==='backorders') renderBackorders();
+    if(view==='review') renderReview();
   }
   document.querySelectorAll('.tab-btn').forEach(function(btn){
     btn.addEventListener('click', function(){ go(btn.dataset.view); });
@@ -1156,7 +1192,7 @@
     cart = []; boCart = [];
     $('customer').value = ''; $('cust-select').value = '';
     closeStock(); closeDelete(); closeTicket(); closeCust(); closeCustDetail(); closeCdel(); closeSdel();
-    closeAcct(); closePw(); closeCf(); closeImp(); closeBoAdd(); closeReturn();
+    closeAcct(); closePw(); closeCf(); closeImp(); closeBoAdd(); closeReturn(); closeReject();
     document.body.classList.remove('authed');
     showGate('login');
   });
@@ -1266,7 +1302,7 @@
     editingAcct = user ? user.id : null; acctSlot = slot || null;
     var isA2 = slot==='admin2';
     $('acct-title').textContent = isA2 ? (user ? 'Edit 2nd admin' : 'Create 2nd admin') : user ? 'Edit user account' : 'Create user account (slot '+slot+')';
-    $('acct-note').textContent = isA2 ? 'A 2nd admin can open every tab and manage the 10 user accounts.' : 'This account can open Bill out and Customers only.';
+    $('acct-note').textContent = isA2 ? 'A 2nd admin can open every tab and manage the 10 user accounts.' : 'This account can open Bill out, Review, Back orders and Customers only. An admin approves its bill outs.';
     $('a-name').value = user ? user.name : '';
     $('a-user').value = user ? user.username : '';
     $('a-pass').value = '';
@@ -1407,7 +1443,7 @@
     var delSvg = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6h16Z"/></svg>';
     var chevSvg = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m9 6 6 6-6 6"/></svg>';
 
-    var owed = boOwedBySpec();
+    var owed = boOwedBySpec(), held = reviewHeldBySpec();
     var html = glist.map(function(g, gi){
       g.items.sort(function(a,b){ return a.length-b.length; });
       var gp=0, gbf=0, gb=0, gl=0, flagged=false, allOut=true;
@@ -1435,7 +1471,8 @@
         return '<div class="row inv-row child-row" data-id="'+i.id+'">'+
           '<div class="c-title"><div class="name">'+fmtLen(i.length)+(out?'<span class="badge out">Out</span>':(isLow(i)?'<span class="badge low">Low</span>':''))+'</div>'+
             '<div class="meta">'+(i.bunkSize>0 ? i.bunkSize+' per bunk' : 'loose only')+
-              (owed[specKey(i)] ? ' · <span class="bo-note">'+owed[specKey(i)].toLocaleString()+' back ordered</span>' : '')+'</div></div>'+
+              (owed[specKey(i)] ? ' · <span class="bo-note">'+owed[specKey(i)].toLocaleString()+' back ordered</span>' : '')+
+              (held[specKey(i)] ? ' · <span class="bo-note">'+held[specKey(i)].toLocaleString()+' held for review</span>' : '')+'</div></div>'+
           '<div class="num c-num'+(b?'':' zero')+'">'+b+'</div>'+
           '<div class="num c-num'+(l?'':' zero')+'">'+l+'</div>'+
           '<div class="num c-num strong">'+Number(i.quantity).toLocaleString()+'</div>'+
@@ -1770,18 +1807,53 @@
     if(!chosen) custId = null;
     var custName = chosen ? chosen.name : $('customer').value.trim();
     if(boCart.length && !custName){ err.textContent = 'Pick or type the customer, so the back order is under their name.'; err.classList.add('show'); return; }
-    var number = 'T-'+nextNo, date = new Date().toISOString();
-    var lines = cart.map(function(c){
+    var draft = {
+      id:uid('rv'), date:new Date().toISOString(), status:'pending',
+      by: session ? session.name : '', byId: session ? session.id : '',
+      customerId:custId, customer:custName,
+      lines:cart.map(function(c){
+        var item = stock.find(function(i){ return i.id===c.stockId; });
+        return {
+          thickness:item.thickness, width:item.width, length:item.length, kind:kindOf(item),
+          bunkSize:Number(item.bunkSize)||0, pieces:c.pieces, bf:round2(bfPer(item)*c.pieces),
+          fills: c.fills ? Object.assign({}, c.fills) : null
+        };
+      }),
+      backorders:boCart.map(function(b){ return Object.assign({}, b); })
+    };
+    // Lumber comes off stock now, even while waiting for review, so nobody else can bill out the same boards
+    cart.forEach(function(c){
       var item = stock.find(function(i){ return i.id===c.stockId; });
-      var line = {
-        thickness:item.thickness, width:item.width, length:item.length, kind:kindOf(item),
-        bunkSize:Number(item.bunkSize)||0, pieces:c.pieces, bf:round2(bfPer(item)*c.pieces)
-      };
+      if(item) item.quantity = Math.max(0, item.quantity - c.pieces);
+    });
+    save(KEYS.stock, stock);
+    cart = []; boCart = [];
+    $('customer').value = '';
+    $('cust-select').value = '';
+    toggleWalkin();
+    if(session && session.role==='admin'){
+      var sale = createSale(draft, null);
+      renderAll();
+      showTicket(sale);
+      return;
+    }
+    reviews.unshift(draft);
+    save(KEYS.review, reviews);
+    renderAll();
+    toast('Sent to the admin for review. It reaches Sales once approved.');
+  });
+
+  // Turns a bill out into a numbered ticket in Sales: admins' own right away, users' once approved
+  function createSale(d, approvedBy){
+    var number = 'T-'+nextNo, date = new Date().toISOString();
+    var custId = d.customerId && customers.some(function(c){ return c.id===d.customerId; }) ? d.customerId : null;
+    var lines = d.lines.map(function(l){
+      var line = { thickness:l.thickness, width:l.width, length:l.length, kind:l.kind, bunkSize:l.bunkSize, pieces:l.pieces, bf:l.bf };
       // Pieces on this line that were pulled for back orders: count them as filled
-      var left = c.pieces, from = [];
-      Object.keys(c.fills||{}).forEach(function(id){
+      var left = l.pieces, from = [];
+      Object.keys(l.fills||{}).forEach(function(id){
         var b = backorders.find(function(x){ return x.id===id && x.status==='open'; });
-        var n = b ? Math.min(c.fills[id], boRemaining(b), left) : 0;
+        var n = b ? Math.min(l.fills[id], boRemaining(b), left) : 0;
         if(n<=0) return;
         left -= n;
         b.filled = (Number(b.filled)||0) + n;
@@ -1789,41 +1861,32 @@
         if(boRemaining(b)<=0){ b.status = 'filled'; b.filledDate = date; }
         if(b.ticket && from.indexOf(b.ticket)<0) from.push(b.ticket);
       });
-      if(c.fills) line.fillsBackorder = from.length ? from : true;
+      if(l.fills) line.fillsBackorder = from.length ? from : true;
       return line;
     });
     var sale = {
       id:uid('sale'), number:number, date:date,
-      by: session ? session.name : '',
-      customerId: custId, customer: custName || 'Walk-in',
+      by:d.by,
+      customerId:custId, customer:d.customer || 'Walk-in',
       lines:lines,
       pieces:lines.reduce(function(s,l){ return s+l.pieces; },0),
       bf:round2(lines.reduce(function(s,l){ return s+l.bf; },0))
     };
-    if(boCart.length){
-      sale.backorders = boCart.map(function(b){ return Object.assign({}, b); });
-      boCart.forEach(function(b){
-        backorders.push({ id:uid('bo'), date:date, customerId:custId, customer:custName, by:sale.by, ticket:number,
+    if(approvedBy) sale.approvedBy = approvedBy;
+    if(d.backorders.length){
+      sale.backorders = d.backorders.map(function(b){ return Object.assign({}, b); });
+      d.backorders.forEach(function(b){
+        backorders.push({ id:uid('bo'), date:date, customerId:custId, customer:d.customer, by:d.by, ticket:number,
           thickness:b.thickness, width:b.width, length:b.length, kind:b.kind, bunkSize:b.bunkSize, pieces:b.pieces, filled:0, status:'open' });
       });
     }
     sales.unshift(sale);
     nextNo++;
     save(KEYS.seq, {n:nextNo});
-    cart.forEach(function(c){
-      var item = stock.find(function(i){ return i.id===c.stockId; });
-      if(item) item.quantity = Math.max(0, item.quantity - c.pieces);
-    });
-    save(KEYS.stock, stock);
     save(KEYS.sales, sales);
     save(KEYS.bo, backorders);
-    cart = []; boCart = [];
-    $('customer').value = '';
-    $('cust-select').value = '';
-    toggleWalkin();
-    renderAll();
-    showTicket(sale);
-  });
+    return sale;
+  }
 
   /* =====================================================
      SALES + TICKET
@@ -1957,7 +2020,7 @@
       return '<tr><td>'+esc(dims(b))+'</td><td>'+qtyText(b.bunkSize, b.pieces)+'</td><td class="r">'+fmt(round2(bfPer(b)*b.pieces))+'</td></tr>';
     }).join('');
     $('paper').innerHTML =
-      '<div class="p-head"><div><div class="shop">Advanced Precut Systems Lumber Tally</div><div class="sub">'+esc(s.number)+' · '+fmtDate(s.date)+'</div>'+(s.by ? '<div class="sub">Served by '+esc(s.by)+'</div>' : '')+'</div>'+
+      '<div class="p-head"><div><div class="shop">Advanced Precut Systems Lumber Tally</div><div class="sub">'+esc(s.number)+' · '+fmtDate(s.date)+'</div>'+(s.by ? '<div class="sub">Served by '+esc(s.by)+'</div>' : '')+(s.approvedBy ? '<div class="sub">Approved by '+esc(s.approvedBy)+'</div>' : '')+'</div>'+
         '<div style="text-align:right;"><div class="sub">Sold to</div><div style="font-weight:700;">'+esc(s.customer)+'</div></div></div>'+
       '<table><thead><tr><th>Item</th><th>Qty</th><th class="r">Bd ft</th></tr></thead><tbody>'+rows+'</tbody></table>'+
       '<div class="p-total"><span>'+net.pieces.toLocaleString()+' pieces</span><span>'+fmt(net.bf)+' bd ft</span></div>'+
@@ -2130,6 +2193,8 @@
       sales.forEach(function(s){ if(s.customerId===id) s.customer = name; });
       backorders.forEach(function(b){ if(b.customerId===id) b.customer = name; });
       save(KEYS.bo, backorders);
+      reviews.forEach(function(d){ if(d.customerId===id) d.customer = name; });
+      save(KEYS.review, reviews);
       save(KEYS.sales, sales);
     } else {
       id = uid('cu');
@@ -2203,11 +2268,157 @@
     sales.forEach(function(s){ if(s.customerId===id) s.customerId = null; });
     backorders.forEach(function(b){ if(b.customerId===id) b.customerId = null; });
     save(KEYS.bo, backorders);
+    reviews.forEach(function(d){ if(d.customerId===id) d.customerId = null; });
+    save(KEYS.review, reviews);
     save(KEYS.cust, customers); save(KEYS.sales, sales);
     viewingCustId = null;
     closeCdel(); closeCustDetail();
     renderCustomers(); renderCustSelect(); renderSales();
   });
+
+  /* =====================================================
+     BACK ORDERS (lumber owed to customers)
+  ===================================================== */
+  /* =====================================================
+     REVIEW (user bill outs wait here for an admin)
+  ===================================================== */
+  function pendingReviews(){ return reviews.filter(function(d){ return d.status==='pending'; }); }
+  function reviewHeldBySpec(){
+    var out = {};
+    pendingReviews().forEach(function(d){
+      d.lines.forEach(function(l){ var k = specKey(l); out[k] = (out[k]||0) + l.pieces; });
+    });
+    return out;
+  }
+  function finishWord(){ return session && session.role==='admin' ? 'complete the sale' : 'submit it for review'; }
+
+  function reviewCard(d, status, actions){
+    var pieces = 0, bf = 0;
+    var rows = d.lines.map(function(l){
+      pieces += l.pieces; bf += l.bf;
+      return '<div class="row rv-line"><div><div class="name mono">'+esc(dims(l))+'</div>'+(l.fills ? '<div class="fills">Fills a back order</div>' : '')+'</div>'+
+        '<div class="num">'+qtyText(l.bunkSize, l.pieces)+'</div><div class="num strong">'+fmt(l.bf)+' bd ft</div></div>';
+    }).join('');
+    var boRows = d.backorders.map(function(b){
+      return '<div class="row rv-line"><div><div class="name mono">'+esc(dims(b))+'</div><div class="fills">To back order</div></div>'+
+        '<div class="num">'+qtyText(b.bunkSize, b.pieces)+'</div><div class="num">'+fmt(round2(bfPer(b)*b.pieces))+' bd ft</div></div>';
+    }).join('');
+    return '<div class="card bo-group" data-id="'+d.id+'">'+
+      '<div class="bo-head"><div><div class="name">'+esc(d.customer || 'Walk-in')+'</div>'+
+        '<div class="meta">Submitted by '+esc(d.by)+' · '+fmtDate(d.date)+'</div></div>'+status+'</div>'+
+      rows+boRows+
+      '<div class="rv-total"><span>'+pieces.toLocaleString()+' pieces</span><span>'+fmt(round2(bf))+' bd ft</span></div>'+
+      (d.status==='rejected' ? '<div class="rv-why">Sent back by '+esc(d.reviewedBy||'the admin')+(d.reason ? ': '+esc(d.reason) : '')+'</div>' : '')+
+      (actions ? '<div class="rv-foot">'+actions+'</div>' : '')+
+    '</div>';
+  }
+  function renderReview(){
+    if(!session || !can('review')) return;
+    var admin = session.role==='admin';
+    var mine = reviews.filter(function(d){ return d.byId===session.id; });
+    var badge = admin ? pendingReviews().length : mine.filter(function(d){ return d.status==='rejected'; }).length;
+    $('rv-count').textContent = badge;
+    $('rv-count').hidden = !badge;
+    var el = $('review-list');
+    if(admin){
+      $('rv-lead').textContent = 'Bill outs from user accounts wait here. Approving one creates its ticket in Sales. Sending one back returns its lumber to inventory.';
+      var waiting = pendingReviews().sort(function(a,b){ return new Date(a.date) - new Date(b.date); });
+      el.innerHTML = waiting.length ? waiting.map(function(d){
+        return reviewCard(d, '<span class="badge low" style="margin-left:0;">Waiting</span>',
+          '<button class="btn" data-act="reject">Send back</button><button class="btn primary" data-act="approve">Approve</button>');
+      }).join('') : '<div class="card"><div class="empty"><div class="big">Nothing to review</div><div>Bill outs from user accounts will show up here.</div></div></div>';
+      return;
+    }
+    $('rv-lead').textContent = 'Your bill outs go to an admin before they reach Sales. Their lumber is held out of inventory while they wait.';
+    el.innerHTML = mine.length ? mine.slice().sort(function(a,b){ return new Date(b.date) - new Date(a.date); }).map(function(d){
+      if(d.status==='pending') return reviewCard(d, '<span class="badge low" style="margin-left:0;">Waiting for admin</span>', '');
+      if(d.status==='rejected') return reviewCard(d, '<span class="badge off">Sent back</span>',
+        '<button class="btn" data-act="dismiss">Remove</button><button class="btn primary" data-act="reopen">Put back on ticket</button>');
+      var hasSale = sales.some(function(s){ return s.id===d.saleId; });
+      return reviewCard(d, '<span class="badge on">Approved · '+esc(d.number||'')+'</span>',
+        '<button class="btn" data-act="dismiss">Remove</button>'+(hasSale ? '<button class="btn primary" data-act="view">View ticket</button>' : ''));
+    }).join('') : '<div class="card"><div class="empty"><div class="big">Nothing submitted yet</div><div>Bill outs you submit will show up here with their status.</div></div></div>';
+  }
+
+  $('review-list').addEventListener('click', function(e){
+    var btn = e.target.closest('[data-act]');
+    var card = btn && btn.closest('[data-id]');
+    var d = card && reviews.find(function(x){ return x.id===card.dataset.id; });
+    if(!d) return;
+    var act = btn.dataset.act, admin = session && session.role==='admin';
+    if(act==='approve' && admin && d.status==='pending'){
+      var sale = createSale(d, session.name);
+      d.status = 'approved'; d.saleId = sale.id; d.number = sale.number;
+      d.reviewedBy = session.name; d.reviewedDate = sale.date;
+      save(KEYS.review, reviews);
+      renderAll();
+      showTicket(sale);
+      toast('Approved. Ticket '+sale.number+' is in Sales.');
+    }
+    else if(act==='reject' && admin && d.status==='pending') openReject(d);
+    else if(act==='view'){
+      var s = sales.find(function(x){ return x.id===d.saleId; });
+      if(s) showTicket(s);
+    }
+    else if(act==='dismiss' && d.status!=='pending'){
+      reviews = reviews.filter(function(x){ return x.id!==d.id; });
+      save(KEYS.review, reviews);
+      renderReview();
+    }
+    else if(act==='reopen' && d.status==='rejected') reopenReview(d);
+  });
+
+  var rejectingId = null;
+  function openReject(d){
+    rejectingId = d.id;
+    $('rej-who').textContent = (d.customer || 'Walk-in')+', from '+d.by;
+    $('rej-reason').value = '';
+    $('rej-overlay').classList.add('open');
+    $('rej-reason').focus();
+  }
+  function closeReject(){ $('rej-overlay').classList.remove('open'); rejectingId = null; }
+  $('rej-cancel').addEventListener('click', closeReject);
+  $('rej-close').addEventListener('click', closeReject);
+  $('rej-overlay').addEventListener('click', function(e){ if(e.target.id==='rej-overlay') closeReject(); });
+  $('rej-confirm').addEventListener('click', function(){
+    var d = reviews.find(function(x){ return x.id===rejectingId; });
+    if(!d || d.status!=='pending' || !session || session.role!=='admin') return closeReject();
+    d.lines.forEach(function(l){ putBack(l, l.pieces); });
+    d.status = 'rejected';
+    d.reason = $('rej-reason').value.trim();
+    d.reviewedBy = session.name; d.reviewedDate = new Date().toISOString();
+    save(KEYS.stock, stock);
+    save(KEYS.review, reviews);
+    closeReject();
+    renderAll();
+    toast('Sent back. The lumber is back in inventory.');
+  });
+
+  // A sent-back bill out goes on the Bill out ticket to fix and submit again; whatever is gone by now becomes a back order
+  function reopenReview(d){
+    if(cart.length || boCart.length){ toast('Your Bill out ticket has items on it. Submit or clear it first.'); return; }
+    reviews = reviews.filter(function(x){ return x.id!==d.id; });
+    save(KEYS.review, reviews);
+    d.lines.forEach(function(l){
+      var item = stock.find(function(i){ return sameSpec(i, l); });
+      var avail = item ? Math.max(0, Number(item.quantity) - inCart(item.id)) : 0;
+      var left = Math.min(l.pieces, avail);
+      if(left<l.pieces) addToBoCart(l, l.pieces - left);
+      Object.keys(l.fills||{}).forEach(function(id){
+        var b = backorders.find(function(x){ return x.id===id && x.status==='open'; });
+        var n = b ? Math.min(l.fills[id], left, boRemaining(b) - boQueued(b)) : 0;
+        if(n>0){ addCartPieces(item.id, n, id); left -= n; }
+      });
+      if(left>0) addCartPieces(item.id, left);
+    });
+    d.backorders.forEach(function(b){ addToBoCart(b, b.pieces); });
+    if(d.customerId && customers.some(function(c){ return c.id===d.customerId; })) $('cust-select').value = d.customerId;
+    else { $('cust-select').value = ''; $('customer').value = d.customer || ''; }
+    toggleWalkin();
+    go('bill');
+    renderAll();
+    toast('Back on your ticket. Fix it, then submit it again.');
+  }
 
   /* =====================================================
      BACK ORDERS (lumber owed to customers)
@@ -2218,7 +2429,13 @@
   function openBackorders(){ return backorders.filter(function(b){ return b.status==='open'; }); }
   function boItem(b){ return stock.find(function(i){ return sameSpec(i, b); }) || null; }
   // Pieces already on the Bill out ticket for this back order
-  function boQueued(b){ return cart.reduce(function(s, c){ return s + ((c.fills && c.fills[b.id]) || 0); }, 0); }
+  function boQueued(b){
+    var n = cart.reduce(function(s, c){ return s + ((c.fills && c.fills[b.id]) || 0); }, 0);
+    pendingReviews().forEach(function(d){
+      d.lines.forEach(function(l){ n += (l.fills && l.fills[b.id]) || 0; });
+    });
+    return n;
+  }
   // How much of a back order could be pulled from stock right now
   function boFillable(b){
     var item = boItem(b);
@@ -2295,7 +2512,7 @@
           var status = !item ? '<span class="badge off">Not stocked</span>'
             : fillN>=rem ? '<span class="badge on">In stock</span>'
             : fillN>0 ? '<span class="badge low">'+fillN.toLocaleString()+' pcs in stock</span>'
-            : boQueued(b) ? '<span class="badge low">On the Bill out ticket</span>'
+            : boQueued(b) ? '<span class="badge low">On a ticket</span>'
             : '<span class="badge off">Out of stock</span>';
           return '<div class="row bo-row" data-id="'+b.id+'">'+
             '<div><div class="name mono">'+esc(dims(b))+'</div>'+
@@ -2335,7 +2552,7 @@
     toggleWalkin();
     go('bill');
     renderCart();
-    toast('Put '+pcs.toLocaleString()+' pcs on the ticket for '+b0.customer+'. Complete the sale to mark '+(list.length===1?'it':'them')+' filled.');
+    toast('Put '+pcs.toLocaleString()+' pcs on the ticket for '+b0.customer+'. '+(session.role==='admin' ? 'Complete the sale to mark ' : 'Once your submission is approved, that marks ')+(list.length===1?'it':'them')+' filled.');
   }
 
   $('bo-list').addEventListener('click', function(e){
@@ -2875,7 +3092,7 @@
       });
       closeImp();
       renderPicker(); renderCart();
-      toast('Added '+ok.length+(ok.length===1?' line':' lines')+' to the ticket'+(owedLines ? ', '+owedLines+' with back orders' : '')+'. Check it, then complete the sale.');
+      toast('Added '+ok.length+(ok.length===1?' line':' lines')+' to the ticket'+(owedLines ? ', '+owedLines+' with back orders' : '')+'. Check it, then '+finishWord()+'.');
     }
   }
 
@@ -2909,7 +3126,7 @@
   $('imp-overlay').addEventListener('click', function(e){ if(e.target.id==='imp-overlay') closeImp(); });
 
   document.addEventListener('keydown', function(e){
-    if(e.key==='Escape'){ closeStock(); closeDelete(); closeTicket(); closeCust(); closeCustDetail(); closeCdel(); closeSdel(); closeAcct(); closePw(); closeCf(); closeImp(); closeBoAdd(); closeReturn(); }
+    if(e.key==='Escape'){ closeStock(); closeDelete(); closeTicket(); closeCust(); closeCustDetail(); closeCdel(); closeSdel(); closeAcct(); closePw(); closeCf(); closeImp(); closeBoAdd(); closeReturn(); closeReject(); }
   });
 
   /* ---------- install on a phone, and open without signal ---------- */
@@ -2954,6 +3171,7 @@
     if(can('sales')) renderSales();
     if(can('accounts')) renderAccounts();
     renderBackorders();
+    renderReview();
   }
   // Lumber is tracked by size and type. Items saved back when species was kept are combined by size, once.
   function mergeBySize(list){
@@ -2981,6 +3199,9 @@
     sales = await load(KEYS.sales);
     customers = await load(KEYS.cust);
     backorders = await load(KEYS.bo);
+    reviews = (await load(KEYS.review)).filter(function(d){   // approved ones drop off the list after 30 days
+      return d.status!=='approved' || Date.now() - new Date(d.reviewedDate) < 30*864e5;
+    });
     var q = await load(KEYS.seq);
     if(q && typeof q.n==='number') nextNo = q.n;
     sales.forEach(function(s){
