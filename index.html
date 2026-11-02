@@ -2,8 +2,16 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Advanced Precut Systems Lumber Tally</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="theme-color" content="#2F5D3A">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Lumber Tally">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
@@ -327,6 +335,89 @@
     .ret-row{grid-template-columns:repeat(3,minmax(0,1fr));}
     .ret-row > :first-child{grid-column:1 / -1;}
   }
+  /* Phone layout. Screen only, so printed tickets are not affected. */
+  .tab-btn svg,.btn.signout svg{display:none;}
+  .tab-btn svg,.btn.signout svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+  .ticket-bar,.install,.show-sm,.unit-sm{display:none;}
+  @media (max-width:860px){
+    .sale-row .show-sm{display:block;}
+    .sale-row .unit-sm{display:inline;font-weight:500;font-size:12px;}
+  }
+  @media screen and (max-width:700px){
+    body{-webkit-tap-highlight-color:transparent;}
+    input,select,textarea{font-size:16px !important;}   /* below 16px, iPhones zoom in on every tap */
+
+    /* Slim header */
+    header.top .inner{padding:calc(10px + env(safe-area-inset-top)) 16px 10px;flex-wrap:nowrap;}
+    .full-name{display:none;}
+    .brand{flex:1;gap:10px;}
+    .brand .mark{width:32px;height:32px;font-size:11px;}
+    .brand h1{font-size:16px;}
+    .brand p{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .hdr-btns{gap:6px;}
+    .btn.signout{width:40px;height:40px;padding:0;justify-content:center;}
+    .btn.signout span{display:none;}
+    .btn.signout svg{display:block;}
+
+    /* Tabs become a bar along the bottom, so every tab is always in reach */
+    .tabs{position:fixed;left:0;right:0;bottom:0;z-index:30;width:auto;gap:2px;padding:4px 4px calc(4px + env(safe-area-inset-bottom));border-radius:0;background:var(--green-dark);overflow:visible;box-shadow:0 -2px 12px rgba(0,0,0,0.18);}
+    .tab-btn{flex:1 1 0;min-width:0;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:50px;padding:5px 1px;font-size:10px;line-height:1.1;white-space:normal;text-align:center;}
+    .tab-btn svg{display:block;}
+    .tab-count{position:absolute;top:1px;left:calc(50% + 5px);margin:0;min-width:16px;padding:0 4px;line-height:16px;font-size:10px;}
+
+    main{padding:14px 16px calc(84px + env(safe-area-inset-bottom));}
+    .toast{bottom:calc(72px + env(safe-area-inset-bottom));width:calc(100% - 32px);text-align:center;}
+    body:has(#ticket-bar:not([hidden])) .toast{bottom:calc(128px + env(safe-area-inset-bottom));}
+
+    /* Compact stats and full-width search */
+    .stats{gap:8px;margin-bottom:12px;}
+    .stat{padding:9px 12px;}
+    .stat .value{font-size:18px;margin-top:2px;}
+    .controls{gap:8px;}
+    .controls .search{flex:1 1 100%;}
+    .controls .btn{flex:1 1 0;justify-content:center;padding:10px 8px;white-space:nowrap;font-size:13px;}
+    .btn{min-height:42px;}
+    .btn.sm{min-height:38px;}
+    .icon-btn{width:40px;height:40px;}
+    .cart-remove{font-size:24px;padding:4px 10px;}
+    .inv-row{grid-template-columns:1fr 92px;}
+    .inv-row .c-sum{grid-column:1 / -1;}
+    .sale-row{grid-template-columns:28px minmax(0,1fr) auto;column-gap:10px;}
+    .sale-row .c-check{grid-row:1 / span 2;}
+    .sale-row > :nth-child(2),.sale-row > :nth-child(3){grid-column:2;}
+    .sale-row > :last-child{grid-column:3;grid-row:1 / span 2;}
+
+    /* Bill out: size and stock on one line, entry boxes on the next */
+    .pick-row{grid-template-columns:1fr 1fr 92px;}
+    .pick-row .c-title{grid-column:1 / -1;padding-left:0;display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;}
+    .pick-row .c-title .meta{margin:0;}
+    .pick-row .add{min-height:42px;}
+    .ticket-bar{position:fixed;left:8px;right:8px;bottom:calc(66px + env(safe-area-inset-bottom));z-index:25;display:flex;justify-content:space-between;align-items:center;gap:10px;min-height:46px;padding:0 14px;border:none;border-radius:10px;background:var(--ink);color:#fff;font-size:13.5px;box-shadow:0 4px 16px rgba(0,0,0,0.3);cursor:pointer;}
+    #view-bill{padding-bottom:58px;}
+
+    /* Forms fill the screen, with their buttons always showing */
+    .overlay{padding:0;}
+    .modal:not([style*="max-width"]){max-width:none;min-height:100vh;min-height:100dvh;border-radius:0;display:flex;flex-direction:column;box-shadow:none;}
+    .modal:not([style*="max-width"]) .modal-head{position:sticky;top:0;z-index:2;background:var(--card);padding:calc(14px + env(safe-area-inset-top)) 16px 14px;}
+    .modal:not([style*="max-width"]) .modal-body{flex:1;max-height:none;overflow:visible;padding:16px;}
+    .modal:not([style*="max-width"]) .modal-foot{position:sticky;bottom:0;background:var(--card);padding:12px 16px calc(12px + env(safe-area-inset-bottom));}
+    .modal[style*="max-width"]{width:calc(100% - 32px);margin:auto 16px;}
+    .modal-foot .btn{flex:1 1 auto;justify-content:center;}
+    #ticket-return{margin-right:0 !important;}
+    .grid3{grid-template-columns:1fr 1fr;align-items:end;}
+    .grid3 > :nth-child(3){grid-column:1 / -1;}
+    .grid2{align-items:end;}
+
+    /* Customer details */
+    #cdetail-body .stats{grid-template-columns:1fr 1fr !important;}
+    .hist-row{grid-template-columns:1fr auto;row-gap:2px;}
+
+    .install{display:flex;align-items:center;gap:10px;padding:10px 12px;margin-bottom:12px;background:var(--green-pale);border:1px solid var(--green);border-radius:8px;font-size:13px;line-height:1.4;}
+    .install > div{flex:1;}
+  }
+  @media screen and (max-width:340px){
+    .tab-btn{font-size:9px;}
+  }
   .paper .p-bo{margin-top:16px;padding-top:8px;border-top:1px dashed var(--gold);}
   .paper .p-bo-title{font-family:'Inter',sans-serif;font-weight:700;font-size:13px;color:#8A6215;margin-bottom:4px;}
 </style>
@@ -376,21 +467,30 @@
   <div class="inner">
     <div class="brand">
       <div class="mark">APS</div>
-      <div><h1>Advanced Precut Systems Lumber Tally</h1><p id="sub">loading…</p></div>
+      <div><h1><span class="full-name">Advanced Precut Systems </span>Lumber Tally</h1><p id="sub">loading…</p></div>
     </div>
     <div class="tabs" id="tabs">
-      <button class="tab-btn" data-view="inventory">Inventory</button>
-      <button class="tab-btn" data-view="bill">Bill out</button>
-      <button class="tab-btn" data-view="backorders">Back orders<span class="tab-count" id="bo-count" hidden></span></button>
-      <button class="tab-btn" data-view="customers">Customers</button>
-      <button class="tab-btn" data-view="sales">Sales</button>
-      <button class="tab-btn" data-view="accounts">Accounts</button>
+      <button class="tab-btn" data-view="inventory"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h18M3 12h18M3 17h18"/></svg>Inventory</button>
+      <button class="tab-btn" data-view="bill"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg>Bill out</button>
+      <button class="tab-btn" data-view="backorders"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Back orders<span class="tab-count" id="bo-count" hidden></span></button>
+      <button class="tab-btn" data-view="customers"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M3 20c0-3.5 2.7-6 6-6s6 2.5 6 6"/><path d="M16 5a3.5 3.5 0 0 1 0 6.5M18 14.5c2 .8 3 2.8 3 5.5"/></svg>Customers</button>
+      <button class="tab-btn" data-view="sales"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Sales</button>
+      <button class="tab-btn" data-view="accounts"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg>Accounts</button>
     </div>
-    <div class="hdr-btns"><button class="btn signout" id="chpw">Change password</button><button class="btn signout" id="signout">Sign out</button></div>
+    <div class="hdr-btns">
+      <button class="btn signout" id="chpw" aria-label="Change password"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="15" r="4"/><path d="m11 12 9-9M16 7l3 3"/></svg><span>Change password</span></button>
+      <button class="btn signout" id="signout" aria-label="Sign out"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4H5v16h4M15 8l4 4-4 4M19 12H9"/></svg><span>Sign out</span></button>
+    </div>
   </div>
 </header>
 
 <main>
+
+  <div class="install" id="install" hidden>
+    <div id="install-text"></div>
+    <button class="btn sm primary" id="install-go" hidden>Install</button>
+    <button class="cart-remove" id="install-x" aria-label="Dismiss">&times;</button>
+  </div>
 
   <!-- INVENTORY -->
   <section class="view active" id="view-inventory">
@@ -457,6 +557,7 @@
         <button class="btn primary complete" id="complete-btn">Complete sale</button>
       </div>
     </div>
+    <button class="ticket-bar" id="ticket-bar" hidden><span id="ticket-bar-text"></span><strong>View ticket</strong></button>
   </section>
 
   <!-- BACK ORDERS -->
@@ -529,7 +630,7 @@
         <div class="field"><label for="f-w">Width (in)</label><input type="number" id="f-w" min="0" step="0.125" placeholder="4"></div>
         <div class="field"><label for="f-l">Length (ft, or " for inches)</label><input type="text" id="f-l" inputmode="decimal" autocomplete="off" placeholder="8 or 104 5/8&quot;"></div>
       </div>
-      <div class="field"><label for="f-kind">Type (optional)</label><input type="text" id="f-kind" list="kind-list" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Leave blank for plain lumber, or PT, DF, LVL"><datalist id="kind-list"></datalist></div>
+      <div class="field"><label for="f-kind">Type (optional)</label><input type="text" id="f-kind" list="kind-list" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Blank for plain, or PT, DF, LVL"><datalist id="kind-list"></datalist></div>
       <div class="grid3">
         <div class="field"><label for="f-bunksize">Pieces per bunk</label><input type="number" id="f-bunksize" min="0" step="1" placeholder="e.g. 294"></div>
         <div class="field"><label for="f-bunks">Number of bunks</label><input type="number" id="f-bunks" min="0" step="1" placeholder="0"></div>
@@ -1653,7 +1754,12 @@
     });
     $('t-pieces').textContent = pieces.toLocaleString();
     $('t-bf').textContent = fmt(bf);
+    // Phone: the ticket sits below the lumber list, so a bar keeps it in view while picking
+    var lines = cart.length + boCart.length;
+    $('ticket-bar').hidden = !lines;
+    $('ticket-bar-text').textContent = lines+(lines===1?' line':' lines')+' · '+pieces.toLocaleString()+' pcs'+(boCart.length ? ' + back order' : '');
   }
+  $('ticket-bar').addEventListener('click', function(){ document.querySelector('.ticket').scrollIntoView({behavior:'smooth', block:'start'}); });
 
   $('complete-btn').addEventListener('click', function(){
     var err = $('cart-err');
@@ -1738,10 +1844,11 @@
           '<div class="c-check"><input type="checkbox" aria-label="Select ticket"'+(selSales[s.id]?' checked':'')+'></div>'+
           '<div class="num strong">'+esc(s.number)+'</div>'+
           '<div><div class="name">'+esc(s.customer)+'</div><div class="meta" style="margin-top:1px;">'+
-            (s.by ? 'by '+esc(s.by) : '')+(s.returns && s.returns.length ? (s.by ? ' · ' : '')+'<span style="color:var(--rust);">'+(net.pieces ? 'part returned' : 'returned')+'</span>' : '')+'</div></div>'+
+            (s.by ? 'by '+esc(s.by) : '')+(s.returns && s.returns.length ? (s.by ? ' · ' : '')+'<span style="color:var(--rust);">'+(net.pieces ? 'part returned' : 'returned')+'</span>' : '')+'</div>'+
+            '<div class="meta show-sm" style="margin-top:1px;">'+new Date(s.date).toLocaleDateString()+' · '+net.pieces.toLocaleString()+' pcs</div></div>'+
           '<div class="meta hide-sm" style="margin:0;">'+fmtDate(s.date)+'</div>'+
           '<div class="num hide-sm">'+net.pieces.toLocaleString()+'</div>'+
-          '<div class="num strong" style="text-align:right;">'+fmt(net.bf)+'</div>'+
+          '<div class="num strong" style="text-align:right;">'+fmt(net.bf)+'<span class="unit-sm"> bd ft</span></div>'+
         '</div>';
       }).join('')+'</div>';
     el.querySelectorAll('.sale-row[data-id]').forEach(function(row){
@@ -2804,6 +2911,40 @@
   document.addEventListener('keydown', function(e){
     if(e.key==='Escape'){ closeStock(); closeDelete(); closeTicket(); closeCust(); closeCustDetail(); closeCdel(); closeSdel(); closeAcct(); closePw(); closeCf(); closeImp(); closeBoAdd(); closeReturn(); }
   });
+
+  /* ---------- install on a phone, and open without signal ---------- */
+  var installEvent = null;
+  function installSeen(){ try{ return localStorage.getItem('tally:install-dismissed')==='1'; }catch(e){ return false; } }
+  function isInstalled(){ return (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone===true; }
+  function showInstall(text, canPrompt){
+    if(isInstalled() || installSeen()) return;
+    $('install-text').textContent = text;
+    $('install-go').hidden = !canPrompt;
+    $('install').hidden = false;
+  }
+  window.addEventListener('beforeinstallprompt', function(e){
+    e.preventDefault();
+    installEvent = e;
+    showInstall('Install Lumber Tally on this phone for a home screen icon.', true);
+  });
+  $('install-go').addEventListener('click', function(){
+    if(!installEvent) return;
+    installEvent.prompt();
+    installEvent = null;
+    $('install').hidden = true;
+  });
+  $('install-x').addEventListener('click', function(){
+    $('install').hidden = true;
+    try{ localStorage.setItem('tally:install-dismissed','1'); }catch(e){}
+  });
+  if(/iphone|ipod/i.test(navigator.userAgent)){
+    showInstall('Install on this iPhone: tap Share, then "Add to Home Screen". The installed app starts empty, with its own separate data, so do this before entering real data.', false);
+  }
+  if('serviceWorker' in navigator && location.protocol!=='file:'){
+    window.addEventListener('load', function(){ navigator.serviceWorker.register('sw.js').catch(function(){}); });
+  }
+  // Ask the phone not to clear this app's data when it runs low on space
+  if(navigator.storage && navigator.storage.persist){ navigator.storage.persist().catch(function(){}); }
 
   /* ---------- boot ---------- */
   function renderAll(){
