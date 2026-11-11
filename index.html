@@ -335,20 +335,6 @@
     .ret-row{grid-template-columns:repeat(3,minmax(0,1fr));}
     .ret-row > :first-child{grid-column:1 / -1;}
   }
-  /* Customer types */
-  .subtabs{display:flex;gap:4px;border-bottom:2px solid var(--line);margin-bottom:14px;}
-  .subtab{border:none;background:none;padding:10px 16px;margin-bottom:-2px;border-bottom:3px solid transparent;font-family:inherit;font-size:14px;font-weight:600;color:var(--soft);cursor:pointer;}
-  .subtab:hover{color:var(--ink);}
-  .subtab.active{color:var(--green);border-bottom-color:var(--green);}
-  .subtab .n{margin-left:6px;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--faint);}
-  .seg{display:flex;gap:8px;}
-  .seg label{flex:1;display:flex;align-items:center;justify-content:center;gap:7px;margin:0;padding:10px;border:1px solid var(--line2);border-radius:8px;background:#FCFBF8;color:var(--ink);font-size:13.5px;font-weight:600;cursor:pointer;}
-  .seg label:has(input:checked){border-color:var(--green);background:var(--green-pale);color:var(--green-dark);}
-  .seg input{width:auto;margin:0;padding:0;accent-color:var(--green);}
-  .badge.ctype{background:var(--green-pale);color:var(--green);margin-left:8px;}
-  .badge.ctype.out{background:#E4E6F2;color:#3E4A8A;}
-  .badge.ctype.none{background:var(--line);color:var(--soft);}
-
   /* Review */
   .rv-line{grid-template-columns:minmax(0,1.6fr) minmax(0,1fr) auto;}
   .rv-total{display:flex;justify-content:space-between;gap:10px;padding:10px 16px;font-family:'JetBrains Mono',monospace;font-weight:700;background:#FBFAF6;}
@@ -414,7 +400,6 @@
     .pick-row .add{min-height:42px;}
     .ticket-bar{position:fixed;left:8px;right:8px;bottom:calc(66px + env(safe-area-inset-bottom));z-index:25;display:flex;justify-content:space-between;align-items:center;gap:10px;min-height:46px;padding:0 14px;border:none;border-radius:10px;background:var(--ink);color:#fff;font-size:13.5px;box-shadow:0 4px 16px rgba(0,0,0,0.3);cursor:pointer;}
     #view-bill{padding-bottom:58px;}
-    .subtab{flex:1 1 0;padding:10px 4px;}
     .rv-line{grid-template-columns:minmax(0,1fr) auto;row-gap:2px;}
     .rv-line > :first-child{grid-column:1 / -1;}
     .rv-foot .btn{flex:1 1 0;justify-content:center;}
@@ -619,11 +604,6 @@
 
   <!-- CUSTOMERS -->
   <section class="view" id="view-customers">
-    <div class="subtabs" id="cust-tabs">
-      <button class="subtab" data-ct="in">Insourced<span class="n" id="ct-n-in"></span></button>
-      <button class="subtab" data-ct="out">Outsourced<span class="n" id="ct-n-out"></span></button>
-      <button class="subtab active" data-ct="all">All<span class="n" id="ct-n-all"></span></button>
-    </div>
     <div class="controls">
       <div class="search">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
@@ -717,12 +697,6 @@
     <div class="modal-head"><h2 id="cust-title">Add customer</h2><button id="cust-close" aria-label="Close"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
     <div class="modal-body">
       <div class="field"><label for="c-name">Name / company</label><input type="text" id="c-name" placeholder="Riverside Construction"></div>
-      <div class="field"><label>Type</label>
-        <div class="seg">
-          <label><input type="radio" name="c-type" value="in"> Insourced</label>
-          <label><input type="radio" name="c-type" value="out"> Outsourced</label>
-        </div>
-      </div>
       <div class="grid2">
         <div class="field"><label for="c-phone">Phone</label><input type="text" id="c-phone" placeholder="(555) 555-0100"></div>
         <div class="field"><label for="c-email">Email</label><input type="text" id="c-email" placeholder="orders@riverside.co"></div>
@@ -2145,27 +2119,15 @@
     return { orders:list.length, pieces:pieces, bf:round2(bf), last:last, list:list };
   }
 
-  // Every customer is Insourced or Outsourced. Ones added before types existed have none until edited.
-  var CUST_TYPES = { in:'Insourced', out:'Outsourced' };
-  var custTab = 'all';
-  function typeBadge(c){
-    return c.type ? '<span class="badge ctype '+c.type+'">'+CUST_TYPES[c.type]+'</span>' : '<span class="badge ctype none">Type not set</span>';
-  }
   function renderCustomers(){
     var el = $('cust-list');
-    ['in','out'].forEach(function(t){ $('ct-n-'+t).textContent = customers.filter(function(c){ return c.type===t; }).length; });
-    $('ct-n-all').textContent = customers.length;
-    document.querySelectorAll('#cust-tabs .subtab').forEach(function(b){ b.classList.toggle('active', b.dataset.ct===custTab); });
-    $('add-cust-btn').lastChild.textContent = custTab==='all' ? ' Add customer' : ' Add '+CUST_TYPES[custTab].toLowerCase()+' customer';
-    var inTab = customers.filter(function(c){ return custTab==='all' || c.type===custTab; });
-    if(inTab.length===0){
-      var what = custTab==='all' ? '' : CUST_TYPES[custTab].toLowerCase()+' ';
-      el.innerHTML = '<div class="card"><div class="empty"><div class="big">No '+what+'customers yet</div><div>Add a customer to keep their pickups together.</div><button class="btn primary" id="empty-add-cust">Add customer</button></div></div>';
+    if(customers.length===0){
+      el.innerHTML = '<div class="card"><div class="empty"><div class="big">No customers yet</div><div>Add a customer to keep their pickups together.</div><button class="btn primary" id="empty-add-cust">Add customer</button></div></div>';
       $('empty-add-cust').addEventListener('click', function(){ openCust(null, false); });
       return;
     }
     var q = custSearch;
-    var list = inTab.filter(function(c){
+    var list = customers.filter(function(c){
       return !q || (c.name+' '+(c.phone||'')+' '+(c.email||'')).toLowerCase().indexOf(q)>-1;
     }).sort(function(a,b){ return a.name.localeCompare(b.name); });
     if(list.length===0){
@@ -2176,7 +2138,7 @@
       var s = custStats(c.id);
       var contact = [c.phone, c.email].filter(Boolean).map(esc).join(' · ');
       return '<div class="cust-card" data-id="'+c.id+'">'+
-        '<div class="name">'+esc(c.name)+(custTab==='all' || !c.type ? typeBadge(c) : '')+'</div>'+
+        '<div class="name">'+esc(c.name)+'</div>'+
         '<div class="contact">'+(contact || 'No contact info')+'</div>'+
         '<div class="cust-stats">'+
           '<div><div class="k">Orders</div><div class="v">'+s.orders+'</div></div>'+
@@ -2189,23 +2151,16 @@
     });
   }
   $('cust-search').addEventListener('input', function(e){ custSearch = e.target.value.trim().toLowerCase(); renderCustomers(); });
-  document.querySelectorAll('#cust-tabs .subtab').forEach(function(b){
-    b.addEventListener('click', function(){ custTab = b.dataset.ct; renderCustomers(); });
-  });
   $('add-cust-btn').addEventListener('click', function(){ openCust(null, false); });
 
   /* ---------- bill-out customer picker ---------- */
   function renderCustSelect(){
     var sel = $('cust-select');
     var current = sel.value;
-    var sorted = customers.slice().sort(function(a,b){ return a.name.localeCompare(b.name); });
-    var group = function(label, list){
-      return list.length ? '<optgroup label="'+label+'">'+list.map(function(c){ return '<option value="'+c.id+'">'+esc(c.name)+'</option>'; }).join('')+'</optgroup>' : '';
-    };
     sel.innerHTML = '<option value="">Walk-in / one-time</option>'+
-      group('Insourced', sorted.filter(function(c){ return c.type==='in'; }))+
-      group('Outsourced', sorted.filter(function(c){ return c.type==='out'; }))+
-      group('Type not set', sorted.filter(function(c){ return !c.type; }));
+      customers.slice().sort(function(a,b){ return a.name.localeCompare(b.name); }).map(function(c){
+        return '<option value="'+c.id+'">'+esc(c.name)+'</option>';
+      }).join('');
     sel.value = customers.some(function(c){ return c.id===current; }) ? current : '';
     toggleWalkin();
   }
@@ -2222,8 +2177,6 @@
     $('c-phone').value = c ? (c.phone||'') : '';
     $('c-email').value = c ? (c.email||'') : '';
     $('c-notes').value = c ? (c.notes||'') : '';
-    var type = c ? (c.type||'') : (custTab==='all' ? '' : custTab);
-    document.querySelectorAll('input[name=c-type]').forEach(function(r){ r.checked = r.value===type; });
     $('cust-err').classList.remove('show');
     $('cust-overlay').classList.add('open');
     $('c-name').focus();
@@ -2231,10 +2184,8 @@
   function closeCust(){ $('cust-overlay').classList.remove('open'); }
   function saveCust(){
     var name = $('c-name').value.trim();
-    var picked = document.querySelector('input[name=c-type]:checked');
-    var msg = !name ? 'Enter a name.' : !picked ? 'Pick Insourced or Outsourced.' : '';
-    if(msg){ $('cust-err').textContent = msg; $('cust-err').classList.add('show'); return; }
-    var data = { name:name, type:picked.value, phone:$('c-phone').value.trim(), email:$('c-email').value.trim(), notes:$('c-notes').value.trim() };
+    if(!name){ $('cust-err').textContent = 'Enter a name.'; $('cust-err').classList.add('show'); return; }
+    var data = { name:name, phone:$('c-phone').value.trim(), email:$('c-email').value.trim(), notes:$('c-notes').value.trim() };
     var id = editingCustId;
     if(id){
       var idx = customers.findIndex(function(x){ return x.id===id; });
@@ -2276,7 +2227,7 @@
         '<div class="num strong">'+fmt(saleNet(t).bf)+' bd ft</div></div>';
     }).join('') || '<div class="empty" style="padding:26px 0;"><div class="big">No tickets yet</div><div>Pick this customer on the Bill out tab.</div></div>';
     $('cdetail-body').innerHTML =
-      '<div style="color:var(--soft);">'+(contact || 'No contact info on file')+typeBadge(c)+'</div>'+
+      '<div style="color:var(--soft);">'+(contact || 'No contact info on file')+'</div>'+
       (c.notes ? '<div style="color:var(--soft);white-space:pre-wrap;">'+esc(c.notes)+'</div>' : '')+
       '<div class="stats" style="grid-template-columns:repeat(4,1fr);margin:0;">'+
         '<div class="stat"><div class="label">Orders</div><div class="value">'+s.orders+'</div></div>'+
