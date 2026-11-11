@@ -794,7 +794,7 @@
 <div class="overlay" id="cdel-overlay">
   <div class="modal" style="max-width:380px;">
     <div class="modal-head"><h2>Delete customer</h2><button id="cdel-close" aria-label="Close"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
-    <div class="modal-body"><p style="margin:0;color:var(--soft);">Delete <strong id="cdel-name" style="color:var(--ink);"></strong>? Their past tickets stay in Sales under this name. Their jobs, with the material lists and delivery paper photos saved to them, are deleted.</p></div>
+    <div class="modal-body"><p style="margin:0;color:var(--soft);">Delete <strong id="cdel-name" style="color:var(--ink);"></strong>? Their past tickets stay in Sales under this name. Their jobs, with the material lists and photos saved to them, are deleted.</p></div>
     <div class="modal-foot"><button class="btn" id="cdel-cancel">Cancel</button><button class="btn danger" id="cdel-confirm">Delete</button></div>
   </div>
 </div>
@@ -971,12 +971,12 @@
   </div>
 </div>
 
-<!-- One delivery paper photo -->
+<!-- One job photo: a delivery paper or a truck load -->
 <div class="overlay" id="photo-overlay">
   <div class="modal wide">
     <div class="modal-head"><h2 id="photo-title">Delivery paper</h2><button id="photo-close" aria-label="Close"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
     <div class="modal-body">
-      <img id="photo-img" class="photo-full" alt="Delivery paper">
+      <img id="photo-img" class="photo-full" alt="Job photo">
       <div class="field"><label for="photo-note">Note</label><input type="text" id="photo-note" placeholder="Load 2, 2x6 bunks…"></div>
     </div>
     <div class="modal-foot">
@@ -2483,10 +2483,12 @@
   function custJobsHtml(c){
     var list = jobs.filter(function(j){ return j.customerId===c.id; }).sort(function(a,b){ return new Date(b.date)-new Date(a.date); });
     var rows = list.map(function(j){
-        var n = j.type==='out' ? j.photos.length : sales.filter(function(s){ return s.jobId===j.id; }).length;
+      var n = j.type==='out' ? photoList(j, 'photos').length : sales.filter(function(s){ return s.jobId===j.id; }).length;
       var extra = n+(j.type==='out' ? (n===1?' delivery paper':' delivery papers') : (n===1?' ticket':' tickets'));
+      var loads = photoList(j, 'loads').length;
       return '<div class="job-row" data-job="'+j.id+'"><div><div class="name">'+esc(j.name)+jobBadge(j)+'</div>'+
-        '<div class="meta">'+j.lists.length+(j.lists.length===1?' material list':' material lists')+' · '+extra+'</div></div><span class="go">›</span></div>';
+        '<div class="meta">'+j.lists.length+(j.lists.length===1?' material list':' material lists')+' · '+extra+
+          ' · '+loads+(loads===1?' truck load':' truck loads')+'</div></div><span class="go">›</span></div>';
     }).join('');
     return '<div><div class="sec-label"><span>Jobs</span><button class="btn sm" id="cd-newjob">New job</button></div>'+
       (rows || '<div class="sec-empty">No jobs yet. A job holds the material lists for one project, and for outsourced lumber the photos of the papers that come with it.</div>')+'</div>';
@@ -2522,7 +2524,7 @@
     var job = jobById(jobEditId);
     if(job){ job.customerId = cid; job.name = name; job.type = picked.value; }
     else {
-      job = { id:uid('jb'), customerId:cid, name:name, type:picked.value, date:new Date().toISOString(), by: session ? session.name : '', lists:[], photos:[] };
+      job = { id:uid('jb'), customerId:cid, name:name, type:picked.value, date:new Date().toISOString(), by: session ? session.name : '', lists:[], photos:[], loads:[] };
       jobs.push(job);
     }
     saveJobs();
@@ -2567,23 +2569,21 @@
             '<div class="num strong">'+fmt(saleNet(t).bf)+' bd ft</div></div>';
         }).join('') || '<div class="sec-empty">No tickets yet. Send a material list to Bill out, or pick this job on a Bill out ticket.</div>')+
         (waiting ? '<div class="sec-empty">'+waiting+(waiting===1?' bill out is':' bill outs are')+' waiting for review.</div>' : '')+'</div>';
-    } else {
-      html += '<div><div class="sec-label"><span>Delivery papers</span><button class="btn sm primary" id="job-addphoto">Add photos</button></div>'+
-        (j.photos.length ? '<div class="photos">'+j.photos.map(function(p){
-          return '<button class="photo" data-photo="'+p.id+'"><img alt="Delivery paper from '+esc(new Date(p.date).toLocaleDateString())+'">'+
-            '<span>'+esc(new Date(p.date).toLocaleDateString())+(p.note ? ' · '+esc(p.note) : '')+'</span></button>';
-        }).join('')+'</div>' : '<div class="sec-empty">No delivery papers yet. Take a photo of each paper that comes with the lumber.</div>')+
-        '<p class="acct-note" style="margin:8px 0 0;">Photos are kept on this device only until shared storage is set up.</p></div>';
-    }
+    } else html += photoSection(j, 'photos');
+    // Every job: a picture of each truck load sent out
+    html += photoSection(j, 'loads')+
+      '<p class="acct-note" style="margin:0;">Photos are kept on this device only until shared storage is set up.</p>';
     var body = $('job-body');
     body.innerHTML = html;
     body.querySelectorAll('[data-list]').forEach(function(r){ r.addEventListener('click', function(){ openMlist(j.id, r.dataset.list); }); });
     body.querySelectorAll('.hist-row').forEach(function(r){
       r.addEventListener('click', function(){ var t = sales.find(function(x){ return x.id===r.dataset.id; }); if(t) showTicket(t); });
     });
-    if($('job-addphoto')) $('job-addphoto').addEventListener('click', function(){ $('photo-input').value = ''; $('photo-input').click(); });
+    body.querySelectorAll('[data-add]').forEach(function(b){
+      b.addEventListener('click', function(){ photoKind = b.dataset.add; $('photo-input').value = ''; $('photo-input').click(); });
+    });
     body.querySelectorAll('[data-photo]').forEach(function(b){
-      b.addEventListener('click', function(){ openPhoto(j.id, b.dataset.photo); });
+      b.addEventListener('click', function(){ openPhoto(j.id, b.dataset.photo, b.dataset.kind); });
       photoGet(b.dataset.photo).then(function(blob){
         if(!blob){ b.querySelector('img').alt = 'Photo missing on this device'; return; }
         var u = URL.createObjectURL(blob); jobThumbs.push(u); b.querySelector('img').src = u;
@@ -2594,11 +2594,14 @@
   $('job-close-2').addEventListener('click', closeJob);
   $('job-overlay').addEventListener('click', function(e){ if(e.target.id==='job-overlay') closeJob(); });
   $('job-edit').addEventListener('click', function(){ var j = jobById(jobViewId); if(j) openJobEdit(j); });
-  function deleteJobData(j){ j.photos.forEach(function(p){ photoDel(p.id).catch(function(){}); }); }
+  function deleteJobData(j){
+    photoList(j, 'photos').concat(photoList(j, 'loads')).forEach(function(p){ photoDel(p.id).catch(function(){}); });
+  }
   $('job-delete').addEventListener('click', function(){
     var j = jobById(jobViewId); if(!j) return;
+    var pics = photoList(j, 'photos').length + photoList(j, 'loads').length;
     askConfirm('Delete job', 'Delete '+j.name+' with its '+j.lists.length+' material list'+(j.lists.length===1?'':'s')+
-      (j.type==='out' ? ' and '+j.photos.length+' delivery paper photo'+(j.photos.length===1?'':'s') : '')+'? Tickets stay in Sales. This cannot be undone.', 'Delete job', function(){
+      ' and '+pics+' photo'+(pics===1?'':'s')+'? Tickets stay in Sales. This cannot be undone.', 'Delete job', function(){
         deleteJobData(j);
         jobs = jobs.filter(function(x){ return x.id!==j.id; });
         saveJobs();
@@ -2608,7 +2611,24 @@
       });
   });
 
-  /* ---------- delivery paper photos (IndexedDB) ---------- */
+  /* ---------- job photos: delivery papers (outsourced lumber in) and truck loads (deliveries out) ---------- */
+  var PHOTO_KINDS = {
+    photos:{ title:'Delivery papers', one:'Delivery paper', file:'delivery paper',
+      empty:'No delivery papers yet. Take a photo of each paper that comes with the lumber.' },
+    loads:{ title:'Truck loads', one:'Truck load', file:'truck load',
+      empty:'No truck loads yet. Take a picture of each load as it goes out.' }
+  };
+  var photoKind = 'photos';
+  // Jobs made before truck loads existed have no loads list yet
+  function photoList(j, kind){ return j[kind] || (j[kind] = []); }
+  function photoSection(j, kind){
+    var k = PHOTO_KINDS[kind], list = photoList(j, kind);
+    return '<div><div class="sec-label"><span>'+k.title+'</span><button class="btn sm primary" data-add="'+kind+'">Add photos</button></div>'+
+      (list.length ? '<div class="photos">'+list.map(function(p){
+        return '<button class="photo" data-photo="'+p.id+'" data-kind="'+kind+'"><img alt="'+k.one+' from '+esc(new Date(p.date).toLocaleDateString())+'">'+
+          '<span>'+esc(new Date(p.date).toLocaleDateString())+(p.note ? ' · '+esc(p.note) : '')+'</span></button>';
+      }).join('')+'</div>' : '<div class="sec-empty">'+k.empty+'</div>')+'</div>';
+  }
   var photoDbP = null;
   function photoDb(){
     if(!photoDbP) photoDbP = new Promise(function(res, rej){
@@ -2648,7 +2668,7 @@
     });
   }
   $('photo-input').addEventListener('change', function(){
-    var j = jobById(jobViewId), files = Array.prototype.slice.call(this.files || []);
+    var j = jobById(jobViewId), files = Array.prototype.slice.call(this.files || []), kind = photoKind;
     if(!j || !files.length) return;
     toast('Saving '+files.length+(files.length===1?' photo…':' photos…'));
     var saved = 0;
@@ -2657,7 +2677,7 @@
         return shrinkImage(file).then(function(blob){
           var id = uid('ph');
           return photoPut(id, blob).then(function(){
-            j.photos.push({ id:id, date:new Date().toISOString(), by: session ? session.name : '', note:'' });
+            photoList(j, kind).push({ id:id, date:new Date().toISOString(), by: session ? session.name : '', note:'' });
             saved++;
           });
         });
@@ -2672,11 +2692,16 @@
   });
 
   var photoView = null;
-  function openPhoto(jobId, pid){
-    var j = jobById(jobId), p = j && j.photos.find(function(x){ return x.id===pid; });
+  function viewedPhoto(){
+    var j = photoView && jobById(photoView.jobId);
+    return j ? photoList(j, photoView.kind).find(function(x){ return x.id===photoView.id; }) : null;
+  }
+  function openPhoto(jobId, pid, kind){
+    var j = jobById(jobId), p = j && photoList(j, kind).find(function(x){ return x.id===pid; });
     if(!p) return;
-    photoView = { jobId:jobId, id:pid, url:null };
-    $('photo-title').textContent = 'Delivery paper · '+fmtDate(p.date);
+    photoView = { jobId:jobId, id:pid, kind:kind, url:null };
+    $('photo-title').textContent = PHOTO_KINDS[kind].one+' · '+fmtDate(p.date);
+    $('photo-note').placeholder = kind==='loads' ? 'Bundles 1-14, dove tail trailer…' : 'Load 2, 2x6 bunks…';
     $('photo-note').value = p.note || '';
     $('photo-img').removeAttribute('src');
     $('photo-overlay').classList.add('open');
@@ -2688,7 +2713,7 @@
   }
   function closePhoto(){
     if(!photoView) return $('photo-overlay').classList.remove('open');
-    var j = jobById(photoView.jobId), p = j && j.photos.find(function(x){ return x.id===photoView.id; });
+    var p = viewedPhoto();
     if(p && p.note !== $('photo-note').value.trim()){ p.note = $('photo-note').value.trim(); saveJobs(); renderJob(); }
     if(photoView.url) URL.revokeObjectURL(photoView.url);
     photoView = null;
@@ -2699,18 +2724,18 @@
   $('photo-overlay').addEventListener('click', function(e){ if(e.target.id==='photo-overlay') closePhoto(); });
   $('photo-download').addEventListener('click', function(){
     if(!photoView || !photoView.url) return;
-    var j = jobById(photoView.jobId), p = j && j.photos.find(function(x){ return x.id===photoView.id; });
+    var j = jobById(photoView.jobId), p = viewedPhoto();
     var a = document.createElement('a');
     a.href = photoView.url;
-    a.download = ((j ? j.name : 'Job')+' delivery paper '+(p ? new Date(p.date).toLocaleDateString() : '')).replace(/[\\/:*?"<>|]+/g,'-')+'.jpg';
+    a.download = ((j ? j.name : 'Job')+' '+PHOTO_KINDS[photoView.kind].file+' '+(p ? new Date(p.date).toLocaleDateString() : '')).replace(/[\\/:*?"<>|]+/g,'-')+'.jpg';
     document.body.appendChild(a); a.click(); a.remove();
   });
   $('photo-delete').addEventListener('click', function(){
     if(!photoView) return;
     var v = photoView;
-    askConfirm('Delete photo', 'Delete this delivery paper photo? This cannot be undone.', 'Delete', function(){
+    askConfirm('Delete photo', 'Delete this '+PHOTO_KINDS[v.kind].file+' photo? This cannot be undone.', 'Delete', function(){
       var j = jobById(v.jobId);
-      if(j) j.photos = j.photos.filter(function(x){ return x.id!==v.id; });
+      if(j) j[v.kind] = photoList(j, v.kind).filter(function(x){ return x.id!==v.id; });
       photoDel(v.id).catch(function(){});
       saveJobs();
       if(v.url) URL.revokeObjectURL(v.url);
