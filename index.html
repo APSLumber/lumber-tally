@@ -335,6 +335,9 @@
     .ret-row{grid-template-columns:repeat(3,minmax(0,1fr));}
     .ret-row > :first-child{grid-column:1 / -1;}
   }
+  /* Material list */
+  .material-frame{display:block;width:100%;height:600px;border:0;background:transparent;}
+
   /* Review */
   .rv-line{grid-template-columns:minmax(0,1.6fr) minmax(0,1fr) auto;}
   .rv-total{display:flex;justify-content:space-between;gap:10px;padding:10px 16px;font-family:'JetBrains Mono',monospace;font-weight:700;background:#FBFAF6;}
@@ -424,11 +427,16 @@
     .install{display:flex;align-items:center;gap:10px;padding:10px 12px;margin-bottom:12px;background:var(--green-pale);border:1px solid var(--green);border-radius:8px;font-size:13px;line-height:1.4;}
     .install > div{flex:1;}
   }
-  @media screen and (max-width:380px){
-    .tab-btn{font-size:9px;}
+  /* Up to 8 tabs share the phone's bottom bar */
+  @media screen and (max-width:440px){
+    .tab-btn{font-size:9px;letter-spacing:-0.02em;padding-left:0;padding-right:0;}
   }
-  @media screen and (max-width:340px){
-    .tab-btn{font-size:8px;}
+  @media screen and (max-width:360px){
+    .tab-btn{font-size:7.5px;}
+    .tab-btn svg{width:18px;height:18px;}
+  }
+  @media screen and (max-width:330px){
+    .tab-btn{hyphens:auto;-webkit-hyphens:auto;overflow-wrap:anywhere;}
   }
   .paper .p-bo{margin-top:16px;padding-top:8px;border-top:1px dashed var(--gold);}
   .paper .p-bo-title{font-family:'Inter',sans-serif;font-weight:700;font-size:13px;color:#8A6215;margin-bottom:4px;}
@@ -486,6 +494,7 @@
       <button class="tab-btn" data-view="bill"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg>Bill out</button>
       <button class="tab-btn" data-view="review"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg>Review<span class="tab-count" id="rv-count" hidden></span></button>
       <button class="tab-btn" data-view="backorders"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Back orders<span class="tab-count" id="bo-count" hidden></span></button>
+      <button class="tab-btn" data-view="material"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h7l5 5v13H7z"/><path d="M14 3v5h5M10 12h6M10 16h6"/></svg>Material list</button>
       <button class="tab-btn" data-view="customers"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M3 20c0-3.5 2.7-6 6-6s6 2.5 6 6"/><path d="M16 5a3.5 3.5 0 0 1 0 6.5M18 14.5c2 .8 3 2.8 3 5.5"/></svg>Customers</button>
       <button class="tab-btn" data-view="sales"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Sales</button>
       <button class="tab-btn" data-view="accounts"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg>Accounts</button>
@@ -600,6 +609,11 @@
       </button>
     </div>
     <div id="bo-list"><div class="loading">Loading back orders…</div></div>
+  </section>
+
+  <!-- MATERIAL LIST (its own page, material.html, loaded the first time the tab opens) -->
+  <section class="view" id="view-material">
+    <iframe id="material-frame" title="Material list" class="material-frame"></iframe>
   </section>
 
   <!-- CUSTOMERS -->
@@ -1049,7 +1063,7 @@
   var MAX_USERS = 10;
   var USERNAME_RULE = 'Username must be 3 to 30 characters: letters, numbers, dot, dash, or underscore.';
   var PASS_RULE = 'Password must be at least 6 characters.';
-  var ROLE_VIEWS = { admin:['inventory','bill','review','backorders','customers','sales','accounts'], user:['bill','review','backorders','customers'] };
+  var ROLE_VIEWS = { admin:['inventory','bill','review','backorders','material','customers','sales','accounts'], user:['bill','review','backorders','material','customers'] };
   function can(view){ return !!session && ROLE_VIEWS[session.role].indexOf(view)>-1; }
   function saveAccounts(){ save(KEYS.acct, accounts); }
   function adminRec(id){ return id==='admin' ? accounts.admin : (id==='admin2' && accounts.admin2) ? accounts.admin2 : null; }
@@ -1099,7 +1113,8 @@
     document.querySelectorAll('.view').forEach(function(v){ v.hidden = !can(v.id.replace('view-','')); });
     $('complete-btn').textContent = session.role==='admin' ? 'Complete sale' : 'Submit for review';
     renderAll();
-    go(session.role==='admin' ? 'inventory' : 'bill');
+    // material.html opened on its own sends people to ./#material
+    go(location.hash==='#material' && can('material') ? 'material' : session.role==='admin' ? 'inventory' : 'bill');
   }
   function go(view){
     if(!can(view)) return;
@@ -1112,6 +1127,7 @@
     if(view==='accounts') renderAccounts();
     if(view==='backorders') renderBackorders();
     if(view==='review') renderReview();
+    if(view==='material') loadMaterial();
   }
   document.querySelectorAll('.tab-btn').forEach(function(btn){
     btn.addEventListener('click', function(){ go(btn.dataset.view); });
@@ -1193,6 +1209,7 @@
     $('customer').value = ''; $('cust-select').value = '';
     closeStock(); closeDelete(); closeTicket(); closeCust(); closeCustDetail(); closeCdel(); closeSdel();
     closeAcct(); closePw(); closeCf(); closeImp(); closeBoAdd(); closeReturn(); closeReject();
+    unloadMaterial();
     document.body.classList.remove('authed');
     showGate('login');
   });
@@ -3128,6 +3145,54 @@
   document.addEventListener('keydown', function(e){
     if(e.key==='Escape'){ closeStock(); closeDelete(); closeTicket(); closeCust(); closeCustDetail(); closeCdel(); closeSdel(); closeAcct(); closePw(); closeCf(); closeImp(); closeBoAdd(); closeReturn(); closeReject(); }
   });
+
+  /* =====================================================
+     MATERIAL LIST (material.html, shown in a frame on its tab)
+  ===================================================== */
+  var materialObserver = null;
+  function loadMaterial(){
+    var f = $('material-frame');
+    if(f.getAttribute('src')) return;
+    f.onload = function(){
+      var doc = f.contentDocument;
+      if(!doc || !doc.body) return;
+      // The frame grows to fit the page, so it scrolls with the rest of the app
+      var fit = function(){
+        doc.documentElement.style.setProperty('--host-vh', (window.innerHeight/100)+'px');
+        f.style.height = doc.body.offsetHeight+'px';
+      };
+      if(materialObserver) materialObserver.disconnect();
+      materialObserver = new ResizeObserver(fit);
+      materialObserver.observe(doc.body);
+      fit();
+    };
+    f.setAttribute('src', 'material.html');
+  }
+  // Signing out drops the job's PDFs from the page
+  function unloadMaterial(){
+    if(materialObserver){ materialObserver.disconnect(); materialObserver = null; }
+    $('material-frame').removeAttribute('src');
+    $('material-frame').style.height = '';
+  }
+  window.addEventListener('resize', function(){
+    var f = $('material-frame'), doc = f.getAttribute('src') && f.contentDocument;
+    if(doc && doc.body){ doc.documentElement.style.setProperty('--host-vh', (window.innerHeight/100)+'px'); f.style.height = doc.body.offsetHeight+'px'; }
+  });
+  window.tallyToast = function(msg){ toast(msg); };
+  // "Send to Bill out" on the material list: the lines open in the Bill out upload preview to check, fix or back order
+  window.tallyBillFromList = function(items, title){
+    if(!session || !can('bill')) return;
+    if(!items.length){ toast('There is no lumber on this list to bill out.'); return; }
+    go('bill');
+    openImp('bill');
+    $('imp-drop-main').textContent = title || 'Material list';
+    var lines = items.map(function(it, i){
+      return checkLine({ row:i+1, src:it.src, t:it.t, w:it.w, kind:normKind(it.kind), l:lenNum(it.len),
+        bs:null, bunks:null, pcs:it.qty, low:null });
+    });
+    impPlan = planBill(lines);
+    renderImp();
+  };
 
   /* ---------- install on a phone, and open without signal ---------- */
   var installEvent = null;

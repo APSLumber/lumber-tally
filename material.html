@@ -1,0 +1,1667 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Material List</title>
+<script>
+  // This page lives inside the Lumber Tally's Material list tab; opened on its own, send people there (and through sign-in)
+  if (window.parent === window) location.replace('./#material');
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap">
+<style>
+body { margin: 0; }
+img { max-width: 100%; }
+[hidden] { display: none !important; }
+</style>
+<style>
+/* Layout: one working column — drop zone, then the material sheet as it prints, then the detail behind it. */
+/* Colors and type match the Lumber Tally around it */
+:root {
+  --bg: #F4F1E8;
+  --paper: #ffffff;
+  --ink: #1F2420;
+  --muted: #5D6459;
+  --line: #DDD9CB;
+  --accent: #2F5D3A;
+  --accent-soft: #E3ECE0;
+  --warn: #B7852E;
+  --warn-soft: #F4E8CC;
+  --bad: #B5472B;
+  --font-display: "Inter", system-ui, sans-serif;
+  --font-body: "Inter", system-ui, sans-serif;
+  --font-data: "JetBrains Mono", ui-monospace, Consolas, monospace;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 14px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+/* the Lumber Tally page already gives the side gutters */
+.wrap { padding-bottom: 8px; display: grid; gap: 18px; }
+header h1 { font-size: 22px !important; letter-spacing: -0.01em !important; }
+/* phones: the two halves of the sheet stack instead of scrolling sideways */
+@media (max-width: 640px) {
+  .sheet .cols { grid-template-columns: 1fr !important; min-width: 0 !important; }
+  .sheet { padding: 18px 16px 20px !important; }
+}
+header h1 { font-family: var(--font-display); font-weight: 700; font-size: 30px; letter-spacing: .01em; margin: 0; text-wrap: balance; }
+header p { margin: 4px 0 0; color: var(--muted); max-width: 62ch; }
+.eyebrow { font-family: var(--font-display); font-weight: 600; text-transform: uppercase; letter-spacing: .09em; font-size: 12px; color: var(--accent); }
+
+.drop { border: 2px dashed var(--line); border-radius: 10px; background: var(--paper); padding: 26px 20px;
+  display: grid; gap: 10px; justify-items: center; text-align: center; cursor: pointer; transition: border-color .15s, background .15s; }
+.drop:hover, .drop:focus-visible, .drop.over { border-color: var(--accent); background: var(--accent-soft); outline: none; }
+.drop strong { font-family: var(--font-display); font-size: 20px; font-weight: 600; }
+.drop span { color: var(--muted); font-size: 14px; }
+.btn { font: 600 14px var(--font-body); border-radius: 6px; padding: 9px 16px; border: 1px solid var(--accent);
+  background: var(--accent); color: var(--paper); cursor: pointer; }
+.btn.ghost { background: transparent; color: var(--accent); }
+.btn:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.btn[disabled] { opacity: .5; cursor: default; }
+
+.files { display: grid; gap: 6px; }
+.file { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; background: var(--paper); border: 1px solid var(--line);
+  border-radius: 8px; padding: 9px 12px; }
+.file .name { font-weight: 600; min-width: 0; overflow-wrap: anywhere; flex: 1 1 220px; }
+.file .meta { color: var(--muted); font-size: 13px; font-family: var(--font-data); }
+.file button { background: none; border: 0; color: var(--muted); cursor: pointer; font-size: 13px; text-decoration: underline; }
+.bar { height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; flex-basis: 100%; }
+.bar i { display: block; height: 100%; background: var(--accent); width: 0; transition: width .2s; }
+
+.banner { border-radius: 8px; padding: 10px 14px; font-size: 14px; }
+.banner.sample { background: var(--accent-soft); }
+.banner.warn { background: var(--warn-soft); color: var(--ink); border-left: 4px solid var(--warn); }
+.banner ul { margin: 6px 0 0; padding-left: 18px; }
+
+.controls { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: end; }
+@media (max-width: 640px) { .controls { grid-template-columns: 1fr; } }
+label.field { display: grid; gap: 4px; font-size: 13px; color: var(--muted); }
+input[type=text], input[type=number] { font: 500 15px var(--font-body); color: var(--ink); background: var(--paper);
+  border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; width: 100%; }
+input[type=number] { font-family: var(--font-data); }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* the material sheet, as it prints */
+.sheet { background: var(--paper); border: 1px solid var(--line); border-radius: 4px; padding: 26px 28px 30px; overflow-x: auto; }
+.sheet .co { font-weight: 700; font-size: 15px; }
+.sheet .addr { font-weight: 600; font-size: 14px; color: var(--muted); }
+.sheet h2 { font-family: var(--font-display); font-size: 24px; margin: 8px 0 14px; font-weight: 700; }
+.cols { display: grid; grid-template-columns: repeat(2, minmax(250px, 1fr)); gap: 10px 48px; min-width: 540px; }
+.blk { margin-bottom: 14px; }
+.blk h3 { font-family: var(--font-display); font-size: 16px; font-weight: 700; margin: 0 0 4px; padding-bottom: 3px; border-bottom: 1.5px solid var(--ink); }
+.grp { display: grid; grid-template-columns: 1fr 90px 80px; column-gap: 8px; padding: 2px 0; }
+.grp .t { font-weight: 600; grid-column: 1 / -1; padding-top: 4px; }
+.grp .l { grid-column: 2; font-family: var(--font-data); font-size: 14px; }
+.grp .q { grid-column: 3; text-align: right; font-family: var(--font-data); font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.colhead { display: grid; grid-template-columns: 1fr 90px 80px; column-gap: 8px; font-size: 12px; text-transform: uppercase;
+  letter-spacing: .08em; color: var(--muted); font-family: var(--font-display); margin-bottom: 6px; }
+.colhead span:last-child { text-align: right; }
+
+details { background: var(--paper); border: 1px solid var(--line); border-radius: 8px; }
+summary { cursor: pointer; padding: 12px 16px; font-family: var(--font-display); font-weight: 600; font-size: 16px; }
+details > div { padding: 0 16px 16px; }
+.allow { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; }
+.tbl-wrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--line); }
+th { font-family: var(--font-display); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); }
+td.n { text-align: right; font-family: var(--font-data); font-variant-numeric: tabular-nums; }
+.note { color: var(--muted); font-size: 13px; max-width: 70ch; }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+  background: var(--ink); color: var(--paper); padding: 9px 16px; border-radius: 6px; font-size: 14px; }
+.pkg-tabs { display: flex; flex-wrap: wrap; width: fit-content; max-width: 100%; }
+.pkg-tabs button { font-size: 14px; padding: 10px 16px; flex: 1 1 auto; }
+@media (max-width: 520px) { .pkg-tabs { width: 100%; } .pkg-tabs button { padding: 9px 10px; font-size: 13px; } }
+:root { --panel-line: #2f5fd0; --panel-fill: rgba(47, 95, 208, .22); --precut-line: #d9620b; --precut-fill: rgba(240, 120, 20, .45); }
+.pl.pan { border: 1px solid var(--panel-line); background: var(--panel-fill); }
+.pl.pre { border: 1.5px solid var(--precut-line); background: var(--precut-fill); }
+/* shear walls */
+:root { --drawing: #ffffff; --mark: #0d7a45; --mark-fill: rgba(16, 150, 80, .42); --mark2-fill: rgba(9, 95, 52, .62); --sug: #d97a00; --sug-fill: rgba(255, 170, 0, .22); }
+.shear { background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 18px 18px 20px; display: grid; gap: 14px; min-width: 0; }
+.shear h2 { font-family: var(--font-display); font-size: 22px; margin: 0; }
+.shear > p { margin: 0; }
+.sh-inputs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 640px) { .sh-inputs { grid-template-columns: 1fr; } }
+.drop.mini { padding: 14px 16px; justify-items: start; text-align: left; gap: 2px; }
+.drop.mini strong { font-size: 16px; }
+.drop.mini.loaded { border-style: solid; border-color: var(--accent); }
+.sh-tools { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; justify-content: space-between; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.seg button { font: 600 13px var(--font-body); background: var(--paper); color: var(--ink); border: 0; padding: 7px 12px; cursor: pointer; }
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button[aria-selected="true"] { background: var(--accent); color: var(--paper); }
+.seg button:focus-visible, .pl:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+select, textarea { font: 500 14px var(--font-body); color: var(--ink); background: var(--paper); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; max-width: 100%; }
+textarea { width: 100%; resize: vertical; font-family: var(--font-data); }
+/* --host-vh is the Lumber Tally window's height: this page's own height grows to fit its content */
+.viewer { overflow: auto; max-height: calc(var(--host-vh, 1vh) * 72); border: 1px solid var(--line); border-radius: 6px; background: var(--drawing); }
+.stage { position: relative; }
+.stage img { display: block; width: 100%; height: auto; max-width: none; user-select: none; }
+.stage .empty { padding: 48px 20px; text-align: center; color: #5d6862; font-size: 14px; }
+.pl { position: absolute; padding: 0; margin: 0; border: 1px solid transparent; background: transparent; border-radius: 2px; cursor: pointer; }
+.pl:hover { border-color: var(--mark); background: rgba(16, 150, 80, .15); }
+.pl.sug { border: 2px dashed var(--sug); background: var(--sug-fill); }
+.pl.on { border: 1.5px solid var(--mark); background: var(--mark-fill); }
+.pl.two { background: var(--mark2-fill); }
+.pl i { position: absolute; right: -7px; top: -9px; font: 700 10px/1.2 var(--font-data); font-style: normal; background: var(--mark); color: #fff; border-radius: 6px; padding: 0 3px; }
+.sh-actions { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+.sum { font-family: var(--font-display); font-size: 17px; font-weight: 600; }
+.sum b { font-family: var(--font-data); }
+td select { padding: 3px 6px; }
+td .rm { background: none; border: 0; color: var(--muted); text-decoration: underline; cursor: pointer; font-size: 13px; }
+.chip { display: inline-block; font-size: 12px; padding: 1px 7px; border-radius: 10px; background: var(--accent-soft); color: var(--ink); }
+.chip.warn { background: var(--warn-soft); }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1 id="pageH1">Panel Material List</h1>
+    <p id="pageLede">Drop in the wall panel PDFs for a floor. Every piece list is read in your browser and totaled into the shop's material sheet.</p>
+  </header>
+
+  <nav class="seg pkg-tabs" role="tablist" aria-label="Package type">
+    <button role="tab" id="pkg-panel" data-pkg="panel" aria-selected="true">Panel package</button>
+    <button role="tab" id="pkg-precut" data-pkg="precut" aria-selected="false">Precut package</button>
+    <button role="tab" id="pkg-mixed" data-pkg="mixed" aria-selected="false">Panel + precut package</button>
+  </nav>
+
+  <div class="drop" id="drop" tabindex="0" role="button" aria-label="Choose panel PDFs">
+    <strong>Drop panel PDFs here</strong>
+    <span>or click to choose files. Add several (EXT, INB, IB) and they are combined.</span>
+    <input type="file" id="fileInput" accept="application/pdf,.pdf" multiple hidden>
+  </div>
+
+  <div class="files" id="files"></div>
+  <div id="banners" style="display:grid;gap:8px"></div>
+
+  <div class="controls">
+    <label class="field" for="title">Sheet title
+      <input type="text" id="title" value="">
+    </label>
+    <div class="actions">
+      <button class="btn" id="billBtn" title="Open this list in Bill out to check it, then pull it from inventory">Send to Bill out</button>
+      <button class="btn ghost" id="dlBtn">Download Excel</button>
+      <button class="btn ghost" id="copyBtn">Copy for Excel</button>
+      <button class="btn ghost" id="clearBtn" hidden>Clear files</button>
+    </div>
+  </div>
+
+  <section class="sheet" id="sheet" aria-label="Material list"></section>
+
+  <section class="sheet" id="siteSheet" aria-label="Ship to site list" hidden></section>
+
+  <section class="shear" id="assign" aria-labelledby="assignTitle" hidden>
+    <h2 id="assignTitle">Panel or precut walls</h2>
+    <p class="note">Drop in the floor layout, then click each wall that will be precut. Every wall starts as a panel. Panel walls follow the panel package rules. Precut walls follow the precut rules: their precut studs, wall sheets and very top plates go on the Ship to Site list, and they don't count toward stack blocking and bracing.</p>
+    <div class="drop mini" id="assignDrop" tabindex="0" role="button" aria-label="Choose the floor layout PDF">
+      <strong>Floor layout PDF</strong>
+      <span id="assignName">The panel layout sheet for this floor, with every panel number on it.</span>
+      <input type="file" id="assignInput" accept="application/pdf,.pdf" hidden>
+    </div>
+    <div class="sh-tools">
+      <div class="actions">
+        <button class="btn ghost" id="mixExtInt">Exterior panel, interior precut</button>
+        <button class="btn ghost" id="mixAllPanel">All panel</button>
+        <button class="btn ghost" id="mixAllPrecut">All precut</button>
+      </div>
+      <div class="seg" aria-label="Zoom">
+        <button id="azOut" aria-label="Zoom out">−</button>
+        <button id="azFit">Fit</button>
+        <button id="azIn" aria-label="Zoom in">+</button>
+      </div>
+    </div>
+    <div class="viewer" id="assignViewer"><div class="stage" id="assignStage"></div></div>
+    <p class="note" style="margin:0"><span class="chip" style="background:var(--panel-fill)">Panel</span> <span class="chip" style="background:var(--precut-fill)">Precut</span> Click a panel number to switch that wall between panel and precut. Zoom in to read the numbers.</p>
+    <div class="sum" id="assignSummary"></div>
+  </section>
+
+  <section class="shear" id="shear" aria-labelledby="shearTitle">
+    <h2 id="shearTitle">Shear walls</h2>
+    <p class="note">Exterior sheathing is already counted from the panel sheet schedules. Shear walls inside the building aren't, so mark them here. Open the shear wall plan next to the floor layout, then click each shear wall's panel number on the layout.</p>
+    <div class="sh-inputs">
+      <div class="drop mini" id="layoutDrop" tabindex="0" role="button" aria-label="Choose the floor layout PDF">
+        <strong>Floor layout PDF</strong>
+        <span id="layoutName">The panel layout sheet for this floor, with every panel number on it.</span>
+        <input type="file" id="layoutInput" accept="application/pdf,.pdf" hidden>
+      </div>
+      <div class="drop mini" id="planDrop" tabindex="0" role="button" aria-label="Choose the shear wall plan PDF">
+        <strong>Shear wall plan PDF</strong>
+        <span id="planName">The structural sheet (or whole structural set) showing the shear walls.</span>
+        <input type="file" id="planInput" accept="application/pdf,.pdf" hidden>
+      </div>
+    </div>
+    <div class="sh-tools">
+      <div class="seg" role="tablist" aria-label="Drawing">
+        <button role="tab" id="tabLayout" aria-selected="true">Floor layout</button>
+        <button role="tab" id="tabPlan" aria-selected="false">Shear wall plan</button>
+      </div>
+      <select id="planPage" aria-label="Plan page" hidden></select>
+      <div class="seg" aria-label="Zoom">
+        <button id="zOut" aria-label="Zoom out">−</button>
+        <button id="zFit">Fit</button>
+        <button id="zIn" aria-label="Zoom in">+</button>
+      </div>
+    </div>
+    <div class="viewer" id="viewer"><div class="stage" id="stage"></div></div>
+    <p class="note" id="viewerHint" style="margin:0">Click a panel number to mark it a shear wall. Click it again to clear it. Shear walls are sheathed on one side. Zoom in to read the numbers.</p>
+    <div class="sh-actions">
+      <button class="btn" id="suggestBtn" hidden>Suggest from plan</button>
+      <button class="btn ghost" id="stopSuggest" hidden>Stop</button>
+      <span class="note" id="suggestStatus"></span>
+    </div>
+    <div id="suggestBox"></div>
+    <div class="sum" id="shearSummary"></div>
+    <div class="tbl-wrap"><table id="shearTable"></table></div>
+    <label class="field" for="shearPaste">Or type panel numbers, separated by commas, e.g. 2I-33, 2I-48
+      <textarea id="shearPaste" rows="2"></textarea>
+    </label>
+    <div class="actions">
+      <button class="btn ghost" id="shearApply">Add these</button>
+      <button class="btn ghost" id="shearClear">Clear all shear walls</button>
+    </div>
+  </section>
+
+  <details id="allowDetails">
+    <summary>Allowances and stack material</summary>
+    <div>
+      <p class="note">Extra added on top of the exact piece counts. The defaults were tuned against a hand-made material list. Changes are remembered in this browser.</p>
+      <div class="allow" id="allow"></div>
+      <p><button class="btn ghost" id="resetAllow">Reset to defaults</button></p>
+    </div>
+  </details>
+
+  <details>
+    <summary>Header and 1x cut list</summary>
+    <div>
+      <p class="note">How the 2x8, 2x10 and 2x12 headers and the 1x pieces nest on the boards ordered, before any allowance. Each line is one board pattern.</p>
+      <div id="cutList"></div>
+    </div>
+  </details>
+
+  <details>
+    <summary>Piece breakdown</summary>
+    <div>
+      <p class="note">Every piece read from the panels, before any allowance. Use it to spot-check against the panel sheets.</p>
+      <div class="tbl-wrap"><table id="bdTable"></table></div>
+    </div>
+  </details>
+
+  <details>
+    <summary>How the list is figured</summary>
+    <div class="note">
+      <p><b>Precut studs</b>: 2x4 and 2x6 studs, kings, jacks and backers cut at exactly 92 5/8".</p>
+      <p><b>Studs and Trimmers</b>: the same parts at other lengths. Under 92 5/8" are cut from 92 5/8" stock (two per stud when 46 5/16" or less), up to 104 5/8" from 104 5/8", up to 10' from 10'. Anything longer goes to lineal.</p>
+      <p><b>Lineal</b>: plates, sills, headers, cripples, blocking and other 2x4/2x6 parts, nested into 12' boards. Pieces over 12' get their own 14', 16' or longer board. Treated (PT) and SYP plates are listed on their own.</p>
+      <p><b>Headers</b>: 2x8, 2x10 and 2x12 headers of each size all come out of one board length between 8' and 16' (2' steps). Every length that fits the longest header is tried and the one with the least total scrap is used. A header longer than 16' gets its own board in the next even length and nothing else is cut from it. 1x lumber follows the same rule. 2x4 and 2x6 headers are in the lineal. LVL and other engineered pieces are listed by the next even length.</p>
+      <p><b>Paneling</b>: number of walls divided by 5, rounded up, in 12' boards. That count is used for both the 2x6 stack blocking and the 2x4 stack bracing.</p>
+      <p><b>Sheet size</b>: picked from the standard wall height. Up to 97" uses 4x8 sheets, 97" to 109" uses 4x9, and 109" to 121" uses 4x10. The same size is used for shear walls.</p>
+      <p><b>Wall sheets</b>: take every wall that has sheathing on it, add up the length of their bottom plates, divide by 4' per sheet, and round up to the nearest 5.</p>
+      <p><b>Shear wall sheets</b>: for each wall marked as a shear wall, its bottom plate length (one side) divided by 4' per sheet, rounded up to the nearest 5. Shear walls are only ever sheathed on one side. An exterior wall marked as a shear wall adds nothing, since its sheathing is already in the wall sheets above.</p>
+      <p><b>Tall walls</b>: exterior and shear walls taller than the standard wall height get extra sheathing. Up to 2' over standard adds 25%, 2' to 4' over adds 50%, and more than 4' over adds 100%. Standard height is the most common panel height unless you set it under Allowances.</p>
+    </div>
+  </details>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<script>
+/* ===== Panel PDF reader + material list calculator ===== */
+const DEFAULTS = {
+  studWaste: 2,      // % added to stud & trimmer counts
+  linealWaste: 18,   // % added to 2x4 / 2x6 lineal 12' counts
+  longWaste: 10,     // % added to 14'+ stock counts
+  ptWaste: 7,        // % added to treated + SYP plates
+  headerWaste: 5,    // % added to 2x8 / 2x10 / 2x12 headers
+  miscWaste: 10,     // % added to 1x and other lumber
+  wallsPerStackBoard: 5 // walls per 12' board of stack blocking (2x6) and of stack bracing (2x4)
+};
+
+const PRECUT = 92.625;
+const KERF = 0.125;
+
+function fracToNum(s) {
+  let t = 0;
+  for (const p of s.trim().split(/\s+/)) {
+    if (p.includes('/')) { const [a, b] = p.split('/'); t += Number(a) / Number(b); }
+    else t += Number(p);
+  }
+  return t;
+}
+function fmtIn(x) {
+  const whole = Math.floor(x + 1e-9);
+  const sixteenths = Math.round((x - whole) * 16);
+  if (!sixteenths) return whole + '"';
+  let n = sixteenths, d = 16;
+  while (n % 2 === 0) { n /= 2; d /= 2; }
+  return (whole ? whole + ' ' : '') + n + '/' + d + '"';
+}
+
+/* Group pdf.js text items into lines (top to bottom, left to right). */
+function itemsToLines(items) {
+  const its = items.filter(i => i.str && i.str.trim()).map(i => ({
+    s: i.str, x: i.transform[4], y: i.transform[5],
+    w: i.width, h: Math.abs(i.transform[3]) || Math.abs(i.height) || 8
+  }));
+  its.sort((a, b) => b.y - a.y || a.x - b.x);
+  const lines = [];
+  for (const it of its) {
+    let line = null;
+    for (let k = lines.length - 1; k >= 0 && k >= lines.length - 6; k--) {
+      if (Math.abs(lines[k].y - it.y) <= Math.max(1.5, it.h * 0.3)) { line = lines[k]; break; }
+    }
+    if (!line) { line = { y: it.y, items: [] }; lines.push(line); }
+    line.items.push(it);
+  }
+  return lines.map(l => {
+    l.items.sort((a, b) => a.x - b.x);
+    let out = '', end = null;
+    for (const it of l.items) {
+      if (end !== null) {
+        const gap = it.x - end;
+        out += gap > it.h * 0.12 ? ' ' : '';
+      }
+      out += it.s;
+      end = it.x + it.w;
+    }
+    return { y: l.y, x: l.items[0].x, text: out.replace(/\s+/g, ' ').trim(), items: l.items };
+  });
+}
+
+const PIECE_RE = /^([A-Z]{1,4}\d{1,3})\s+(\d+)\s+(\d+x\d+|[A-Z]{2,4}-[\w.]+|\S+)\s+(.*?)\s*((?:\d+ )?\d+(?:\/\d+)?)"/;
+const SHEET_RE = /^(SH\d+)\s+(\d+)\s+(SH_\S+)\s+(.*)$/;
+const PANEL_RE = /\b(\d{1,2}[A-Z]{1,3}-\d+[A-Z]?)\b/;
+
+/* Parse one page's lines into a panel record. */
+const FTIN_RE = /(\d+)['\u2019\u2032`]\s*-\s*(\d+(?:\s+\d+\/\d+)?|\d+\/\d+)["\u201d\u2033]/;
+function ftIn(s) { const m = String(s).match(FTIN_RE); return m ? +m[1] * 12 + fracToNum(m[2]) : null; }
+function fmtFtIn(x) {
+  if (x == null) return '';
+  const ft = Math.floor((x + 1e-6) / 12);
+  const r = x - ft * 12;
+  return ft + "'-" + (r > 0.01 && r < 1 ? '0 ' : '') + fmtIn(r);
+}
+/* Extra sheathing for walls taller than standard: up to 2' over +25%, 2'-4' over +50%, more than 4' over +100%. */
+function tallFactor(h, std) {
+  if (h == null || std == null) return 1;
+  const d = h - std;
+  return d <= 0.01 ? 1 : d <= 24 ? 1.25 : d <= 48 ? 1.5 : 2;
+}
+/* Sheet length from the standard wall height: up to 97" = 8', up to 109" = 9', up to 121" = 10'. */
+function sheetSize(std) {
+  if (!std || std <= 97) return { ft: 8, label: '4x8', tooTall: false };
+  if (std <= 109) return { ft: 9, label: '4x9', tooTall: false };
+  return { ft: 10, label: '4x10', tooTall: std > 121 };
+}
+/* Most common panel height (to the nearest 1/8") = standard wall height. */
+function modeHeight(heights) {
+  const c = new Map();
+  for (const h of heights) if (h != null && h > 0) { const k = Math.round(h * 8) / 8; c.set(k, (c.get(k) || 0) + 1); }
+  let best = null, n = 0;
+  for (const [k, v] of c) if (v > n) { best = k; n = v; }
+  return best;
+}
+
+function parsePage(lines, pageNo) {
+  const panel = { page: pageNo, id: null, job: null, height: null, pieces: [], sheets: [], suspect: [] };
+  // panel height: the feet-inches value directly under "PANEL HEIGHT:"
+  for (const l of lines) {
+    if (!/PANEL\s*HEIGHT/i.test(l.text)) continue;
+    const it = l.items.find(i => /HEIGHT/i.test(i.s)) || l.items[0];
+    const x0 = it.x - 60, x1 = it.x + 90;
+    // nearest line below the label whose text in that column reads as feet-inches
+    const below = lines.filter(l2 => l2.y < l.y && l.y - l2.y <= 40).sort((a, b) => b.y - a.y);
+    for (const l2 of below) {
+      const txt = l2.items.filter(i => i.x >= x0 && i.x <= x1).map(i => i.s).join(' ').replace(/\s+/g, ' ');
+      const h = ftIn(txt.replace(/\s*(['\u2019\u2032])\s*-\s*/g, '$1-'));
+      if (h) { panel.height = h; break; }
+    }
+    break;
+  }
+  // panel id: text near "WALL PANEL ID", else first match on the page
+  const idx = lines.findIndex(l => /WALL PANEL ID/i.test(l.text));
+  for (let k = Math.max(0, idx); k < Math.min(lines.length, (idx < 0 ? 0 : idx) + 6); k++) {
+    const m = lines[k].text.match(PANEL_RE);
+    if (m && !/\d+'-/.test(m[1])) { panel.id = m[1]; break; }
+  }
+  if (!panel.id) for (const l of lines) { const m = l.text.match(PANEL_RE); if (m) { panel.id = m[1]; break; } }
+  // job name: item directly under "PROJECT INFORMATION:"
+  for (const l of lines) {
+    const it = l.items.find(i => /PROJECT INFORMATION/i.test(i.s));
+    if (it) {
+      let best = null;
+      for (const l2 of lines) {
+        if (l2.y >= l.y || l.y - l2.y > 40) continue;
+        for (const i2 of l2.items) {
+          if (Math.abs(i2.x - it.x) < 30 && !/PROJECT|INFORMATION/i.test(i2.s) && i2.s.trim())
+            if (!best || i2.y > best.y) best = i2;
+        }
+      }
+      if (best) panel.job = best.s.trim();
+      break;
+    }
+  }
+  let inPieces = false;
+  for (const l of lines) {
+    const t = l.text;
+    if (/^PIECE LIST/i.test(t)) { inPieces = true; continue; }
+    const sm = t.match(SHEET_RE);
+    if (sm) { panel.sheets.push({ label: sm[1], qty: +sm[2], mat: sm[3], size: sm[4].replace(/\s+/g, ' ').trim() }); continue; }
+    const pm = t.match(PIECE_RE);
+    if (pm && !/^SH\d/.test(pm[1]) && /^(\d+x\d+|[A-Z]{2,4}-)/.test(pm[3])) {
+      panel.pieces.push(classifyRaw(pm));
+    } else if (inPieces && /^[A-Z]{1,4}\d{1,3}\s+\d+\s+(\d+x\d+|[A-Z]{2,4}-)/.test(t)) {
+      panel.suspect.push(t.slice(0, 120));
+    }
+  }
+  return panel;
+}
+
+function classifyRaw(m) {
+  const mat = m[3];
+  let rest = m[4];
+  let treat = '';
+  if (/^PT\b/.test(rest) || /\bPT\b/.test(rest)) treat = 'PT';
+  else if (/\bSYP\b/.test(rest)) treat = 'SYP';
+  const desc = rest.replace(/\b(LUMBER|SPF|SYP|PT|DF|HF)\b/g, '').replace(/#\d/g, '').replace(/\s+/g, ' ').trim();
+  return { label: m[1], qty: +m[2], mat, treat, desc, len: fracToNum(m[5]), raw: m[0] };
+}
+
+async function readPanelPdf(data, onProgress) {
+  const pdf = await pdfjsLib.getDocument({ data }).promise;
+  const panels = [];
+  for (let p = 1; p <= pdf.numPages; p++) {
+    const page = await pdf.getPage(p);
+    const tc = await page.getTextContent();
+    panels.push(parsePage(itemsToLines(tc.items), p));
+    page.cleanup();
+    if (onProgress) onProgress(p, pdf.numPages);
+    if (p % 8 === 0) await new Promise(r => setTimeout(r, 0));
+  }
+  await pdf.destroy();
+  return panels;
+}
+
+/* ---------- calculation ---------- */
+const isStudLike = d => /\b(SS)?STUD\b|\bKING\b|\bJACK\b|BACKER|TRIMMER/.test(d);
+const ceilTo = (n, step) => Math.ceil(n / step - 1e-9) * step;
+const withWaste = (n, pct) => n <= 0 ? 0 : Math.max(Math.ceil(n), Math.round(n * (1 + pct / 100)));
+const roundStud = n => n <= 0 ? 0 : (n >= 50 ? ceilTo(n, 10) : ceilTo(n, 5));
+
+function packCount(lengths, stock) {
+  const bins = [];
+  for (const l of [...lengths].sort((a, b) => b - a)) {
+    let placed = false;
+    for (let i = 0; i < bins.length; i++) {
+      if (bins[i] + KERF + l <= stock + 1e-6) { bins[i] += KERF + l; placed = true; break; }
+    }
+    if (!placed) bins.push(l);
+  }
+  return bins.length;
+}
+/* Split pieces into 12' packed boards plus longer stock lengths. */
+function stockFor(lengths, baseFt) {
+  const base = baseFt * 12;
+  const fit = lengths.filter(l => l <= base);
+  const res = {};
+  if (fit.length) res[baseFt] = packCount(fit, base);
+  for (const l of lengths.filter(l => l > base)) {
+    let ft = Math.max(baseFt + 2, Math.ceil(l / 12 / 2) * 2);
+    if (ft * 12 < l) ft += 2;
+    res[ft] = (res[ft] || 0) + 1;
+  }
+  return res;
+}
+function applyStock(res, basePct, longPct, baseFt) {
+  const out = [];
+  for (const ft of Object.keys(res).map(Number).sort((a, b) => a - b)) {
+    out.push({ len: ft + "'", qty: withWaste(res[ft], ft === baseFt ? basePct : longPct) });
+  }
+  return out.filter(r => r.qty > 0);
+}
+/* Header ordering (2x8 and up): stock comes in 8'-16' in 2' steps.
+   All headers up to 16' of one size come out of ONE board length: every length from 8' to 16'
+   that fits the longest header is tried, and the one with the least total scrap wins.
+   Within that length each board takes the set of pieces that fills it best. A header over 16' gets its own board, the next even length up,
+   and nothing else is cut from it (3 x 20' headers + 10 x 10' headers = 3 x 20' and 10 x 10'). */
+const HEADER_STOCK_FT = [8, 10, 12, 14, 16];
+function headerStockWith(lengths, stockFt) {
+  const boards = {}, cuts = [];
+  let scrapIn = 0;
+  for (const l of lengths.filter(l => l > 192)) {
+    const ft = Math.max(18, Math.ceil(l / 24 - 1e-9) * 2);
+    boards[ft] = (boards[ft] || 0) + 1;
+    scrapIn += ft * 12 - l;
+    cuts.push({ ft, pieces: [l] });
+  }
+  // remaining pieces, grouped by length in 1/8" units
+  const counts = new Map();
+  for (const l of lengths.filter(l => l <= 192)) { const u = Math.round(l * 8); counts.set(u, (counts.get(u) || 0) + 1); }
+  const kerf = 1; // 1/8" saw kerf per cut
+  const maxCap = 16 * 96 + kerf;
+  let left = [...counts.values()].reduce((a, b) => a + b, 0);
+  while (left > 0) {
+    // split each length's count into 0/1 items (binary splitting) and run a subset-sum up to 16'
+    const items = [];
+    for (const [u, c] of counts) {
+      let k = 1, rem = c;
+      while (rem > 0) { const take = Math.min(k, rem); items.push({ u, n: take, w: take * (u + kerf) }); rem -= take; k *= 2; }
+    }
+    const reach = new Int32Array(maxCap + 1).fill(-1), prev = new Int32Array(maxCap + 1);
+    reach[0] = -2;
+    items.forEach((it, idx) => {
+      for (let s = maxCap; s >= it.w; s--) if (reach[s] === -1 && reach[s - it.w] !== -1) { reach[s] = idx; prev[s] = s - it.w; }
+    });
+    // best board: highest fill ratio, ties go to the longer board
+    let best = null;
+    for (const ft of stockFt) {
+      const cap = ft * 96 + kerf;
+      let s = cap; while (s > 0 && reach[s] === -1) s--;
+      if (s <= 0) continue;
+      const fill = s / (ft * 96);
+      if (!best || fill > best.fill + 1e-9 || (Math.abs(fill - best.fill) <= 1e-9 && ft > best.ft)) best = { ft, s, fill };
+    }
+    if (!best) break;
+    const pieces = [];
+    for (let s = best.s; s > 0; s = prev[s]) {
+      const it = items[reach[s]];
+      for (let i = 0; i < it.n; i++) pieces.push(it.u / 8);
+      counts.set(it.u, counts.get(it.u) - it.n);
+      if (!counts.get(it.u)) counts.delete(it.u);
+      left -= it.n;
+    }
+    boards[best.ft] = (boards[best.ft] || 0) + 1;
+    scrapIn += best.ft * 12 - pieces.reduce((a, b) => a + b, 0);
+    cuts.push({ ft: best.ft, pieces });
+  }
+  return { boards, scrapIn, cuts, left };
+}
+/* Largest-first packing onto one board length ('first' fit or 'best' fit); headers over 16' get their own board. */
+function packFixed(lengths, ft, mode) {
+  const boards = {}, cuts = [];
+  let scrapIn = 0;
+  for (const l of lengths.filter(l => l > 192)) {
+    const f = Math.max(18, Math.ceil(l / 24 - 1e-9) * 2);
+    boards[f] = (boards[f] || 0) + 1; scrapIn += f * 12 - l; cuts.push({ ft: f, pieces: [l] });
+  }
+  const cap = ft * 12 + KERF, bins = [];
+  for (const l of lengths.filter(l => l <= 192).sort((x, y) => y - x)) {
+    if (l > ft * 12) return { left: 1 };
+    let pick = -1;
+    for (let i = 0; i < bins.length; i++) {
+      const room = cap - bins[i].used - (l + KERF);
+      if (room < -1e-6) continue;
+      if (mode === 'first') { pick = i; break; }
+      if (pick < 0 || room < cap - bins[pick].used - (l + KERF)) pick = i;
+    }
+    if (pick < 0) { bins.push({ used: 0, pieces: [] }); pick = bins.length - 1; }
+    bins[pick].used += l + KERF; bins[pick].pieces.push(l);
+  }
+  for (const b of bins) {
+    boards[ft] = (boards[ft] || 0) + 1;
+    scrapIn += ft * 12 - b.pieces.reduce((x, y) => x + y, 0);
+    cuts.push({ ft, pieces: b.pieces });
+  }
+  return { boards, scrapIn, cuts, left: 0 };
+}
+function headerStock(lengths) {
+  const short = lengths.filter(l => l <= 192);
+  const longest = short.length ? Math.max(...short) : 0;
+  let best = null;
+  for (const ft of HEADER_STOCK_FT) {
+    if (ft * 12 < longest) continue;
+    // try a few packings for this one length and keep the one needing the fewest boards
+    const cands = [headerStockWith(lengths, [ft]), packFixed(lengths, ft, 'first'), packFixed(lengths, ft, 'best')].filter(pl => !pl.left);
+    if (!cands.length) continue;
+    const plan = cands.reduce((x, y) => (y.scrapIn < x.scrapIn - 0.01 ? y : x));
+    const n = Object.values(plan.boards).reduce((a, b) => a + b, 0);
+    if (!best || plan.scrapIn < best.scrapIn - 0.01 || (Math.abs(plan.scrapIn - best.scrapIn) <= 0.01 && n < best.n)) best = Object.assign(plan, { n, stockFt: ft });
+  }
+  return best || headerStockWith(lengths, HEADER_STOCK_FT);
+}
+
+function lvlName(mat) {
+  // LVL-134x512 -> 1 3/4 x 5 1/2 LVL
+  const m = mat.match(/^([A-Z]+)-(\d)(\d{2})x(\d+?)(\d{2})?$/);
+  const q = { '00': '', '14': ' 1/4', '12': ' 1/2', '34': ' 3/4', '18': ' 1/8', '38': ' 3/8', '58': ' 5/8', '78': ' 7/8' };
+  if (m) return `${m[2]}${q[m[3]] ?? ''} x ${m[4]}${m[5] ? (q[m[5]] ?? '') : ''} ${m[1]}`.replace(/\s+/g, ' ');
+  return mat.replace('-', ' ');
+}
+
+function calculate(panels, opt) {
+  const o = Object.assign({}, DEFAULTS, opt || {});
+  const all = [];
+  panels.forEach(p => p.pieces.forEach(pc => { for (let i = 0; i < pc.qty; i++) all.push(pc); }));
+
+  const studs = {};    // mat -> {short, mid, ten}
+  const precut = {};   // mat -> n
+  const lineal = {};   // key -> [len]
+  const headers = {};  // mat -> [len]
+  const engineered = {}; // name -> {ft: n}
+
+  const vtp = {};        // key -> [len], very top plates (precut package)
+  for (const pc of all) {
+    const dim = pc.mat.match(/^(\d+)x(\d+)$/);
+    if (!dim) {
+      const name = lvlName(pc.mat);
+      const ft = Math.max(8, Math.ceil(pc.len / 12 / 2) * 2);
+      engineered[name] = engineered[name] || {};
+      engineered[name][ft] = (engineered[name][ft] || 0) + 1;
+      continue;
+    }
+    const thick = +dim[1], width = +dim[2];
+    // Precut package: VTPs on the sheets are ignored; very top plates are a copy of the top plates.
+    if (o.vtpFromTopPlate && /\bVTP\b/.test(pc.desc)) continue;
+    if (o.vtpFromTopPlate && /\bTOP PLATE\b/.test(pc.desc)) {
+      const k = pc.treat ? pc.mat + (pc.treat === 'PT' ? 'PT' : ' SYP') : pc.mat;
+      (vtp[k] = vtp[k] || []).push(pc.len);
+    }
+    if (pc.treat) { const k = pc.mat + (pc.treat === 'PT' ? 'PT' : ' SYP'); (lineal[k] = lineal[k] || []).push(pc.len); continue; }
+    if (thick === 2 && (width === 4 || width === 6) && isStudLike(pc.desc) && pc.len <= 120) {
+      const s = studs[pc.mat] = studs[pc.mat] || { short: 0, mid: 0, ten: 0 };
+      if (Math.abs(pc.len - PRECUT) < 0.01) precut[pc.mat] = (precut[pc.mat] || 0) + 1;
+      else if (pc.len < PRECUT) s.short += pc.len <= PRECUT / 2 ? 0.5 : 1;
+      else if (pc.len <= 104.625) s.mid += 1;
+      else s.ten += 1;
+      continue;
+    }
+    if (thick === 2 && width >= 8 && /HEADER/.test(pc.desc)) { (headers[pc.mat] = headers[pc.mat] || []).push(pc.len); continue; }
+    (lineal[pc.mat] = lineal[pc.mat] || []).push(pc.len);
+  }
+
+  const sortMat = (a, b) => {
+    const pa = a.match(/(\d+)x(\d+)/), pb = b.match(/(\d+)x(\d+)/);
+    if (pa && pb) return (+pa[1] - +pb[1]) || (+pa[2] - +pb[2]) || a.localeCompare(b);
+    return a.localeCompare(b);
+  };
+
+  const L = { studs: [], lineal: [] };
+  const R = { precut: [], sheets: null, paneling: [], headers: [] };
+
+  for (const mat of Object.keys(studs).sort(sortMat)) {
+    const s = studs[mat];
+    const rows = [
+      { len: '92 5/8"', qty: roundStud(withWaste(Math.ceil(s.short), o.studWaste)) },
+      { len: '104 5/8"', qty: roundStud(withWaste(s.mid, o.studWaste)) },
+      { len: "10'", qty: roundStud(withWaste(s.ten, o.studWaste)) }
+    ].filter(r => r.qty > 0);
+    if (rows.length) L.studs.push({ type: mat, rows });
+  }
+  for (const mat of Object.keys(precut).sort(sortMat)) {
+    R.precut.push({ type: mat, rows: [{ len: '92 5/8"', qty: ceilTo(withWaste(precut[mat], o.studWaste), 10) }] });
+  }
+
+  // lineal: plain framing lumber first, then treated / SYP, then 1x and others
+  const keys = Object.keys(lineal);
+  const rank = k => /PT$/.test(k) ? 2 : / SYP$/.test(k) ? 1 : /^2x(4|6)$/.test(k) ? 0 : /^1x/.test(k) ? 4 : 3;
+  keys.sort((a, b) => rank(a) - rank(b) || sortMat(a, b));
+  for (const k of keys) {
+    const r = rank(k);
+    const pct = r === 0 ? o.linealWaste : (r === 1 || r === 2) ? o.ptWaste : o.miscWaste;
+    if (/^1x/.test(k)) {
+      // 1x follows the header rule: one board length 8'-16' with the least scrap; over 16' gets its own board
+      const plan = headerStock(lineal[k]);
+      const rows = Object.keys(plan.boards).map(Number).sort((a, b) => a - b)
+        .map(ft => ({ len: ft + "'", qty: withWaste(plan.boards[ft], pct) })).filter(x => x.qty > 0);
+      if (rows.length) L.lineal.push({ type: k, rows, scrapFt: plan.scrapIn / 12, cuts: plan.cuts });
+      continue;
+    }
+    const rows = applyStock(stockFor(lineal[k], 12), pct, r === 0 ? o.longWaste : pct, 12);
+    if (rows.length) L.lineal.push({ type: k, rows });
+  }
+  // very top plates, nested the same way as the lineal
+  R.vtp = [];
+  for (const k of Object.keys(vtp).sort((a, b) => rank(a) - rank(b) || sortMat(a, b))) {
+    const r = rank(k);
+    const pct = r === 0 ? o.linealWaste : (r === 1 || r === 2) ? o.ptWaste : o.miscWaste;
+    const rows = applyStock(stockFor(vtp[k], 12), pct, r === 0 ? o.longWaste : pct, 12);
+    if (rows.length) R.vtp.push({ type: k, rows, pieces: vtp[k].length });
+  }
+
+  // Wall sheets: bottom plates of every sheathed wall, divided into 4' sheets, rounded up to 5.
+  const sheetCount = panels.reduce((t, p) => t + p.sheets.reduce((a, s) => a + s.qty, 0), 0);
+  // Taller walls get extra (see tallFactor). Standard height = setting, else the most common panel height.
+  let sheetWalls = o.sheetWalls;
+  if (!sheetWalls) {
+    sheetWalls = [];
+    for (const p of panels) {
+      if (!p.sheets.some(s => s.qty > 0)) continue;
+      let pi = 0;
+      for (const pc of p.pieces) if (/BOTTOM PLATE/.test(pc.desc)) pi += pc.qty * pc.len;
+      sheetWalls.push({ id: p.id, plateIn: pi, height: p.height });
+    }
+  }
+  const stdHeight = o.stdHeight || o.autoStdHeight || modeHeight(panels.map(p => p.height));
+  let plateIn = 0, plateAdj = 0, tall = 0;
+  for (const w of sheetWalls) {
+    const f = tallFactor(w.height, stdHeight);
+    plateIn += w.plateIn; plateAdj += w.plateIn * f; if (f > 1) tall++;
+  }
+  const size = sheetSize(stdHeight);
+  R.sheets = { type: size.label, sheetFt: size.ft, tooTall: size.tooTall, qty: plateAdj > 0 ? ceilTo(plateAdj / 48, 5) : 0, plateFt: plateIn / 12, walls: sheetWalls.length, tall, stdHeight };
+
+  const walls = o.walls ?? panels.length;
+  const stackQty = o.wallsPerStackBoard > 0 ? Math.ceil(walls / o.wallsPerStackBoard) : 0;
+  if (stackQty > 0) {
+    R.paneling.push({ type: '12"  stack blocking', sub: '2x6', rows: [{ len: "12'", qty: stackQty }] });
+    R.paneling.push({ type: '30"  stack bracing', sub: '2x4', rows: [{ len: "12'", qty: stackQty }] });
+  }
+
+  for (const mat of Object.keys(headers).sort(sortMat)) {
+    const plan = headerStock(headers[mat]);
+    const rows = Object.keys(plan.boards).map(Number).sort((a, b) => a - b)
+      .map(ft => ({ len: ft + "'", qty: withWaste(plan.boards[ft], o.headerWaste) }))
+      .filter(r => r.qty > 0);
+    if (rows.length) R.headers.push({ type: mat, rows, scrapFt: plan.scrapIn / 12, cuts: plan.cuts });
+  }
+  for (const name of Object.keys(engineered).sort()) {
+    const rows = Object.keys(engineered[name]).map(Number).sort((a, b) => a - b)
+      .map(ft => ({ len: ft + "'", qty: engineered[name][ft] }));
+    R.headers.push({ type: name, rows });
+  }
+
+  // breakdown for the detail table
+  const bd = {};
+  for (const pc of all) {
+    const k = pc.mat + (pc.treat ? ' ' + pc.treat : '') + '|' + pc.desc;
+    const b = bd[k] = bd[k] || { mat: pc.mat + (pc.treat ? ' ' + pc.treat : ''), desc: pc.desc, n: 0, inches: 0 };
+    b.n++; b.inches += pc.len;
+  }
+  const breakdown = Object.values(bd).sort((a, b) => sortMat(a.mat, b.mat) || a.desc.localeCompare(b.desc));
+
+  return { left: L, right: R, breakdown, pieceCount: all.length, sheetCount };
+}
+
+/* Lay the list out on a grid like the shop's material sheet:
+   columns B-D (type / length / qty) and F-H. Returns rows of 8 cells. */
+function toGrid(result, title) {
+  const left = [], right = [];
+  const H = t => ({ v: t, bold: true });
+  if (result.left.studs.length) {
+    left.push([H('Studs and Trimmers')]);
+    for (const g of result.left.studs) { left.push([g.type]); g.rows.forEach(r => left.push(['', r.len, r.qty])); }
+    left.push([]);
+  }
+  if (result.left.lineal.length) {
+    left.push([H('Lineal(Plates,sills,cripples)')]);
+    for (const g of result.left.lineal) { left.push([g.type]); g.rows.forEach(r => left.push(['', r.len, r.qty])); left.push([]); }
+  }
+  if (result.right.precut.length) {
+    right.push([H('Precut studs')]);
+    for (const g of result.right.precut) { right.push([g.type]); g.rows.forEach(r => right.push(['', r.len, r.qty])); }
+    right.push([]);
+  }
+  const shq = result.right.shear ? result.right.shear.qty : 0;
+  if (!result.sheetsToSite && (result.right.sheets.qty || shq)) {
+    right.push([H('Wall sheets')]);
+    if (result.right.sheets.qty) right.push([result.right.sheets.type, '', result.right.sheets.qty]);
+    if (shq) right.push([result.right.sheets.type + ' shear walls', '', shq]);
+    right.push([]);
+  }
+  if (result.right.paneling.length) {
+    right.push([H('Paneling')]);
+    for (const g of result.right.paneling) { right.push([g.type]); right.push([g.sub]); g.rows.forEach(r => right.push(['', r.len, r.qty])); }
+    right.push([]);
+  }
+  if (result.right.headers.length) {
+    right.push([H('Headers')]);
+    for (const g of result.right.headers) { right.push([g.type]); g.rows.forEach(r => right.push(['', r.len, r.qty])); }
+  }
+  while (left.length && !left[left.length - 1].length) left.pop();
+  while (right.length && !right[right.length - 1].length) right.pop();
+  const rows = [
+    ['', H('Advanced Precut Systems')],
+    ['', H('710 Pacific Ave W, Dassel MN 55325')],
+    ['', { v: title, bold: true, big: true }],
+    ['', 'Type', 'Length', 'Quantity'],
+    []
+  ];
+  const n = Math.max(left.length, right.length);
+  for (let i = 0; i < n; i++) {
+    const l = left[i] || [], r = right[i] || [];
+    rows.push(['', l[0] ?? '', l[1] ?? '', l[2] ?? '', '', r[0] ?? '', r[1] ?? '', r[2] ?? '']);
+  }
+  return rows;
+}
+
+</script>
+<script>
+const SAMPLE = null; // no built-in example job: this page is public, so it starts empty
+
+/* Three package types, each a full copy of the tool with its own files, title, allowances and shear walls. */
+const PKG_INFO = {
+  panel: { h1: 'Panel Material List', lede: "Panel package. Drop in the wall panel PDFs for a floor. Every piece list is read in your browser and totaled into the shop's material sheet.", suffix: 'Material', store: '' },
+  precut: { h1: 'Precut Material List', lede: "Precut-only package. Drop in the wall PDFs for a floor. Every piece list is read in your browser and totaled into the shop's material sheet.", suffix: 'Precut Material', store: ':precut' },
+  mixed: { h1: 'Panel + Precut Material List', lede: "Package that is part panels and part precut. Drop in the wall PDFs for a floor. Every piece list is read in your browser and totaled into the shop's material sheet.", suffix: 'Panel + Precut Material', store: ':mixed' }
+};
+const LAYOUT_MSG = 'The panel layout sheet for this floor, with every panel number on it.';
+const PLAN_MSG = 'The structural sheet (or whole structural set) showing the shear walls.';
+function makeState(pkg) {
+  return { pkg, files: [], sample: false, title: '', titleEdited: false, opt: loadOpt(pkg), result: null,
+    shear: {}, suggest: {}, suggestNotes: '', layout: null, plan: null, view: 'layout', zoom: { layout: 0, plan: 0 },
+    shearKey: null, layoutMsg: LAYOUT_MSG, planMsg: PLAN_MSG, clearShown: false,
+    precutSet: {}, mixKey: null, assignZoom: 2 };
+}
+const PKGS = {};
+for (const k of Object.keys(PKG_INFO)) PKGS[k] = makeState(k);
+let state = PKGS.panel;
+const $ = id => document.getElementById(id);
+
+function loadOpt(pkg) {
+  try { const s = JSON.parse(localStorage.getItem('pml-allow' + PKG_INFO[pkg || 'panel'].store) || '{}'); return Object.assign({}, DEFAULTS, s); }
+  catch (e) { return Object.assign({}, DEFAULTS); }
+}
+function saveOpt() { try { localStorage.setItem('pml-allow' + PKG_INFO[state.pkg].store, JSON.stringify(state.opt)); } catch (e) {} }
+
+const ALLOW_FIELDS = [
+  ['studWaste', 'Studs and trimmers', '%'], ['linealWaste', "2x4 / 2x6 lineal, 12'", '%'], ['longWaste', "Lineal 14' and longer", '%'],
+  ['ptWaste', 'Treated and SYP plates', '%'], ['headerWaste', '2x8 / 2x10 / 2x12 headers', '%'], ['miscWaste', '1x and other lumber', '%'],
+  ['wallsPerStackBoard', 'Walls per 12\' stack board', 'walls']
+];
+function stdOverride() {
+  const t = String(state.opt.stdHeightText || '').trim();
+  if (!t) return null;
+  const ftOnly = t.match(/^(\d+)\s*['’]\s*$/);
+  if (ftOnly) return +ftOnly[1] * 12;
+  const f = ftIn(t.replace(/'\s*-?\s*/, "'-").replace(/"?$/, '"'));
+  if (f) return f;
+  const n = parseFloat(t); return isFinite(n) && n > 0 ? n : null;
+}
+function renderAllow() {
+  $('allow').innerHTML = ALLOW_FIELDS.map(([k, label, unit]) =>
+    `<label class="field" for="a-${k}">${label} (${unit})<input type="number" min="0" step="1" id="a-${k}" value="${state.opt[k]}"></label>`).join('') +
+    `<label class="field" for="a-std">Standard wall height (blank = most common panel height)<input type="text" id="a-std" placeholder="e.g. 7'-11 5/8&quot;" value="${esc(state.opt.stdHeightText || '')}"></label>`;
+  $('a-std').addEventListener('input', e => { state.opt.stdHeightText = e.target.value; saveOpt(); recompute(); });
+  ALLOW_FIELDS.forEach(([k]) => $('a-' + k).addEventListener('input', e => {
+    const v = parseFloat(e.target.value); state.opt[k] = isFinite(v) && v >= 0 ? v : 0; saveOpt(); recompute();
+  }));
+}
+$('resetAllow').onclick = () => { state.opt = Object.assign({}, DEFAULTS); saveOpt(); renderAllow(); recompute(); };
+
+/* ---------- panels in play ---------- */
+function samplePanels() {
+  return [{ id: 'sample', pieces: SAMPLE.rows.map(([mat, treat, desc, len, qty]) => ({ mat, treat, desc, len, qty })), sheets: [{ qty: SAMPLE.sheets }], suspect: [] }];
+}
+function activePanels() {
+  if (state.sample) return { panels: samplePanels(), dups: [], empty: [], suspect: [] };
+  const seen = new Map(), panels = [], dups = [], empty = [], suspect = [];
+  for (const f of state.files) {
+    if (!f.panels) continue;
+    for (const p of f.panels) {
+      if (p.id && seen.has(p.id)) { dups.push(`${p.id} (in ${f.name}, already in ${seen.get(p.id)})`); continue; }
+      if (p.id) seen.set(p.id, f.name);
+      if (!p.pieces.length) empty.push(`${f.name} page ${p.page}${p.id ? ' (' + p.id + ')' : ''}`);
+      p.suspect.forEach(s => suspect.push(`${p.id || 'page ' + p.page}: ${s}`));
+      panels.push(p);
+    }
+  }
+  return { panels, dups, empty, suspect };
+}
+
+function autoTitle() {
+  let job = '', floors = new Set();
+  if (state.sample) { job = SAMPLE.job; floors.add('2'); }
+  else for (const f of state.files) for (const p of (f.panels || [])) {
+    if (!job && p.job) job = p.job;
+    const m = p.id && p.id.match(/^(\d+)/); if (m) floors.add(m[1]);
+  }
+  job = job.replace(/#\s*/g, '').replace(/\s+/g, ' ').trim() || 'Job';
+  let fl = '';
+  if (floors.size === 1) { const n = +[...floors][0]; fl = ' ' + n + (n === 1 ? 'st' : n === 2 ? 'nd' : n === 3 ? 'rd' : 'th') + ' flr'; }
+  return `${job}${fl} ${PKG_INFO[state.pkg].suffix}`;
+}
+
+function recompute() {
+  const { panels, dups, empty, suspect } = activePanels();
+  if (!state.titleEdited) { state.title = autoTitle(); $('title').value = state.title; }
+  const extra = { stdHeight: stdOverride(), vtpFromTopPlate: state.pkg === 'precut' };
+  if (state.sample) {
+    const ids = Object.keys(SAMPLE.plates);
+    Object.assign(extra, {
+      walls: SAMPLE.panelCount,
+      sheetWalls: ids.filter(id => SAMPLE.plates[id][1]).map(id => ({ id, plateIn: SAMPLE.plates[id][0], height: SAMPLE.plates[id][2] })),
+      autoStdHeight: modeHeight(ids.map(id => SAMPLE.plates[id][2]))
+    });
+  } else extra.walls = panels.length;
+  loadShear(); loadMix();
+  const mixing = state.pkg === 'mixed' && !state.sample && panels.some(p => p.id && state.precutSet[p.id]);
+  if (mixing) state.result = mixedCalc(panels, extra);
+  else {
+    state.result = panels.length ? calculate(panels, Object.assign({}, state.opt, extra)) : null;
+    if (state.result) state.result.right.shear = shearCalc();
+    if (state.result && state.pkg === 'precut') splitToSite(state.result);
+  }
+  renderBanners(dups, empty, suspect);
+  renderSheet();
+  renderBreakdown();
+  renderShearList();
+  const has = !!state.result;
+  $('copyBtn').disabled = !has; $('dlBtn').disabled = !has; $('billBtn').disabled = !has;
+}
+
+function renderBanners(dups, empty, suspect) {
+  const b = [];
+  const list = (arr) => `<ul>${arr.slice(0, 8).map(x => `<li>${esc(x)}</li>`).join('')}${arr.length > 8 ? `<li>and ${arr.length - 8} more</li>` : ''}</ul>`;
+  if (dups.length) b.push(`<div class="banner warn"><b>${dups.length} panel${dups.length > 1 ? 's' : ''} showed up twice and ${dups.length > 1 ? 'were' : 'was'} counted once.</b> Check that you didn't drop the same floor in two files.${list(dups)}</div>`);
+  if (empty.length) b.push(`<div class="banner warn"><b>${empty.length} page${empty.length > 1 ? 's' : ''} had no piece list.</b> If these are panels, their lumber is missing from the list.${list(empty)}</div>`);
+  if (suspect.length) b.push(`<div class="banner warn"><b>${suspect.length} piece line${suspect.length > 1 ? 's' : ''} could not be read</b> and ${suspect.length > 1 ? 'are' : 'is'} not counted.${list(suspect)}</div>`);
+  $('banners').innerHTML = b.join('');
+}
+
+function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+const fmtQ = n => Number(n).toLocaleString('en-US');
+
+/* Precut package: precut studs and wall sheets ship to the site on their own list; stack bracing isn't used. */
+function splitToSite(r) {
+  r.site = { precut: r.right.precut, sheets: r.right.sheets, shear: r.right.shear, vtp: (r.right.vtp || []).map(g => Object.assign({}, g, { type: g.type + ' very top plates' })) };
+  r.right.precut = [];
+  r.sheetsToSite = true;
+  r.right.paneling = []; // no stack blocking or stack bracing in a precut package
+}
+function siteTitle() { return (state.title || '').replace(/\s*(Panel\s*\+\s*)?(Precut\s+)?Material\s*$/i, '').trim() + ' Ship to Site'; }
+
+/* Panel + precut package: panel walls follow the panel rules, precut walls the precut rules. */
+function mixedCalc(panels, extra) {
+  const isPre = p => !!(p.id && state.precutSet[p.id]);
+  const pan = panels.filter(p => !isPre(p)), pre = panels.filter(isPre);
+  const std = extra.stdHeight || modeHeight(panels.map(p => p.height));
+  const precutStud = pc => /^2x(4|6)$/.test(pc.mat) && !pc.treat && isStudLike(pc.desc) && Math.abs(pc.len - PRECUT) < 0.01;
+  // material list: everything from panel walls, plus precut walls minus their precut studs, sheet VTPs and sheathing
+  const mainPanels = pan.concat(pre.map(p => Object.assign({}, p, { sheets: [], pieces: p.pieces.filter(pc => !/\bVTP\b/.test(pc.desc) && !precutStud(pc)) })));
+  const A = calculate(mainPanels, Object.assign({}, state.opt, { stdHeight: std, walls: pan.length }));
+  // ship to site: the precut walls' precut studs, wall sheets and very top plates
+  const B = calculate(pre, Object.assign({}, state.opt, { stdHeight: std, walls: 0, vtpFromTopPlate: true }));
+  A.right.shear = shearCalc(id => !state.precutSet[id], std);
+  A.shearAll = shearCalc(null, std);
+  A.site = { precut: B.right.precut, sheets: B.right.sheets, shear: shearCalc(id => !!state.precutSet[id], std),
+    vtp: (B.right.vtp || []).map(g => Object.assign({}, g, { type: g.type + ' very top plates' })), mixed: true };
+  A.mix = { panel: pan.length, precut: pre.length };
+  return A;
+}
+function toSiteGrid(r) {
+  const H = t => ({ v: t, bold: true });
+  const rows = [['', H('Advanced Precut Systems')], ['', H('710 Pacific Ave W, Dassel MN 55325')], ['', { v: siteTitle(), bold: true, big: true }], ['', 'Type', 'Length', 'Quantity'], []];
+  if (r.site.precut.length) {
+    rows.push(['', H('Precut studs')]);
+    for (const g of r.site.precut) { rows.push(['', g.type]); g.rows.forEach(x => rows.push(['', '', x.len, x.qty])); }
+    rows.push([]);
+  }
+  const s = r.site.sheets, shq = r.site.shear ? r.site.shear.qty : 0;
+  if (s.qty || shq) {
+    rows.push(['', H('Wall sheets')]);
+    if (s.qty) rows.push(['', s.type, '', s.qty]);
+    if (shq) rows.push(['', s.type + ' shear walls', '', shq]);
+    rows.push([]);
+  }
+  if (r.site.vtp.length) {
+    rows.push(['', H('Lineal')]);
+    for (const g of r.site.vtp) { rows.push(['', g.type]); g.rows.forEach(x => rows.push(['', '', x.len, x.qty])); }
+  }
+  return rows;
+}
+function renderSite() {
+  const r = state.result, el = $('siteSheet');
+  el.hidden = !(r && r.site);
+  if (el.hidden) { el.innerHTML = ''; return; }
+  const grp = g => (g.rows.length === 1 && !g.rows[0].len) ? `<div class="grp"><div style="font-weight:600;padding-top:4px">${esc(g.type)}</div><div class="q" style="padding-top:4px">${fmtQ(g.rows[0].qty)}</div></div>` : `<div class="grp"><div class="t">${esc(g.type)}</div>${g.rows.map(x => `<div class="l">${esc(x.len)}</div><div class="q">${fmtQ(x.qty)}</div>`).join('')}</div>`;
+  const blk = (title, groups) => groups.length ? `<div class="blk"><h3>${title}</h3>${groups.map(grp).join('')}</div>` : '';
+  const sheets = [];
+  if (r.site.sheets.qty) sheets.push({ type: r.site.sheets.type, rows: [{ len: '', qty: r.site.sheets.qty }] });
+  if (r.site.shear && r.site.shear.qty) sheets.push({ type: r.site.sheets.type + ' shear walls', rows: [{ len: '', qty: r.site.shear.qty }] });
+  const head = `<div class="colhead"><span>Type</span><span>Length</span><span>Quantity</span></div>`;
+  el.innerHTML = `<div style="display:flex;flex-wrap:wrap;gap:8px 16px;justify-content:space-between;align-items:start">
+      <div><div class="co">Advanced Precut Systems</div><div class="addr">710 Pacific Ave W, Dassel MN 55325</div></div>
+      <button class="btn ghost" id="copySiteBtn">Copy ship to site for Excel</button></div>
+    <h2>${esc(siteTitle())}</h2>
+    <div style="max-width:420px">${head}${blk('Precut studs', r.site.precut)}${blk('Wall sheets', sheets)}${blk('Lineal', r.site.vtp)}</div>
+    <p class="note" style="margin-top:10px">${r.site.mixed ? `For the ${r.mix.precut} precut walls: their precut studs, wall sheets and very top plates ship to the site on this list. The material list above covers the ${r.mix.panel} panel walls and the rest of the precut walls' lumber.` : 'Precut package: the precut studs, wall sheets and very top plates ship to the site on this list instead of the material list above. Stack blocking and stack bracing are left off.'} Very top plates are the same count and lengths as the top plates; VTPs on the panel sheets are not used.</p>`;
+  $('copySiteBtn').onclick = () => {
+    const tsv = toSiteGrid(state.result).map(row => row.map(c => c && typeof c === 'object' ? c.v : (c ?? '')).join('\t')).join('\n');
+    navigator.clipboard.writeText(tsv).then(() => toast('Copied. Click cell A1 in Excel and paste.'), () => fallbackCopy(tsv));
+  };
+}
+
+function renderSheet() {
+  renderSite();
+  const r = state.result;
+  if (!r) { $('sheet').innerHTML = `<p class="note">No panels read yet. Drop panel PDFs above.</p>`; return; }
+  const grp = g => (g.rows.length === 1 && !g.rows[0].len) ? `<div class="grp"><div style="font-weight:600;padding-top:4px">${esc(g.type)}</div><div class="q" style="padding-top:4px">${fmtQ(g.rows[0].qty)}</div></div>` : `<div class="grp"><div class="t">${esc(g.type)}</div>${g.sub ? `<div class="t" style="font-weight:500">${esc(g.sub)}</div>` : ''}${g.rows.map(x => `<div class="l">${esc(x.len)}</div><div class="q">${fmtQ(x.qty)}</div>`).join('')}</div>`;
+  const blk = (title, groups) => groups.length ? `<div class="blk"><h3>${title}</h3>${groups.map(grp).join('')}</div>` : '';
+  const left = blk('Studs and Trimmers', r.left.studs) + blk('Lineal (plates, sills, cripples)', r.left.lineal);
+  const sheets = !r.sheetsToSite && r.right.sheets.qty ? [{ type: r.right.sheets.type, rows: [{ len: '', qty: r.right.sheets.qty }] }] : [];
+  if (!r.sheetsToSite && r.right.shear && r.right.shear.qty) sheets.push({ type: r.right.sheets.type + ' shear walls', rows: [{ len: '', qty: r.right.shear.qty }] });
+  const right = blk('Precut studs', r.right.precut) + blk('Wall sheets', sheets) + blk('Paneling', r.right.paneling) + blk('Headers', r.right.headers);
+  const head = `<div class="colhead"><span>Type</span><span>Length</span><span>Quantity</span></div>`;
+  $('sheet').innerHTML = `<div class="co">Advanced Precut Systems</div><div class="addr">710 Pacific Ave W, Dassel MN 55325</div>
+    <h2>${esc(state.title)}</h2>
+    <div class="cols"><div>${head}${left}</div><div>${head}${right}</div></div>
+    <p class="note" style="margin-top:10px">${fmtQ(r.pieceCount)} pieces read from ${state.sample ? SAMPLE.panelCount : activePanels().panels.length} panels. Wall sheets: ${r.right.sheets.walls} sheathed walls, ${fmtQ(Math.round(r.right.sheets.plateFt))} ft of bottom plate. Standard wall height ${esc(fmtFtIn(r.right.sheets.stdHeight)) || 'unknown'}${stdOverride() ? ' (set by you)' : ' (most common)'}; ${r.right.sheets.tall} taller exterior wall${r.right.sheets.tall === 1 ? '' : 's'} got extra sheets. Ordering ${r.right.sheets.type} sheets for that height.${r.right.sheets.tooTall ? ' The standard height is over 121", so 4x10 sheets will not cover it. Check the sheet size.' : ''}${r.right.shear && r.right.shear.rows.length ? ` Shear walls: ${r.right.shear.rows.length} marked below.` : ' No shear walls marked yet.'}</p>`;
+}
+
+function cutPatterns(g) {
+  const m = new Map();
+  for (const c of g.cuts) {
+    const ps = [...c.pieces].sort((a, b) => b - a);
+    const key = c.ft + '|' + ps.join(',');
+    const e = m.get(key) || { ft: c.ft, pieces: ps, n: 0, scrap: c.ft * 12 - ps.reduce((a, b) => a + b, 0) };
+    e.n++; m.set(key, e);
+  }
+  return [...m.values()].sort((a, b) => b.ft - a.ft || b.n - a.n);
+}
+function renderCutList() {
+  const r = state.result;
+  const gs = r ? [...r.right.headers, ...r.left.lineal].filter(g => g.cuts) : [];
+  if (!gs.length) { $('cutList').innerHTML = '<p class="note">No 2x8 or larger headers and no 1x lumber.</p>'; return; }
+  $('cutList').innerHTML = gs.map(g => `<h4 style="font-family:var(--font-display);margin:10px 0 4px">${esc(g.type)} · ${fmtQ(Math.round(g.scrapFt))} ft of scrap</h4>
+    <div class="tbl-wrap"><table><thead><tr><th style="text-align:right">Boards</th><th>Length</th><th>Pieces cut from each</th><th style="text-align:right">Scrap each</th></tr></thead><tbody>` +
+    cutPatterns(g).map(p => `<tr><td class="n">${p.n}</td><td>${p.ft}'</td><td style="font-family:var(--font-data);font-size:13px">${p.pieces.map(x => esc(fmtFtIn(x))).join(' + ')}</td><td class="n">${esc((p.scrap < 12 ? fmtIn(p.scrap) : fmtFtIn(p.scrap)))}</td></tr>`).join('') +
+    '</tbody></table></div>').join('');
+}
+
+function renderBreakdown() {
+  renderCutList();
+  const r = state.result;
+  if (!r) { $('bdTable').innerHTML = ''; return; }
+  $('bdTable').innerHTML = `<thead><tr><th>Material</th><th>Part</th><th style="text-align:right">Pieces</th><th style="text-align:right">Lineal ft</th></tr></thead><tbody>` +
+    r.breakdown.map(b => `<tr><td>${esc(b.mat)}</td><td>${esc(b.desc)}</td><td class="n">${fmtQ(b.n)}</td><td class="n">${fmtQ(Math.round(b.inches / 12))}</td></tr>`).join('') + '</tbody>';
+}
+
+/* ---------- files ---------- */
+function renderFiles() {
+  $('files').innerHTML = state.files.map((f, i) => `<div class="file">
+    <span class="name">${esc(f.name)}</span>
+    <span class="meta">${f.error ? `<span style="color:var(--bad)">${esc(f.error)}</span>` : f.panels ? `${f.panels.length} panels` : `reading ${f.done || 0} of ${f.total || '?'} pages`}</span>
+    <button data-i="${i}" aria-label="Remove ${esc(f.name)}">Remove</button>
+    ${!f.panels && !f.error ? `<div class="bar"><i style="width:${f.total ? (100 * f.done / f.total) : 2}%"></i></div>` : ''}</div>`).join('');
+  $('files').querySelectorAll('button[data-i]').forEach(b => b.onclick = () => {
+    state.files.splice(+b.dataset.i, 1);
+    // no example to fall back to once the last file is removed
+    $('clearBtn').hidden = !state.files.length;
+    renderFiles(); recompute();
+  });
+}
+
+let queue = Promise.resolve();
+function addFiles(list) {
+  const pdfs = [...list].filter(f => /\.pdf$/i.test(f.name) || f.type === 'application/pdf');
+  if (!pdfs.length) { toast('Those files are not PDFs. Drop the panel PDFs.'); return; }
+  if (state.sample) { state.sample = false; state.titleEdited = false; }
+  $('clearBtn').hidden = false;
+  for (const file of pdfs) {
+    const rec = { name: file.name, done: 0, total: 0, panels: null };
+    state.files.push(rec);
+    renderFiles();
+    queue = queue.then(async () => {
+      try {
+        const buf = new Uint8Array(await file.arrayBuffer());
+        let last = 0;
+        rec.panels = await readPanelPdf(buf, (d, t) => {
+          rec.done = d; rec.total = t;
+          const now = Date.now(); if (now - last > 120) { last = now; renderFiles(); }
+        });
+        if (!rec.panels.some(p => p.pieces.length)) rec.error = 'No panel piece lists found in this PDF';
+      } catch (e) {
+        rec.error = 'Could not read this PDF (' + (e && e.message ? e.message : 'unknown error') + ')';
+        rec.panels = null;
+      }
+      if (state.files.includes(rec)) { renderFiles(); recompute(); }
+    });
+  }
+}
+
+const drop = $('drop');
+drop.onclick = () => $('fileInput').click();
+drop.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('fileInput').click(); } };
+$('fileInput').onchange = e => { addFiles(e.target.files); e.target.value = ''; };
+['dragenter', 'dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
+['dragleave', 'drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('over'); }));
+drop.addEventListener('drop', e => addFiles(e.dataTransfer.files));
+window.addEventListener('dragover', e => e.preventDefault());
+window.addEventListener('drop', e => { e.preventDefault(); if (e.target.closest && e.target.closest('#shear')) return; if (e.target !== drop && !drop.contains(e.target)) addFiles(e.dataTransfer.files); });
+$('clearBtn').onclick = () => { state.files = []; state.titleEdited = false; $('clearBtn').hidden = true; renderFiles(); recompute(); };
+$('title').addEventListener('input', e => { state.title = e.target.value; state.titleEdited = true; renderSheet(); });
+
+/* ---------- output ---------- */
+function gridRows() { return toGrid(state.result, state.title); }
+$('copyBtn').onclick = () => {
+  if (!state.result) return;
+  const tsv = gridRows().map(r => r.map(c => c && typeof c === 'object' ? c.v : (c ?? '')).join('\t')).join('\n');
+  navigator.clipboard.writeText(tsv).then(() => toast('Copied. Click cell A1 in Excel and paste.'),
+    () => { fallbackCopy(tsv); });
+};
+function fallbackCopy(text) {
+  const ta = document.createElement('textarea'); ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+  document.body.appendChild(ta); ta.select();
+  let ok = false; try { ok = document.execCommand('copy'); } catch (e) {}
+  ta.remove(); toast(ok ? 'Copied. Click cell A1 in Excel and paste.' : 'Copy was blocked here. Use Download Excel instead.');
+}
+
+async function buildXlsx() {
+  const wb = new ExcelJS.Workbook();
+  const writeGrid = (ws, rows) => rows.forEach((row, i) => {
+    const xr = ws.getRow(i + 1);
+    row.forEach((c, j) => {
+      if (c === '' || c === undefined || c === null) return;
+      const cell = xr.getCell(j + 1);
+      const v = typeof c === 'object' ? c.v : c;
+      cell.value = v;
+      cell.font = { name: 'Calibri', size: (typeof c === 'object' && (c.big || i > 1)) ? 12 : 11, bold: typeof c === 'object' && !!c.bold };
+      if (typeof v === 'number') { cell.numFmt = '#,##0'; cell.alignment = { horizontal: 'right' }; }
+    });
+  });
+  const ws = wb.addWorksheet('to BB', { pageSetup: { fitToPage: true, fitToWidth: 1, fitToHeight: 1 } });
+  ws.columns = [{ width: 4 }, { width: 26 }, { width: 11 }, { width: 11 }, { width: 6 }, { width: 22 }, { width: 11 }, { width: 11 }];
+  writeGrid(ws, gridRows());
+  if (state.result.site) {
+    const site = wb.addWorksheet('to SITE', { pageSetup: { fitToPage: true, fitToWidth: 1, fitToHeight: 1 } });
+    site.columns = [{ width: 4 }, { width: 26 }, { width: 11 }, { width: 11 }];
+    writeGrid(site, toSiteGrid(state.result));
+  }
+  const bd = wb.addWorksheet('Piece breakdown');
+  bd.columns = [{ header: 'Material', width: 14 }, { header: 'Part', width: 20 }, { header: 'Pieces', width: 10 }, { header: 'Lineal ft', width: 11 }];
+  bd.getRow(1).font = { bold: true };
+  state.result.breakdown.forEach(b => bd.addRow([b.mat, b.desc, b.n, Math.round(b.inches / 12)]));
+  const hg = [...state.result.right.headers, ...state.result.left.lineal].filter(g => g.cuts);
+  if (hg.length) {
+    const hc = wb.addWorksheet('Header cuts');
+    hc.columns = [{ header: 'Header', width: 10 }, { header: 'Boards', width: 8 }, { header: 'Length', width: 8 }, { header: 'Pieces cut from each', width: 60 }, { header: 'Scrap each', width: 12 }];
+    hc.getRow(1).font = { bold: true };
+    for (const g of hg) {
+      cutPatterns(g).forEach(p => hc.addRow([g.type, p.n, p.ft + "'", p.pieces.map(fmtFtIn).join(' + '), (p.scrap < 12 ? fmtIn(p.scrap) : fmtFtIn(p.scrap))]));
+      hc.addRow([g.type + ' scrap total', '', '', Math.round(g.scrapFt) + ' ft', '']);
+      hc.addRow([]);
+    }
+  }
+  const sh = state.result.right.shear;
+  if (sh && sh.rows.length) {
+    const s = wb.addWorksheet('Shear walls');
+    s.columns = [{ header: 'Panel', width: 10 }, { header: 'Exterior (already in wall sheets)', width: 32 }, { header: 'Bottom plate ft', width: 15 }, { header: 'Height', width: 12 }, { header: 'Tall-wall extra', width: 14 }, { header: 'Counted', width: 10 }];
+    s.getRow(1).font = { bold: true };
+    sh.rows.forEach(r => s.addRow([r.id, r.sheathed ? 'yes' : '', r.known ? Math.round(r.plateIn / 12 * 10) / 10 : 'not in panel PDFs', r.height ? fmtFtIn(r.height) : '', r.factor > 1 ? '+' + Math.round((r.factor - 1) * 100) + '%' : '', r.add ? 'yes' : 'no']));
+    s.addRow([]);
+    s.addRow(['Total ft (with tall-wall extra)', '', '', Math.round(sh.inches / 12), '', '', '']);
+    s.addRow([state.result.right.sheets.type + ' sheets (÷ 4\', rounded up to 5)', '', '', sh.qty, '', '', '']);
+  }
+  return wb.xlsx.writeBuffer();
+}
+$('dlBtn').onclick = async () => {
+  if (!state.result) return;
+  const btn = $('dlBtn'); btn.disabled = true;
+  try {
+    const buf = await buildXlsx();
+    const name = (state.title || 'Material').replace(/[\\/:*?"<>|]+/g, ' ').trim() + '.xlsx';
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+    a.download = name;
+    document.body.appendChild(a); a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 0);
+    toast('Saved ' + name);
+  } catch (e) {
+    toast('The Excel file could not be made. Use Copy for Excel.');
+  } finally { btn.disabled = false; }
+};
+
+/* ---------- send to Bill out ---------- */
+// Every lumber line on the material list (and the ship to site list) goes to the Lumber Tally's Bill out upload preview,
+// where it is matched to inventory. Wall sheets are sheet goods, not lumber in inventory, so they stay off.
+function billLines(r) {
+  const out = [];
+  const add = (section, g, size) => {
+    const m = String(size || g.type).replace(/\s*very top plates$/i, '').match(/^(\d+(?:\s+\d+\/\d+)?)\s*x\s*(\d+(?:\s+\d+\/\d+)?)\s*(.*)$/i);
+    for (const row of g.rows) {
+      if (!row.len || !(row.qty > 0)) continue;
+      out.push({ src: section + ' · ' + g.type + (g.sub ? ' ' + g.sub : '') + ' · ' + row.len,
+        t: m ? fracToNum(m[1]) : null, w: m ? fracToNum(m[2]) : null, kind: m ? m[3].trim() : '', len: row.len, qty: row.qty });
+    }
+  };
+  r.left.studs.forEach(g => add('Studs and Trimmers', g));
+  r.left.lineal.forEach(g => add('Lineal', g));
+  r.right.precut.forEach(g => add('Precut studs', g));
+  r.right.paneling.forEach(g => add('Paneling', g, g.sub));
+  r.right.headers.forEach(g => add('Headers', g));
+  if (r.site) {
+    r.site.precut.forEach(g => add('Ship to site', g));
+    r.site.vtp.forEach(g => add('Ship to site', g));
+  }
+  return out;
+}
+$('billBtn').onclick = () => {
+  if (!state.result) return;
+  const host = window.parent;
+  if (!host || host === window || !host.tallyBillFromList) { toast('Open the Material list from the Lumber Tally to send it to Bill out.'); return; }
+  host.tallyBillFromList(billLines(state.result), state.title);
+};
+
+/* ---------- shear walls ---------- */
+const ID_RE = /^\d{1,2}[A-Z]{1,3}-\d+[A-Z]?$/;
+const ZOOMS = [1, 1.5, 2, 3, 4, 6];
+function shearStoreKey() { return 'pml-shear:' + autoTitle(); }
+function loadShear() {
+  const k = shearStoreKey();
+  if (k === state.shearKey) return;
+  state.shearKey = k; state.suggest = {}; state.suggestNotes = '';
+  try { state.shear = JSON.parse(localStorage.getItem(k) || '{}') || {}; } catch (e) { state.shear = {}; }
+  for (const id in state.shear) state.shear[id] = 1; // shear walls are always sheathed on one side
+  renderSuggestBox(); paintMarks();
+}
+function saveShear() { try { localStorage.setItem(shearStoreKey(), JSON.stringify(state.shear)); } catch (e) {} }
+
+function idSort(a, b) {
+  const pa = a.match(/^(\d+)([A-Z]+)-(\d+)/), pb = b.match(/^(\d+)([A-Z]+)-(\d+)/);
+  if (!pa || !pb) return a.localeCompare(b);
+  return (+pa[1] - +pb[1]) || pa[2].localeCompare(pb[2]) || (+pa[3] - +pb[3]);
+}
+function panelMap() {
+  const m = {};
+  if (state.sample) { for (const id in SAMPLE.plates) m[id] = { plateIn: SAMPLE.plates[id][0], sheathed: !!SAMPLE.plates[id][1], height: SAMPLE.plates[id][2] }; return m; }
+  for (const p of activePanels().panels) {
+    if (!p.id) continue;
+    let pi = 0;
+    for (const pc of p.pieces) if (/BOTTOM PLATE/.test(pc.desc)) pi += pc.qty * pc.len;
+    m[p.id] = { plateIn: pi, sheathed: p.sheets.some(s => s.qty > 0), height: p.height };
+  }
+  return m;
+}
+function shearCalc(keep, stdIn) {
+  const map = panelMap();
+  const std = stdIn != null ? stdIn : state.result ? state.result.right.sheets.stdHeight : null;
+  const rows = Object.keys(state.shear).filter(id => !keep || keep(id)).sort(idSort).map(id => {
+    const sides = state.shear[id], p = map[id];
+    const factor = p ? tallFactor(p.height, std) : 1;
+    return { id, sides, known: !!p, sheathed: p ? p.sheathed : false, plateIn: p ? p.plateIn : 0, height: p ? p.height : null, factor, add: p ? Math.max(0, sides - (p.sheathed ? 1 : 0)) : 0 };
+  });
+  const plain = rows.reduce((t, r) => t + r.add * r.plateIn, 0);
+  const inches = rows.reduce((t, r) => t + r.add * r.plateIn * r.factor, 0);
+  return { rows, plain, inches, qty: inches > 0 ? Math.ceil(inches / 48 / 5 - 1e-9) * 5 : 0 };
+}
+function setShear(id, sides) {
+  if (sides) state.shear[id] = sides; else delete state.shear[id];
+  delete state.suggest[id];
+  saveShear(); recompute(); paintMarks(id); renderSuggestBox();
+}
+
+function renderShearList() {
+  const sh = state.result && (state.result.shearAll || state.result.right.shear);
+  if (!sh || !sh.rows.length) {
+    $('shearSummary').innerHTML = '<span class="note" style="font-family:var(--font-body);font-size:14px;font-weight:400">No shear walls marked yet.</span>';
+    $('shearTable').innerHTML = ''; return;
+  }
+  $('shearSummary').innerHTML = `${sh.rows.length} shear wall${sh.rows.length > 1 ? 's' : ''} · <b>${fmtQ(Math.round(sh.plain / 12))}</b> ft of sheathed plate${sh.inches > sh.plain + 0.5 ? ` (<b>${fmtQ(Math.round(sh.inches / 12))}</b> ft with tall-wall extra)` : ''} · <b>${fmtQ(sh.qty)}</b> sheets`;
+  $('shearTable').innerHTML = `<thead><tr><th>Panel</th><th style="text-align:right">Bottom plate</th><th style="text-align:right">Height</th><th>Counted</th><th></th></tr></thead><tbody>` +
+    sh.rows.map(r => `<tr><td>${esc(r.id)} ${r.sheathed ? '<span class="chip">exterior</span>' : ''}${!r.known ? ' <span class="chip warn">not in panel PDFs</span>' : ''}</td>
+      <td class="n">${r.known ? esc(fmtFtIn(r.plateIn)) : '–'}</td>
+      <td class="n">${r.height ? esc(fmtFtIn(r.height)) : '–'}${r.factor > 1 ? ` <span class="chip warn">+${Math.round((r.factor - 1) * 100)}%</span>` : ''}</td>
+      <td>${r.add ? 'Yes' : r.known ? 'No, already in the exterior wall sheets' : 'No, not in the panel PDFs'}</td>
+      <td><button class="rm" data-rm="${esc(r.id)}">Remove</button></td></tr>`).join('') + '</tbody>';
+  $('shearTable').querySelectorAll('button[data-rm]').forEach(b => b.onclick = () => setShear(b.dataset.rm, 0));
+}
+
+$('shearApply').onclick = () => {
+  const txt = $('shearPaste').value.toUpperCase();
+  let n = 0;
+  for (const part of txt.split(/[,;\n]+/)) {
+    const m = part.trim().match(/^(\d{1,2}[A-Z]{1,3}-\d+[A-Z]?)\b/);
+    if (m) { state.shear[m[1]] = 1; delete state.suggest[m[1]]; n++; }
+  }
+  if (!n) { toast('No panel numbers found. Use the form 2I-33.'); return; }
+  $('shearPaste').value = '';
+  saveShear(); recompute(); paintMarks(); renderSuggestBox();
+  toast(`Added ${n} shear wall${n > 1 ? 's' : ''}.`);
+};
+$('shearClear').onclick = () => {
+  if (!Object.keys(state.shear).length) return;
+  const b = $('shearClear');
+  if (b.dataset.confirm !== '1') { b.dataset.confirm = '1'; b.textContent = 'Click again to clear all'; setTimeout(() => { b.dataset.confirm = ''; b.textContent = 'Clear all shear walls'; }, 3000); return; }
+  b.dataset.confirm = ''; b.textContent = 'Clear all shear walls';
+  state.shear = {}; saveShear(); recompute(); paintMarks();
+};
+
+/* drawings */
+async function renderPage(page, maxSide) {
+  const base = page.getViewport({ scale: 1 });
+  const scale = Math.min(4, maxSide / Math.max(base.width, base.height));
+  const vp = page.getViewport({ scale });
+  const c = document.createElement('canvas');
+  c.width = Math.round(vp.width); c.height = Math.round(vp.height);
+  const ctx = c.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
+  await page.render({ canvasContext: ctx, viewport: vp }).promise;
+  const blob = await new Promise(r => c.toBlob(r, 'image/png'));
+  return { vp, scale, canvas: c, url: URL.createObjectURL(blob) };
+}
+
+async function readLayout(file) {
+  const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
+  let best = null;
+  for (let n = 1; n <= Math.min(pdf.numPages, 12); n++) {
+    const page = await pdf.getPage(n);
+    const tc = await page.getTextContent();
+    const ids = tc.items.filter(i => ID_RE.test(i.str.trim()));
+    if (!best || ids.length > best.ids.length) best = { page, ids };
+  }
+  if (!best || best.ids.length < 3) throw new Error('no panel numbers found on it');
+  const r = await renderPage(best.page, 3400);
+  const labels = [];
+  for (const it of best.ids) {
+    const tx = pdfjsLib.Util.transform(r.vp.transform, it.transform);
+    const ang = Math.atan2(tx[1], tx[0]), fh = Math.hypot(tx[2], tx[3]), W = it.width * r.scale;
+    const ux = Math.cos(ang), uy = Math.sin(ang), vx = Math.sin(ang), vy = -Math.cos(ang);
+    const pts = [[0, 0], [W, 0], [0, fh], [W, fh]].map(([a, b]) => [tx[4] + ux * a + vx * b, tx[5] + uy * a + vy * b]);
+    const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
+    labels.push({ id: it.str.trim(), x: Math.min(...xs), y: Math.min(...ys), w: Math.max(...xs) - Math.min(...xs), h: Math.max(...ys) - Math.min(...ys), vert: Math.abs(Math.sin(ang)) > 0.7 });
+  }
+  await pdf.destroy();
+  return { name: file.name, url: r.url, canvas: r.canvas, w: r.canvas.width, h: r.canvas.height, labels };
+}
+
+async function readPlan(file) {
+  const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
+  const pages = [];
+  for (let n = 1; n <= pdf.numPages; n++) {
+    const tc = await (await pdf.getPage(n)).getTextContent();
+    const txt = tc.items.map(i => i.str).join(' ');
+    const score = (txt.match(/SHEAR\s*WALL/gi) || []).length * 5 + (txt.match(/\bSW-?\d+\b/g) || []).length;
+    const t = txt.match(/[A-Z0-9][A-Z0-9 &'\-]{3,50}(?:PLAN|SCHEDULE)\b/);
+    pages.push({ n, score, title: t ? t[0].trim() : '' });
+  }
+  const best = pages.reduce((a, b) => (b.score > a.score ? b : a), pages[0]);
+  return { name: file.name, pdf, pages, page: best.n };
+}
+async function showPlanPage(n) {
+  const P = state.plan; P.page = n;
+  $('stage').innerHTML = '<div class="empty">Drawing the plan…</div>';
+  const page = await P.pdf.getPage(n);
+  const r = await renderPage(page, 3600);
+  if (P.url) URL.revokeObjectURL(P.url);
+  Object.assign(P, { url: r.url, canvas: r.canvas, w: r.canvas.width, h: r.canvas.height });
+  const tc = await page.getTextContent();
+  P.marks = tc.items.filter(i => /\bSW|SHEAR|\d+d-\d+-\d+/i.test(i.str)).slice(0, 250).map(i => {
+    const tx = pdfjsLib.Util.transform(r.vp.transform, i.transform);
+    return `${i.str.trim()} @${Math.round(tx[4] / r.canvas.width * 1000)},${Math.round(tx[5] / r.canvas.height * 1000)}`;
+  });
+  renderViewer();
+}
+
+function renderViewer() {
+  const st = $('stage'), isLayout = state.view === 'layout';
+  $('tabLayout').setAttribute('aria-selected', isLayout); $('tabPlan').setAttribute('aria-selected', !isLayout);
+  const P = state.plan, L = state.layout;
+  $('planPage').hidden = isLayout || !P || P.pages.length < 2;
+  const D = isLayout ? L : P && P.url ? P : null;
+  if (!D) {
+    st.style.width = '100%';
+    st.innerHTML = `<div class="empty">${isLayout ? 'Drop the floor layout PDF above to see every wall panel here.' : 'Drop the shear wall plan PDF above to see it here.'}</div>`;
+    return;
+  }
+  st.style.width = ZOOMS[state.zoom[state.view]] * 100 + '%';
+  let html = `<img src="${D.url}" alt="${isLayout ? 'Floor layout' : 'Shear wall plan'}: ${esc(D.name)}" draggable="false">`;
+  if (isLayout) {
+    html += L.labels.map(l => {
+      const pad = Math.max(3, Math.min(l.w, l.h) * 0.5);
+      const s = `left:${(l.x - pad) / L.w * 100}%;top:${(l.y - pad) / L.h * 100}%;width:${(l.w + 2 * pad) / L.w * 100}%;height:${(l.h + 2 * pad) / L.h * 100}%`;
+      return `<button class="pl" data-id="${esc(l.id)}" style="${s}"></button>`;
+    }).join('');
+  }
+  st.innerHTML = html;
+  if (isLayout) paintMarks();
+}
+function paintMarks(onlyId) {
+  const st = $('stage');
+  st.querySelectorAll(onlyId ? `.pl[data-id="${onlyId}"]` : '.pl').forEach(b => {
+    const id = b.dataset.id, s = state.shear[id], g = state.suggest[id];
+    b.className = 'pl' + (s ? ' on' + (s === 2 ? ' two' : '') : g ? ' sug' : '');
+    b.innerHTML = s === 2 ? '<i>2</i>' : '';
+    b.title = id + (s ? ` — shear wall, ${s} side${s > 1 ? 's' : ''}` : g ? ' — suggested shear wall, click to accept' : '');
+    b.setAttribute('aria-label', b.title || id);
+    b.setAttribute('aria-pressed', s ? 'true' : 'false');
+  });
+}
+$('stage').addEventListener('click', e => {
+  const b = e.target.closest('.pl'); if (!b) return;
+  const id = b.dataset.id, cur = state.shear[id] || 0;
+  if (!cur && state.suggest[id]) return setShear(id, state.suggest[id].sides || 1);
+  setShear(id, cur ? 0 : 1);
+});
+function setZoom(dir) {
+  const v = $('viewer'), key = state.view;
+  const cx = (v.scrollLeft + v.clientWidth / 2) / v.scrollWidth, cy = (v.scrollTop + v.clientHeight / 2) / v.scrollHeight;
+  state.zoom[key] = dir === 0 ? 0 : Math.max(0, Math.min(ZOOMS.length - 1, state.zoom[key] + dir));
+  $('stage').style.width = ZOOMS[state.zoom[key]] * 100 + '%';
+  v.scrollLeft = cx * v.scrollWidth - v.clientWidth / 2; v.scrollTop = cy * v.scrollHeight - v.clientHeight / 2;
+}
+$('zIn').onclick = () => setZoom(1); $('zOut').onclick = () => setZoom(-1); $('zFit').onclick = () => setZoom(0);
+$('tabLayout').onclick = () => { state.view = 'layout'; renderViewer(); };
+$('tabPlan').onclick = () => { state.view = 'plan'; renderViewer(); };
+$('planPage').onchange = e => showPlanPage(+e.target.value);
+
+function wireMiniDrop(dropId, inputId, handler) {
+  const d = $(dropId), inp = $(inputId);
+  d.onclick = () => inp.click();
+  d.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); inp.click(); } };
+  inp.onchange = e => { if (e.target.files[0]) handler(e.target.files[0]); e.target.value = ''; };
+  ['dragenter', 'dragover'].forEach(ev => d.addEventListener(ev, e => { e.preventDefault(); e.stopPropagation(); d.classList.add('over'); }));
+  ['dragleave', 'drop'].forEach(ev => d.addEventListener(ev, e => { e.preventDefault(); d.classList.remove('over'); }));
+  d.addEventListener('drop', e => { e.stopPropagation(); const f = [...e.dataTransfer.files].find(f => /\.pdf$/i.test(f.name) || f.type === 'application/pdf'); if (f) handler(f); else toast('Drop a PDF here.'); });
+}
+function setMsg(S, key, text) { S[key] = text; if (state === S) $(key === 'layoutMsg' ? 'layoutName' : 'planName').textContent = text; }
+function planOptions(P) { return P.pages.map(p => `<option value="${p.n}"${p.n === P.page ? ' selected' : ''}>Page ${p.n}${p.title ? ' – ' + esc(p.title) : ''}</option>`).join(''); }
+async function loadLayoutFile(file) {
+  const S = state;
+  setMsg(S, 'layoutMsg', 'Reading ' + file.name + '…'); if (state === S) $('assignName').textContent = 'Reading ' + file.name + '…';
+  try {
+    const L = await readLayout(file);
+    if (S.layout && S.layout.url) URL.revokeObjectURL(S.layout.url);
+    S.layout = L; S.suggest = {}; S.view = 'layout'; S.zoom.layout = 2;
+    const missing = state === S ? L.labels.filter(l => !panelMap()[l.id]).length : 0;
+    setMsg(S, 'layoutMsg', `${file.name}: ${L.labels.length} panel numbers found` + (missing ? `, ${missing} not in the panel PDFs` : ''));
+    if (state === S) { $('layoutDrop').classList.add('loaded'); renderSuggestBox(); renderViewer(); updateSuggestBtn(); renderAssign(); }
+  } catch (e) {
+    setMsg(S, 'layoutMsg', `Could not use ${file.name}: ${e && e.message ? e.message : 'unreadable PDF'}. Use the panel layout sheet that shows the panel numbers.`);
+    if (state === S) $('assignName').textContent = S.layoutMsg;
+  }
+}
+wireMiniDrop('assignDrop', 'assignInput', loadLayoutFile);
+
+/* panel / precut assignment (Panel + precut package) */
+function mixStoreKey() { return 'pml-mix:' + autoTitle(); }
+function loadMix() {
+  if (state.pkg !== 'mixed') return;
+  const k = mixStoreKey(); if (k === state.mixKey) return;
+  state.mixKey = k;
+  try { state.precutSet = JSON.parse(localStorage.getItem(k) || '{}') || {}; } catch (e) { state.precutSet = {}; }
+  paintAssign();
+}
+function saveMix() { try { localStorage.setItem(mixStoreKey(), JSON.stringify(state.precutSet)); } catch (e) {} }
+function allWallIds() {
+  const ids = new Set();
+  if (!state.sample) activePanels().panels.forEach(p => p.id && ids.add(p.id));
+  if (state.layout) state.layout.labels.forEach(l => ids.add(l.id));
+  if (state.sample && !state.layout) Object.keys(SAMPLE.plates).forEach(id => ids.add(id));
+  return [...ids];
+}
+function setMix(fn) { const s = {}; for (const id of allWallIds()) if (fn(id)) s[id] = true; state.precutSet = s; saveMix(); recompute(); paintAssign(); }
+$('mixAllPanel').onclick = () => setMix(() => false);
+$('mixAllPrecut').onclick = () => setMix(() => true);
+$('mixExtInt').onclick = () => setMix(id => /^\d+I/.test(id));
+function renderAssign() {
+  const sec = $('assign');
+  sec.hidden = state.pkg !== 'mixed';
+  if (sec.hidden) return;
+  const L = state.layout, st = $('assignStage');
+  $('assignName').textContent = L ? state.layoutMsg : LAYOUT_MSG;
+  $('assignDrop').classList.toggle('loaded', !!L);
+  if (!L) { st.style.width = '100%'; st.innerHTML = '<div class="empty">Drop the floor layout PDF above to pick panel and precut walls on it. You can also use the buttons without a layout.</div>'; paintAssign(); return; }
+  st.style.width = ZOOMS[state.assignZoom] * 100 + '%';
+  st.innerHTML = `<img src="${L.url}" alt="Floor layout: ${esc(L.name)}" draggable="false">` + L.labels.map(l => {
+    const pad = Math.max(3, Math.min(l.w, l.h) * 0.5);
+    return `<button class="pl" data-id="${esc(l.id)}" style="left:${(l.x - pad) / L.w * 100}%;top:${(l.y - pad) / L.h * 100}%;width:${(l.w + 2 * pad) / L.w * 100}%;height:${(l.h + 2 * pad) / L.h * 100}%"></button>`;
+  }).join('');
+  paintAssign();
+}
+function paintAssign() {
+  if (state.pkg !== 'mixed') return;
+  $('assignStage').querySelectorAll('.pl').forEach(b => {
+    const pre = !!state.precutSet[b.dataset.id];
+    b.className = 'pl ' + (pre ? 'pre' : 'pan');
+    b.title = b.dataset.id + (pre ? ' — precut (click for panel)' : ' — panel (click for precut)');
+    b.setAttribute('aria-label', b.title); b.setAttribute('aria-pressed', pre ? 'true' : 'false');
+  });
+  const ids = allWallIds(), pre = ids.filter(id => state.precutSet[id]).length;
+  $('assignSummary').innerHTML = ids.length ? `<b>${fmtQ(ids.length - pre)}</b> panel walls · <b>${fmtQ(pre)}</b> precut walls` +
+    (state.sample && pre ? ' <span class="note" style="font-family:var(--font-body);font-size:13px;font-weight:400">The example has no per-wall pieces, so drop the panel PDFs to see the split on the lists.</span>' : '') : '';
+}
+$('assignStage').addEventListener('click', e => {
+  const b = e.target.closest('.pl'); if (!b) return;
+  const id = b.dataset.id;
+  if (state.precutSet[id]) delete state.precutSet[id]; else state.precutSet[id] = true;
+  saveMix(); recompute(); paintAssign();
+});
+function setAssignZoom(dir) {
+  const v = $('assignViewer');
+  const cx = (v.scrollLeft + v.clientWidth / 2) / v.scrollWidth, cy = (v.scrollTop + v.clientHeight / 2) / v.scrollHeight;
+  state.assignZoom = dir === 0 ? 0 : Math.max(0, Math.min(ZOOMS.length - 1, state.assignZoom + dir));
+  $('assignStage').style.width = ZOOMS[state.assignZoom] * 100 + '%';
+  v.scrollLeft = cx * v.scrollWidth - v.clientWidth / 2; v.scrollTop = cy * v.scrollHeight - v.clientHeight / 2;
+}
+$('azIn').onclick = () => setAssignZoom(1); $('azOut').onclick = () => setAssignZoom(-1); $('azFit').onclick = () => setAssignZoom(0);
+
+wireMiniDrop('layoutDrop', 'layoutInput', async file => {
+  await loadLayoutFile(file);
+});
+wireMiniDrop('planDrop', 'planInput', async file => {
+  const S = state;
+  setMsg(S, 'planMsg', 'Reading ' + file.name + '…');
+  try {
+    if (S.plan && S.plan.pdf) S.plan.pdf.destroy();
+    S.plan = await readPlan(file);
+    const P = S.plan;
+    setMsg(S, 'planMsg', `${file.name}: showing page ${P.page} of ${P.pages.length}` + (P.pages.length > 1 ? ' (pick another page above the drawing)' : ''));
+    S.view = 'plan'; S.zoom.plan = 0;
+    if (state === S) { $('planPage').innerHTML = planOptions(P); $('planDrop').classList.add('loaded'); await showPlanPage(P.page); updateSuggestBtn(); }
+  } catch (e) {
+    setMsg(S, 'planMsg', `Could not read ${file.name}. Make sure it is a PDF.`);
+  }
+});
+
+/* ask Claude to suggest shear walls */
+let sampleFn = null, suggestCtl = null;
+(async () => {
+  try {
+    sampleFn = window.claude && window.claude.use ? await window.claude.use('sample') : null;
+    if (sampleFn) { const lim = await sampleFn.limits().catch(() => null); if (!lim || !lim.images) sampleFn = null; }
+  } catch (e) { sampleFn = null; }
+  updateSuggestBtn();
+})();
+function updateSuggestBtn() {
+  const b = $('suggestBtn');
+  b.hidden = !sampleFn;
+  b.disabled = !(state.layout && state.plan && state.plan.canvas);
+  if (sampleFn && b.disabled && !suggestCtl) $('suggestStatus').textContent = 'Load both drawings, then Claude can mark the walls that look like shear walls for you to check.';
+  else if (!suggestCtl) $('suggestStatus').textContent = '';
+}
+function cropBlob(canvas, rect, maxSide) {
+  const s = Math.min(1, maxSide / Math.max(rect.w, rect.h));
+  const c = document.createElement('canvas'); c.width = Math.round(rect.w * s); c.height = Math.round(rect.h * s);
+  const ctx = c.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
+  ctx.drawImage(canvas, rect.x, rect.y, rect.w, rect.h, 0, 0, c.width, c.height);
+  return new Promise(r => c.toBlob(r, 'image/jpeg', 0.88));
+}
+$('suggestBtn').onclick = async () => {
+  const S = state, L = state.layout, P = state.plan;
+  if (!sampleFn || !L || !P || !P.canvas) return;
+  const xs = L.labels.map(l => l.x), ys = L.labels.map(l => l.y);
+  const x0 = Math.max(0, Math.min(...xs) - L.w * 0.02), y0 = Math.max(0, Math.min(...ys) - L.h * 0.02);
+  const x1 = Math.min(L.w, Math.max(...L.labels.map(l => l.x + l.w)) + L.w * 0.02), y1 = Math.min(L.h, Math.max(...L.labels.map(l => l.y + l.h)) + L.h * 0.02);
+  const crop = { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+  const map = panelMap();
+  const list = L.labels.map(l => {
+    const cx = Math.round((l.x + l.w / 2 - crop.x) / crop.w * 1000), cy = Math.round((l.y + l.h / 2 - crop.y) / crop.h * 1000);
+    const p = map[l.id];
+    return `${l.id} ${cx},${cy} ${l.vert ? 'V' : 'H'}${p ? ' ' + (p.plateIn / 12).toFixed(1) + 'ft' : ''}${p && p.sheathed ? ' EXT' : ''}`;
+  }).join('\n');
+  const prompt = `You help a wall panel shop work out which wall panels are shear walls, so they can order shear wall sheathing.
+
+Image 1 is a sheet from the structural drawings for this floor (file "${P.name}", page ${P.page}). It shows the shear walls, usually as heavy, hatched or tagged walls (marks like SW1, SW2), often with a shear wall schedule saying which side(s) get sheathing and the nailing.
+Image 2 is the shop's panel layout for the same floor (file "${L.name}"), cropped to the building. Each wall panel has a small label such as 2I-33 (I = interior, E = exterior). The labels are too small to read in the image, so here is every label with its centre position in image 2 (x,y from 0 to 1000 across the image's width and height), whether the wall runs horizontally (H) or vertically (V), its length, and EXT if it is an exterior wall:
+${list}
+${P.marks && P.marks.length ? `\nText on image 1 that mentions shear walls, with positions on that page (0-1000):\n${P.marks.join('\n')}\n` : ''}
+Task: find every shear wall in image 1, line it up with the same wall in image 2 using the building outline, corridors, stairs and units (the drawings may be at different scales or crops, and in rare cases rotated or mirrored), and list the panel labels that make up each shear wall. A long shear wall may cover several panels in a row. Leave out anything you can't place with reasonable confidence.
+
+Reply with only JSON in this shape:
+{"walls":[{"id":"2I-33","mark":"SW1","confidence":"high"}],"notes":"one or two plain sentences: how shear walls are shown on the plan, the schedule or nailing, and anything you could not match"}
+confidence is "high", "medium" or "low".`;
+  const btn = $('suggestBtn'); btn.disabled = true; $('stopSuggest').hidden = false;
+  $('suggestStatus').textContent = 'Claude is comparing the plan with the layout. This can take a minute or two…';
+  suggestCtl = new AbortController();
+  try {
+    const images = [await cropBlob(P.canvas, { x: 0, y: 0, w: P.w, h: P.h }, 2400), await cropBlob(L.canvas, crop, 2400)];
+    const out = await sampleFn.json(prompt, { images, modelTier: 'complex', signal: suggestCtl.signal });
+    const known = new Set(L.labels.map(l => l.id));
+    const walls = (out && Array.isArray(out.walls) ? out.walls : []).filter(w => w && known.has(String(w.id)));
+    S.suggest = {};
+    for (const w of walls) if (!S.shear[w.id]) S.suggest[w.id] = { sides: 1, mark: String(w.mark || ''), confidence: String(w.confidence || '') };
+    S.suggestNotes = out && out.notes ? String(out.notes) : '';
+    S.view = 'layout';
+    if (state === S) {
+      $('suggestStatus').textContent = walls.length ? '' : 'Claude did not find shear walls it could match. Mark them by hand on the layout.';
+      renderViewer(); renderSuggestBox();
+    }
+  } catch (e) {
+    const c = e && e.code;
+    $('suggestStatus').textContent = c === 'cancelled' ? 'Stopped.' :
+      c === 'not_granted' || c === 'sampling_disabled' || c === 'images_unavailable' ? 'Claude is not available on this page for you. Mark the shear walls by hand.' :
+      c === 'rate_limited' ? 'Too many requests right now. Try again in a few minutes.' :
+      c === 'invalid_json' ? 'Claude answered in a form the page could not read. Try again.' :
+      c === 'image_rejected' ? 'One of the drawings could not be sent. Try a different page of the plan.' :
+      'That did not work this time. Try again, or mark the walls by hand.';
+    if (['not_granted', 'sampling_disabled', 'images_unavailable'].includes(c)) { sampleFn = null; }
+  } finally {
+    suggestCtl = null; $('stopSuggest').hidden = true; updateSuggestBtn();
+  }
+};
+$('stopSuggest').onclick = () => { if (suggestCtl) suggestCtl.abort(); };
+
+function renderSuggestBox() {
+  const ids = Object.keys(state.suggest).sort(idSort);
+  if (!ids.length) { $('suggestBox').innerHTML = state.suggestNotes ? `<div class="banner sample">${esc(state.suggestNotes)}</div>` : ''; return; }
+  const low = ids.filter(id => state.suggest[id].confidence === 'low').length;
+  $('suggestBox').innerHTML = `<div class="banner warn"><b>Claude suggested ${ids.length} shear wall panel${ids.length > 1 ? 's' : ''}</b> (dashed orange on the layout${low ? `; ${low} marked low confidence` : ''}). They are not counted until you accept them. Check each against the plan, then click a wall to accept it, or accept them all.
+    ${state.suggestNotes ? `<p style="margin:6px 0 0">${esc(state.suggestNotes)}</p>` : ''}
+    <p style="margin:6px 0 0;font-family:var(--font-data);font-size:13px">${ids.map(id => `${esc(id)}${state.suggest[id].mark ? ' (' + esc(state.suggest[id].mark) + ')' : ''}`).join(', ')}</p>
+    <div class="actions" style="margin-top:8px"><button class="btn" id="acceptAll">Accept all</button><button class="btn ghost" id="dismissAll">Dismiss suggestions</button></div></div>`;
+  $('acceptAll').onclick = () => { for (const id of ids) state.shear[id] = state.suggest[id].sides; state.suggest = {}; saveShear(); recompute(); paintMarks(); renderSuggestBox(); };
+  $('dismissAll').onclick = () => { state.suggest = {}; paintMarks(); renderSuggestBox(); };
+}
+
+let toastTimer;
+function toast(msg) {
+  // the Lumber Tally shows it, since this page can be taller than the window
+  if (window.parent !== window && window.parent.tallyToast) return window.parent.tallyToast(msg);
+  const t = $('toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => t.hidden = true, 3200);
+}
+
+/* ---------- package tabs ---------- */
+function switchPkg(key, fromHash) {
+  if (!PKGS[key]) key = 'panel';
+  state = PKGS[key];
+  const info = PKG_INFO[key];
+  document.querySelectorAll('.pkg-tabs button').forEach(b => b.setAttribute('aria-selected', b.dataset.pkg === key ? 'true' : 'false'));
+  $('pageH1').textContent = info.h1; $('pageLede').textContent = info.lede;
+  $('title').value = state.title;
+  $('clearBtn').hidden = !state.files.length;
+  $('layoutName').textContent = state.layoutMsg; $('planName').textContent = state.planMsg;
+  $('layoutDrop').classList.toggle('loaded', !!state.layout); $('planDrop').classList.toggle('loaded', !!state.plan);
+  $('planPage').innerHTML = state.plan ? planOptions(state.plan) : '';
+  if (!suggestCtl) $('suggestStatus').textContent = '';
+  renderAllow(); renderFiles(); recompute(); renderViewer(); renderSuggestBox(); updateSuggestBtn(); renderAssign();
+  if (!fromHash) { try { history.replaceState(null, '', '#' + (key === 'mixed' ? 'panel-precut' : key)); } catch (e) {} }
+}
+document.querySelectorAll('.pkg-tabs button').forEach(b => b.onclick = () => switchPkg(b.dataset.pkg));
+const hashPkg = () => ({ '#precut': 'precut', '#panel-precut': 'mixed', '#panel': 'panel' })[location.hash] || 'panel';
+window.addEventListener('hashchange', () => switchPkg(hashPkg(), true));
+
+switchPkg(hashPkg(), true);
+</script>
+
+</body></html>

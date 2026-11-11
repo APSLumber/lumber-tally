@@ -1,6 +1,6 @@
 // Lets the app open with no signal. Lumber data lives in the browser, not here; this only stores the app's own files.
-var CACHE = 'tally-v1';
-var CORE = ['./', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png'];
+var CACHE = 'tally-v2';
+var CORE = ['./', 'material.html', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png'];
 var LIBRARY_HOSTS = ['cdnjs.cloudflare.com', 'fonts.googleapis.com', 'fonts.gstatic.com'];
 var SLOW_MS = 3000;
 
