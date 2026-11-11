@@ -338,6 +338,29 @@
   /* Material list */
   .material-frame{display:block;width:100%;height:600px;border:0;background:transparent;}
 
+  /* Windows that open on top of other windows */
+  #job-overlay{z-index:51;}
+  #jobedit-overlay,#mlist-overlay,#photo-overlay{z-index:52;}
+  #ticket-overlay{z-index:53;}
+  #ret-overlay{z-index:54;}
+  #cf-overlay{z-index:60;}
+  .toast{z-index:80 !important;}
+
+  /* Jobs */
+  .sec-label{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:4px;font-size:11px;color:var(--faint);text-transform:uppercase;letter-spacing:0.05em;font-weight:700;}
+  .job-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;padding:10px 4px;border-bottom:1px solid var(--line);cursor:pointer;}
+  .job-row:last-child{border-bottom:none;}
+  .job-row:hover{background:var(--green-pale);}
+  .job-row .go{color:var(--faint);font-size:20px;line-height:1;}
+  .sec-empty{padding:14px 0;color:var(--faint);font-size:13px;}
+  .photos{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px;}
+  .photo{padding:0;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:#FBFAF6;cursor:pointer;text-align:left;font-family:inherit;}
+  .photo img{display:block;width:100%;height:110px;object-fit:cover;background:var(--line);}
+  .photo span{display:block;padding:4px 7px;font-size:11px;color:var(--soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .photo-full{display:block;max-width:100%;max-height:70vh;margin:0 auto;border-radius:6px;background:var(--line);}
+  .mlist-sec{margin-top:14px;}
+  .mlist-sec h4{margin:0 0 4px;font-family:'Inter',sans-serif;font-size:13px;}
+
   /* Customer types */
   .subtabs{display:flex;gap:4px;border-bottom:2px solid var(--line);margin-bottom:14px;}
   .subtab{border:none;background:none;padding:10px 16px;margin-bottom:-2px;border-bottom:3px solid transparent;font-family:inherit;font-size:14px;font-weight:600;color:var(--soft);cursor:pointer;}
@@ -584,6 +607,10 @@
           </div>
           <input type="text" id="customer" placeholder="Name (optional)" style="margin-top:8px;">
         </div>
+        <div class="field" id="job-field" style="margin-bottom:6px;" hidden>
+          <label for="job-select">Job</label>
+          <select id="job-select"></select>
+        </div>
         <div id="cart"></div>
         <div id="bo-cart"></div>
         <div class="totals">
@@ -767,7 +794,7 @@
 <div class="overlay" id="cdel-overlay">
   <div class="modal" style="max-width:380px;">
     <div class="modal-head"><h2>Delete customer</h2><button id="cdel-close" aria-label="Close"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
-    <div class="modal-body"><p style="margin:0;color:var(--soft);">Delete <strong id="cdel-name" style="color:var(--ink);"></strong>? Their past tickets stay in Sales under this name.</p></div>
+    <div class="modal-body"><p style="margin:0;color:var(--soft);">Delete <strong id="cdel-name" style="color:var(--ink);"></strong>? Their past tickets stay in Sales under this name. Their jobs, with the material lists and delivery paper photos saved to them, are deleted.</p></div>
     <div class="modal-foot"><button class="btn" id="cdel-cancel">Cancel</button><button class="btn danger" id="cdel-confirm">Delete</button></div>
   </div>
 </div>
@@ -897,6 +924,69 @@
   </div>
 </div>
 
+<!-- Job -->
+<div class="overlay" id="job-overlay">
+  <div class="modal wide">
+    <div class="modal-head"><h2 id="job-title">Job</h2><button id="job-close" aria-label="Close"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+    <div class="modal-body" id="job-body"></div>
+    <div class="modal-foot">
+      <button class="btn danger" id="job-delete" style="margin-right:auto;">Delete job</button>
+      <button class="btn" id="job-edit">Edit</button>
+      <button class="btn" id="job-close-2">Close</button>
+    </div>
+  </div>
+</div>
+<input type="file" id="photo-input" accept="image/*" multiple hidden>
+
+<!-- New / edit job -->
+<div class="overlay" id="jobedit-overlay">
+  <div class="modal">
+    <div class="modal-head"><h2 id="jobedit-title">New job</h2><button id="jobedit-close" aria-label="Close"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+    <div class="modal-body">
+      <div class="field"><label for="jobedit-cust">Customer</label><select id="jobedit-cust"></select></div>
+      <div class="field"><label for="jobedit-name">Job name</label><input type="text" id="jobedit-name" placeholder="Highland 3"></div>
+      <div class="field"><label>Lumber</label>
+        <div class="seg">
+          <label><input type="radio" name="j-type" value="in"> Insourced</label>
+          <label><input type="radio" name="j-type" value="out"> Outsourced</label>
+        </div>
+      </div>
+      <p class="acct-note" style="margin:0;">Insourced: our lumber, billed out through Bill out and Sales. Outsourced: the customer brings the lumber, so the job keeps its material lists and photos of the papers that come with it.</p>
+      <div class="form-err" id="jobedit-err"></div>
+    </div>
+    <div class="modal-foot"><button class="btn" id="jobedit-cancel">Cancel</button><button class="btn primary" id="jobedit-save">Save</button></div>
+  </div>
+</div>
+
+<!-- A material list saved to a job -->
+<div class="overlay" id="mlist-overlay">
+  <div class="modal wide">
+    <div class="modal-head"><h2 id="mlist-title">Material list</h2><button id="mlist-close" aria-label="Close"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+    <div class="modal-body"><div class="paper" id="mlist-body"></div></div>
+    <div class="modal-foot">
+      <button class="btn danger" id="mlist-delete" style="margin-right:auto;">Delete</button>
+      <button class="btn" id="mlist-copy">Copy for Excel</button>
+      <button class="btn primary" id="mlist-bill">Send to Bill out</button>
+    </div>
+  </div>
+</div>
+
+<!-- One delivery paper photo -->
+<div class="overlay" id="photo-overlay">
+  <div class="modal wide">
+    <div class="modal-head"><h2 id="photo-title">Delivery paper</h2><button id="photo-close" aria-label="Close"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+    <div class="modal-body">
+      <img id="photo-img" class="photo-full" alt="Delivery paper">
+      <div class="field"><label for="photo-note">Note</label><input type="text" id="photo-note" placeholder="Load 2, 2x6 bunks…"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn danger" id="photo-delete" style="margin-right:auto;">Delete</button>
+      <button class="btn" id="photo-download">Download</button>
+      <button class="btn primary" id="photo-save">Done</button>
+    </div>
+  </div>
+</div>
+
 <!-- Generic confirm -->
 <div class="overlay" id="cf-overlay">
   <div class="modal" style="max-width:400px;">
@@ -909,13 +999,16 @@
 <script>
 (function(){
   'use strict';
-  var KEYS = { stock:'tally:stock', sales:'tally:sales', cust:'tally:customers', seq:'tally:nextno', acct:'tally:accounts', bo:'tally:backorders', review:'tally:reviews' };
+  var KEYS = { stock:'tally:stock', sales:'tally:sales', cust:'tally:customers', seq:'tally:nextno', acct:'tally:accounts', bo:'tally:backorders', review:'tally:reviews', jobs:'tally:jobs' };
   // Back orders: lumber owed to a customer. { id, date, customerId, customer, by, ticket, thickness, width, length, kind,
   // bunkSize, pieces, filled, fills:[{ticket,date,pieces}], status:'open'|'filled', filledDate }
   var backorders = [];
   var boCart = [];   // lines on the current Bill out ticket that will be back ordered: { thickness, width, length, kind, bunkSize, pieces }
   // Bill outs from user accounts: { id, date, by, byId, customerId, customer, lines, backorders, status:'pending'|'rejected'|'approved', reason, reviewedBy, saleId, number }
   var reviews = [];
+  // Jobs under a customer: { id, customerId, name, type:'in'|'out', date, by, lists:[saved material lists], photos:[{ id, date, by, note }] }.
+  // Photo images are kept in IndexedDB (too big for localStorage), keyed by photo id.
+  var jobs = [];
   var nextNo = 1001;
   var stock = [], sales = [], cart = [], customers = [];
   var editingId = null, deletingId = null;
@@ -1234,6 +1327,7 @@
     $('customer').value = ''; $('cust-select').value = '';
     closeStock(); closeDelete(); closeTicket(); closeCust(); closeCustDetail(); closeCdel(); closeSdel();
     closeAcct(); closePw(); closeCf(); closeImp(); closeBoAdd(); closeReturn(); closeReject();
+    closePhoto(); closeMlist(); closeJobEdit(); closeJob();
     unloadMaterial();
     document.body.classList.remove('authed');
     showGate('login');
@@ -1849,10 +1943,12 @@
     if(!chosen) custId = null;
     var custName = chosen ? chosen.name : $('customer').value.trim();
     if(boCart.length && !custName){ err.textContent = 'Pick or type the customer, so the back order is under their name.'; err.classList.add('show'); return; }
+    var job = custId ? jobById($('job-select').value) : null;
     var draft = {
       id:uid('rv'), date:new Date().toISOString(), status:'pending',
       by: session ? session.name : '', byId: session ? session.id : '',
       customerId:custId, customer:custName,
+      jobId: job ? job.id : null, job: job ? job.name : '',
       lines:cart.map(function(c){
         var item = stock.find(function(i){ return i.id===c.stockId; });
         return {
@@ -1873,6 +1969,7 @@
     $('customer').value = '';
     $('cust-select').value = '';
     toggleWalkin();
+    renderJobSelect();
     if(session && session.role==='admin'){
       var sale = createSale(draft, null);
       renderAll();
@@ -1915,6 +2012,7 @@
       bf:round2(lines.reduce(function(s,l){ return s+l.bf; },0))
     };
     if(approvedBy) sale.approvedBy = approvedBy;
+    if(d.jobId){ sale.jobId = d.jobId; sale.job = d.job; }
     if(d.backorders.length){
       sale.backorders = d.backorders.map(function(b){ return Object.assign({}, b); });
       d.backorders.forEach(function(b){
@@ -2063,7 +2161,8 @@
     }).join('');
     $('paper').innerHTML =
       '<div class="p-head"><div><div class="shop">Advanced Precut Systems Lumber Tally</div><div class="sub">'+esc(s.number)+' · '+fmtDate(s.date)+'</div>'+(s.by ? '<div class="sub">Served by '+esc(s.by)+'</div>' : '')+(s.approvedBy ? '<div class="sub">Approved by '+esc(s.approvedBy)+'</div>' : '')+'</div>'+
-        '<div style="text-align:right;"><div class="sub">Sold to</div><div style="font-weight:700;">'+esc(s.customer)+'</div></div></div>'+
+        '<div style="text-align:right;"><div class="sub">Sold to</div><div style="font-weight:700;">'+esc(s.customer)+'</div>'+
+          (s.job ? '<div class="sub">Job: '+esc((jobById(s.jobId)||{}).name || s.job)+'</div>' : '')+'</div></div>'+
       '<table><thead><tr><th>Item</th><th>Qty</th><th class="r">Bd ft</th></tr></thead><tbody>'+rows+'</tbody></table>'+
       '<div class="p-total"><span>'+net.pieces.toLocaleString()+' pieces</span><span>'+fmt(net.bf)+' bd ft</span></div>'+
       (boRows ? '<div class="p-bo"><div class="p-bo-title">Back ordered (not included above, to follow)</div>'+
@@ -2224,9 +2323,19 @@
       group('Type not set', sorted.filter(function(c){ return !c.type; }));
     sel.value = customers.some(function(c){ return c.id===current; }) ? current : '';
     toggleWalkin();
+    renderJobSelect();
   }
   function toggleWalkin(){ $('customer').style.display = $('cust-select').value ? 'none' : 'block'; }
-  $('cust-select').addEventListener('change', toggleWalkin);
+  // The ticket's Job picker: the chosen customer's insourced jobs (outsourced jobs never go through Bill out)
+  function renderJobSelect(pick){
+    var cid = $('cust-select').value, sel = $('job-select');
+    var cur = pick !== undefined ? pick : sel.value;
+    var list = cid ? jobs.filter(function(j){ return j.customerId===cid && j.type==='in'; }) : [];
+    sel.innerHTML = '<option value="">No job</option>'+list.map(function(j){ return '<option value="'+j.id+'">'+esc(j.name)+'</option>'; }).join('');
+    sel.value = list.some(function(j){ return j.id===cur; }) ? cur : '';
+    $('job-field').hidden = !list.length;
+  }
+  $('cust-select').addEventListener('change', function(){ toggleWalkin(); renderJobSelect(); });
   $('quick-add-cust').addEventListener('click', function(){ openCust(null, true); });
 
   /* ---------- add / edit ---------- */
@@ -2300,7 +2409,12 @@
         '<div class="stat"><div class="label">Board ft</div><div class="value">'+fmt(s.bf)+'</div></div>'+
         '<div class="stat"><div class="label">Last order</div><div class="value" style="font-size:13px;margin-top:8px;">'+(s.last ? new Date(s.last).toLocaleDateString() : '—')+'</div></div>'+
       '</div>'+
+      custJobsHtml(c)+
       '<div><div class="label" style="font-size:11px;color:var(--faint);text-transform:uppercase;letter-spacing:0.05em;font-weight:700;margin-bottom:4px;">Ticket history</div>'+hist+'</div>';
+    $('cd-newjob').addEventListener('click', function(){ openJobEdit(null, id); });
+    $('cdetail-body').querySelectorAll('.job-row').forEach(function(row){
+      row.addEventListener('click', function(){ openJob(row.dataset.job); });
+    });
     $('cdetail-body').querySelectorAll('.hist-row').forEach(function(row){
       row.addEventListener('click', function(){
         var t = sales.find(function(x){ return x.id===row.dataset.id; });
@@ -2335,6 +2449,10 @@
     save(KEYS.bo, backorders);
     reviews.forEach(function(d){ if(d.customerId===id) d.customerId = null; });
     save(KEYS.review, reviews);
+    jobs.filter(function(j){ return j.customerId===id; }).forEach(function(j){ deleteJobData(j); });
+    jobs = jobs.filter(function(j){ return j.customerId!==id; });
+    save(KEYS.jobs, jobs);
+    refreshMaterialJobs();
     save(KEYS.cust, customers); save(KEYS.sales, sales);
     viewingCustId = null;
     closeCdel(); closeCustDetail();
@@ -2344,6 +2462,330 @@
   /* =====================================================
      BACK ORDERS (lumber owed to customers)
   ===================================================== */
+  /* =====================================================
+     JOBS (a customer's projects: material lists, tickets, delivery paper photos)
+  ===================================================== */
+  function jobById(id){ return id ? jobs.find(function(j){ return j.id===id; }) || null : null; }
+  function custNameOf(id){ var c = customers.find(function(x){ return x.id===id; }); return c ? c.name : 'Deleted customer'; }
+  function jobBadge(j){ return '<span class="badge ctype '+j.type+'">'+CUST_TYPES[j.type]+'</span>'; }
+  function saveJobs(){
+    save(KEYS.jobs, jobs);
+    refreshMaterialJobs();
+    // keep the customer page behind an open job up to date
+    if(viewingCustId && $('cdetail-overlay').classList.contains('open')) openCustDetail(viewingCustId);
+  }
+  // The Material list tab keeps its own Job picker; tell it when jobs change
+  function refreshMaterialJobs(){
+    var f = $('material-frame'), w = f.getAttribute('src') && f.contentWindow;
+    try{ if(w && w.refreshJobs) w.refreshJobs(); }catch(e){}
+  }
+
+  function custJobsHtml(c){
+    var list = jobs.filter(function(j){ return j.customerId===c.id; }).sort(function(a,b){ return new Date(b.date)-new Date(a.date); });
+    var rows = list.map(function(j){
+        var n = j.type==='out' ? j.photos.length : sales.filter(function(s){ return s.jobId===j.id; }).length;
+      var extra = n+(j.type==='out' ? (n===1?' delivery paper':' delivery papers') : (n===1?' ticket':' tickets'));
+      return '<div class="job-row" data-job="'+j.id+'"><div><div class="name">'+esc(j.name)+jobBadge(j)+'</div>'+
+        '<div class="meta">'+j.lists.length+(j.lists.length===1?' material list':' material lists')+' · '+extra+'</div></div><span class="go">›</span></div>';
+    }).join('');
+    return '<div><div class="sec-label"><span>Jobs</span><button class="btn sm" id="cd-newjob">New job</button></div>'+
+      (rows || '<div class="sec-empty">No jobs yet. A job holds the material lists for one project, and for outsourced lumber the photos of the papers that come with it.</div>')+'</div>';
+  }
+
+  /* ---------- new / edit job ---------- */
+  var jobEditId = null, jobEditAfter = null;
+  function openJobEdit(job, customerId, after){
+    jobEditId = job ? job.id : null; jobEditAfter = after || null;
+    $('jobedit-title').textContent = job ? 'Edit job' : 'New job';
+    $('jobedit-cust').innerHTML = '<option value="">Pick a customer</option>'+customers.slice().sort(function(a,b){ return a.name.localeCompare(b.name); })
+      .map(function(c){ return '<option value="'+c.id+'">'+esc(c.name)+(c.type ? ' ('+CUST_TYPES[c.type]+')' : '')+'</option>'; }).join('');
+    $('jobedit-cust').value = job ? job.customerId : (customerId || '');
+    $('jobedit-name').value = job ? job.name : '';
+    setJobEditType(job ? job.type : null);
+    fclear('jobedit-err');
+    $('jobedit-overlay').classList.add('open');
+    (job || customerId ? $('jobedit-name') : $('jobedit-cust')).focus();
+  }
+  // A new job starts with its customer's type; it can be changed per job
+  function setJobEditType(type){
+    if(type==null){ var c = customers.find(function(x){ return x.id===$('jobedit-cust').value; }); type = c && c.type || ''; }
+    document.querySelectorAll('input[name=j-type]').forEach(function(r){ r.checked = r.value===type; });
+  }
+  $('jobedit-cust').addEventListener('change', function(){ if(!jobEditId) setJobEditType(null); });
+  function closeJobEdit(){ $('jobedit-overlay').classList.remove('open'); jobEditAfter = null; }
+  $('jobedit-save').addEventListener('click', function(){
+    fclear('jobedit-err');
+    var cid = $('jobedit-cust').value, name = $('jobedit-name').value.trim();
+    var picked = document.querySelector('input[name=j-type]:checked');
+    var msg = !cid ? 'Pick the customer.' : !name ? 'Enter a job name.' : !picked ? 'Pick Insourced or Outsourced.' : '';
+    if(msg){ ferr('jobedit-err', msg); return; }
+    var job = jobById(jobEditId);
+    if(job){ job.customerId = cid; job.name = name; job.type = picked.value; }
+    else {
+      job = { id:uid('jb'), customerId:cid, name:name, type:picked.value, date:new Date().toISOString(), by: session ? session.name : '', lists:[], photos:[] };
+      jobs.push(job);
+    }
+    saveJobs();
+    var after = jobEditAfter;
+    closeJobEdit();
+    if(viewingCustId && $('cdetail-overlay').classList.contains('open')) openCustDetail(viewingCustId);
+    if(jobViewId===job.id) renderJob();
+    renderJobSelect();
+    toast('Saved job '+name+'.');
+    if(after) after(job.id);
+  });
+  $('jobedit-cancel').addEventListener('click', closeJobEdit);
+  $('jobedit-close').addEventListener('click', closeJobEdit);
+  $('jobedit-overlay').addEventListener('click', function(e){ if(e.target.id==='jobedit-overlay') closeJobEdit(); });
+
+  /* ---------- job page ---------- */
+  var jobViewId = null, jobThumbs = [];
+  function openJob(id){ jobViewId = id; renderJob(); $('job-overlay').classList.add('open'); }
+  function closeJob(){
+    $('job-overlay').classList.remove('open'); jobViewId = null;
+    jobThumbs.forEach(URL.revokeObjectURL); jobThumbs = [];
+  }
+  function renderJob(){
+    var j = jobById(jobViewId);
+    if(!j){ closeJob(); return; }
+    jobThumbs.forEach(URL.revokeObjectURL); jobThumbs = [];
+    $('job-title').textContent = j.name;
+    var lists = j.lists.map(function(l){
+      return '<div class="job-row" data-list="'+l.id+'"><div><div class="name">'+esc(l.title)+'</div>'+
+        '<div class="meta">'+fmtDate(l.date)+(l.by ? ' · by '+esc(l.by) : '')+' · '+esc(l.pkg)+'</div></div><span class="go">›</span></div>';
+    }).join('') || '<div class="sec-empty">No material lists yet. Build one on the Material list tab, pick this job, and save it.</div>';
+    var html = '<div style="color:var(--soft);">'+esc(custNameOf(j.customerId))+jobBadge(j)+'<span style="margin-left:8px;">Started '+new Date(j.date).toLocaleDateString()+'</span></div>'+
+      '<div><div class="sec-label"><span>Material lists</span></div>'+lists+'</div>';
+    if(j.type==='in'){
+      var tickets = sales.filter(function(s){ return s.jobId===j.id; });
+      var waiting = pendingReviews().filter(function(d){ return d.jobId===j.id; }).length;
+      html += '<div><div class="sec-label"><span>Tickets</span></div>'+
+        (tickets.map(function(t){
+          return '<div class="hist-row" data-id="'+t.id+'"><div class="num strong">'+esc(t.number)+'</div>'+
+            '<div class="meta" style="margin:0;">'+fmtDate(t.date)+'</div>'+
+            '<div class="num">'+saleNet(t).pieces.toLocaleString()+' pcs</div>'+
+            '<div class="num strong">'+fmt(saleNet(t).bf)+' bd ft</div></div>';
+        }).join('') || '<div class="sec-empty">No tickets yet. Send a material list to Bill out, or pick this job on a Bill out ticket.</div>')+
+        (waiting ? '<div class="sec-empty">'+waiting+(waiting===1?' bill out is':' bill outs are')+' waiting for review.</div>' : '')+'</div>';
+    } else {
+      html += '<div><div class="sec-label"><span>Delivery papers</span><button class="btn sm primary" id="job-addphoto">Add photos</button></div>'+
+        (j.photos.length ? '<div class="photos">'+j.photos.map(function(p){
+          return '<button class="photo" data-photo="'+p.id+'"><img alt="Delivery paper from '+esc(new Date(p.date).toLocaleDateString())+'">'+
+            '<span>'+esc(new Date(p.date).toLocaleDateString())+(p.note ? ' · '+esc(p.note) : '')+'</span></button>';
+        }).join('')+'</div>' : '<div class="sec-empty">No delivery papers yet. Take a photo of each paper that comes with the lumber.</div>')+
+        '<p class="acct-note" style="margin:8px 0 0;">Photos are kept on this device only until shared storage is set up.</p></div>';
+    }
+    var body = $('job-body');
+    body.innerHTML = html;
+    body.querySelectorAll('[data-list]').forEach(function(r){ r.addEventListener('click', function(){ openMlist(j.id, r.dataset.list); }); });
+    body.querySelectorAll('.hist-row').forEach(function(r){
+      r.addEventListener('click', function(){ var t = sales.find(function(x){ return x.id===r.dataset.id; }); if(t) showTicket(t); });
+    });
+    if($('job-addphoto')) $('job-addphoto').addEventListener('click', function(){ $('photo-input').value = ''; $('photo-input').click(); });
+    body.querySelectorAll('[data-photo]').forEach(function(b){
+      b.addEventListener('click', function(){ openPhoto(j.id, b.dataset.photo); });
+      photoGet(b.dataset.photo).then(function(blob){
+        if(!blob){ b.querySelector('img').alt = 'Photo missing on this device'; return; }
+        var u = URL.createObjectURL(blob); jobThumbs.push(u); b.querySelector('img').src = u;
+      }).catch(function(){});
+    });
+  }
+  $('job-close').addEventListener('click', closeJob);
+  $('job-close-2').addEventListener('click', closeJob);
+  $('job-overlay').addEventListener('click', function(e){ if(e.target.id==='job-overlay') closeJob(); });
+  $('job-edit').addEventListener('click', function(){ var j = jobById(jobViewId); if(j) openJobEdit(j); });
+  function deleteJobData(j){ j.photos.forEach(function(p){ photoDel(p.id).catch(function(){}); }); }
+  $('job-delete').addEventListener('click', function(){
+    var j = jobById(jobViewId); if(!j) return;
+    askConfirm('Delete job', 'Delete '+j.name+' with its '+j.lists.length+' material list'+(j.lists.length===1?'':'s')+
+      (j.type==='out' ? ' and '+j.photos.length+' delivery paper photo'+(j.photos.length===1?'':'s') : '')+'? Tickets stay in Sales. This cannot be undone.', 'Delete job', function(){
+        deleteJobData(j);
+        jobs = jobs.filter(function(x){ return x.id!==j.id; });
+        saveJobs();
+        closeJob();
+        if(viewingCustId && $('cdetail-overlay').classList.contains('open')) openCustDetail(viewingCustId);
+        renderJobSelect();
+      });
+  });
+
+  /* ---------- delivery paper photos (IndexedDB) ---------- */
+  var photoDbP = null;
+  function photoDb(){
+    if(!photoDbP) photoDbP = new Promise(function(res, rej){
+      var r = indexedDB.open('tally-files', 1);
+      r.onupgradeneeded = function(){ r.result.createObjectStore('photos'); };
+      r.onsuccess = function(){ res(r.result); };
+      r.onerror = function(){ photoDbP = null; rej(r.error); };
+    });
+    return photoDbP;
+  }
+  function photoTx(mode, fn){
+    return photoDb().then(function(db){
+      return new Promise(function(res, rej){
+        var tx = db.transaction('photos', mode), out = fn(tx.objectStore('photos'));
+        tx.oncomplete = function(){ res(out && out.result); };
+        tx.onerror = tx.onabort = function(){ rej(tx.error); };
+      });
+    });
+  }
+  function photoPut(id, blob){ return photoTx('readwrite', function(s){ return s.put(blob, id); }); }
+  function photoGet(id){ return photoTx('readonly', function(s){ return s.get(id); }); }
+  function photoDel(id){ return photoTx('readwrite', function(s){ return s.delete(id); }); }
+  // Phone photos are large; a 2000px JPEG still reads fine and is a fraction of the size
+  function shrinkImage(file){
+    return new Promise(function(res, rej){
+      var url = URL.createObjectURL(file), img = new Image();
+      img.onload = function(){
+        var s = Math.min(1, 2000/Math.max(img.naturalWidth, img.naturalHeight));
+        var c = document.createElement('canvas');
+        c.width = Math.round(img.naturalWidth*s); c.height = Math.round(img.naturalHeight*s);
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+        URL.revokeObjectURL(url);
+        c.toBlob(function(b){ b ? res(b) : rej(new Error('photo')); }, 'image/jpeg', 0.8);
+      };
+      img.onerror = function(){ URL.revokeObjectURL(url); rej(new Error('photo')); };
+      img.src = url;
+    });
+  }
+  $('photo-input').addEventListener('change', function(){
+    var j = jobById(jobViewId), files = Array.prototype.slice.call(this.files || []);
+    if(!j || !files.length) return;
+    toast('Saving '+files.length+(files.length===1?' photo…':' photos…'));
+    var saved = 0;
+    files.reduce(function(p, file){
+      return p.then(function(){
+        return shrinkImage(file).then(function(blob){
+          var id = uid('ph');
+          return photoPut(id, blob).then(function(){
+            j.photos.push({ id:id, date:new Date().toISOString(), by: session ? session.name : '', note:'' });
+            saved++;
+          });
+        });
+      });
+    }, Promise.resolve()).then(function(){
+      saveJobs(); renderJob();
+      toast('Saved '+saved+(saved===1?' photo.':' photos.'));
+    }, function(){
+      saveJobs(); renderJob();
+      toast(saved ? 'Saved '+saved+' photos, but one could not be saved. The device may be out of space.' : 'That photo could not be saved. The device may be out of space.');
+    });
+  });
+
+  var photoView = null;
+  function openPhoto(jobId, pid){
+    var j = jobById(jobId), p = j && j.photos.find(function(x){ return x.id===pid; });
+    if(!p) return;
+    photoView = { jobId:jobId, id:pid, url:null };
+    $('photo-title').textContent = 'Delivery paper · '+fmtDate(p.date);
+    $('photo-note').value = p.note || '';
+    $('photo-img').removeAttribute('src');
+    $('photo-overlay').classList.add('open');
+    photoGet(pid).then(function(blob){
+      if(!blob || !photoView || photoView.id!==pid) return;
+      photoView.url = URL.createObjectURL(blob);
+      $('photo-img').src = photoView.url;
+    });
+  }
+  function closePhoto(){
+    if(!photoView) return $('photo-overlay').classList.remove('open');
+    var j = jobById(photoView.jobId), p = j && j.photos.find(function(x){ return x.id===photoView.id; });
+    if(p && p.note !== $('photo-note').value.trim()){ p.note = $('photo-note').value.trim(); saveJobs(); renderJob(); }
+    if(photoView.url) URL.revokeObjectURL(photoView.url);
+    photoView = null;
+    $('photo-overlay').classList.remove('open');
+  }
+  $('photo-save').addEventListener('click', closePhoto);
+  $('photo-close').addEventListener('click', closePhoto);
+  $('photo-overlay').addEventListener('click', function(e){ if(e.target.id==='photo-overlay') closePhoto(); });
+  $('photo-download').addEventListener('click', function(){
+    if(!photoView || !photoView.url) return;
+    var j = jobById(photoView.jobId), p = j && j.photos.find(function(x){ return x.id===photoView.id; });
+    var a = document.createElement('a');
+    a.href = photoView.url;
+    a.download = ((j ? j.name : 'Job')+' delivery paper '+(p ? new Date(p.date).toLocaleDateString() : '')).replace(/[\\/:*?"<>|]+/g,'-')+'.jpg';
+    document.body.appendChild(a); a.click(); a.remove();
+  });
+  $('photo-delete').addEventListener('click', function(){
+    if(!photoView) return;
+    var v = photoView;
+    askConfirm('Delete photo', 'Delete this delivery paper photo? This cannot be undone.', 'Delete', function(){
+      var j = jobById(v.jobId);
+      if(j) j.photos = j.photos.filter(function(x){ return x.id!==v.id; });
+      photoDel(v.id).catch(function(){});
+      saveJobs();
+      if(v.url) URL.revokeObjectURL(v.url);
+      photoView = null;
+      $('photo-overlay').classList.remove('open');
+      renderJob();
+    });
+  });
+
+  /* ---------- a saved material list ---------- */
+  var mlistView = null;
+  function cellV(c){ return c && typeof c==='object' ? c.v : (c==null ? '' : c); }
+  // The list is saved the way the Material list lays it out for Excel: the left half (columns B-D), then the right (F-H)
+  function mlistHalf(rows, start){
+    return rows.slice(5).map(function(r){ return [r[start], r[start+1], r[start+2]]; })
+      .filter(function(r){ return r.some(function(c){ return cellV(c)!=='' ; }); })
+      .map(function(r){
+        var head = r[0] && typeof r[0]==='object' && r[0].bold;
+        return head ? '<tr><td colspan="3" style="font-weight:700;padding-top:12px;">'+esc(cellV(r[0]))+'</td></tr>'
+          : '<tr><td>'+esc(cellV(r[0]))+'</td><td>'+esc(cellV(r[1]))+'</td><td class="r">'+esc(typeof cellV(r[2])==='number' ? cellV(r[2]).toLocaleString() : cellV(r[2]))+'</td></tr>';
+      }).join('');
+  }
+  function openMlist(jobId, lid){
+    var j = jobById(jobId), l = j && j.lists.find(function(x){ return x.id===lid; });
+    if(!l) return;
+    mlistView = { jobId:jobId, id:lid };
+    $('mlist-title').textContent = l.title;
+    var table = function(rows){ return rows ? '<table><thead><tr><th>Type</th><th>Length</th><th class="r">Quantity</th></tr></thead><tbody>'+rows+'</tbody></table>' : ''; };
+    $('mlist-body').innerHTML =
+      '<div class="sub">'+esc(l.pkg)+' · saved '+fmtDate(l.date)+(l.by ? ' by '+esc(l.by) : '')+(l.panels ? ' · '+l.panels+' panels' : '')+'</div>'+
+      '<div class="mlist-sec">'+table(mlistHalf(l.grid, 1))+table(mlistHalf(l.grid, 5))+'</div>'+
+      (l.site ? '<div class="mlist-sec"><h4>Ship to site</h4>'+table(mlistHalf(l.site, 1))+'</div>' : '');
+    $('mlist-bill').hidden = j.type!=='in' || !can('bill');
+    $('mlist-overlay').classList.add('open');
+  }
+  function closeMlist(){ $('mlist-overlay').classList.remove('open'); mlistView = null; }
+  $('mlist-close').addEventListener('click', closeMlist);
+  $('mlist-overlay').addEventListener('click', function(e){ if(e.target.id==='mlist-overlay') closeMlist(); });
+  function mlistNow(){ var j = mlistView && jobById(mlistView.jobId); return j ? { job:j, list:j.lists.find(function(x){ return x.id===mlistView.id; }) } : null; }
+  $('mlist-copy').addEventListener('click', function(){
+    var m = mlistNow(); if(!m || !m.list) return;
+    var tsv = m.list.grid.map(function(r){ return r.map(cellV).join('\t'); }).join('\n');
+    var done = function(){ toast('Copied. Click cell A1 in Excel and paste.'); };
+    if(navigator.clipboard) navigator.clipboard.writeText(tsv).then(done, function(){ toast('Copy was blocked here.'); });
+  });
+  $('mlist-bill').addEventListener('click', function(){
+    var m = mlistNow(); if(!m || !m.list) return;
+    closeMlist(); closeJob(); closeCustDetail();
+    window.tallyBillFromList(m.list.lines, m.list.title, m.job.id);
+  });
+  $('mlist-delete').addEventListener('click', function(){
+    var m = mlistNow(); if(!m || !m.list) return;
+    askConfirm('Delete material list', 'Delete '+m.list.title+' from '+m.job.name+'? Tickets made from it stay in Sales.', 'Delete', function(){
+      m.job.lists = m.job.lists.filter(function(x){ return x.id!==m.list.id; });
+      saveJobs(); closeMlist(); renderJob();
+      if(viewingCustId && $('cdetail-overlay').classList.contains('open')) openCustDetail(viewingCustId);
+    });
+  });
+
+  /* ---------- what the Material list tab uses ---------- */
+  window.tallyJobOptions = function(){
+    return jobs.map(function(j){ return { id:j.id, name:j.name, type:j.type, customer:custNameOf(j.customerId) }; })
+      .sort(function(a,b){ return a.customer.localeCompare(b.customer) || a.name.localeCompare(b.name); });
+  };
+  window.tallyNewJob = function(after){ openJobEdit(null, null, after); };
+  window.tallySaveList = function(jobId, payload){
+    var j = jobById(jobId);
+    if(!j || !session) return null;
+    var l = Object.assign({ id:uid('ml'), date:new Date().toISOString(), by:session.name }, payload);
+    j.lists.unshift(l);
+    saveJobs();
+    toast('Saved '+l.title+' to '+custNameOf(j.customerId)+' · '+j.name+'.');
+    return l.id;
+  };
+
   /* =====================================================
      REVIEW (user bill outs wait here for an admin)
   ===================================================== */
@@ -2370,7 +2812,7 @@
     }).join('');
     return '<div class="card bo-group" data-id="'+d.id+'">'+
       '<div class="bo-head"><div><div class="name">'+esc(d.customer || 'Walk-in')+'</div>'+
-        '<div class="meta">Submitted by '+esc(d.by)+' · '+fmtDate(d.date)+'</div></div>'+status+'</div>'+
+        '<div class="meta">'+(d.job ? 'Job: '+esc(d.job)+' · ' : '')+'Submitted by '+esc(d.by)+' · '+fmtDate(d.date)+'</div></div>'+status+'</div>'+
       rows+boRows+
       '<div class="rv-total"><span>'+pieces.toLocaleString()+' pieces</span><span>'+fmt(round2(bf))+' bd ft</span></div>'+
       (d.status==='rejected' ? '<div class="rv-why">Sent back by '+esc(d.reviewedBy||'the admin')+(d.reason ? ': '+esc(d.reason) : '')+'</div>' : '')+
@@ -2482,6 +2924,7 @@
     toggleWalkin();
     go('bill');
     renderAll();
+    renderJobSelect(d.jobId);
     toast('Back on your ticket. Fix it, then submit it again.');
   }
 
@@ -3191,7 +3634,7 @@
   $('imp-overlay').addEventListener('click', function(e){ if(e.target.id==='imp-overlay') closeImp(); });
 
   document.addEventListener('keydown', function(e){
-    if(e.key==='Escape'){ closeStock(); closeDelete(); closeTicket(); closeCust(); closeCustDetail(); closeCdel(); closeSdel(); closeAcct(); closePw(); closeCf(); closeImp(); closeBoAdd(); closeReturn(); closeReject(); }
+    if(e.key==='Escape'){ closeStock(); closeDelete(); closeTicket(); closeCust(); closeCustDetail(); closeCdel(); closeSdel(); closeAcct(); closePw(); closeCf(); closeImp(); closeBoAdd(); closeReturn(); closeReject(); closePhoto(); closeMlist(); closeJobEdit(); closeJob(); }
   });
 
   /* =====================================================
@@ -3228,10 +3671,18 @@
   });
   window.tallyToast = function(msg){ toast(msg); };
   // "Send to Bill out" on the material list: the lines open in the Bill out upload preview to check, fix or back order
-  window.tallyBillFromList = function(items, title){
+  window.tallyBillFromList = function(items, title, jobId){
     if(!session || !can('bill')) return;
+    var job = jobById(jobId);
+    if(job && job.type==='out'){ toast('Outsourced job lumber does not go through Bill out.'); return; }
     if(!items.length){ toast('There is no lumber on this list to bill out.'); return; }
     go('bill');
+    // An insourced job's list goes on that customer's ticket, tagged with the job
+    if(job && customers.some(function(c){ return c.id===job.customerId; })){
+      $('cust-select').value = job.customerId;
+      toggleWalkin();
+      renderJobSelect(job.id);
+    }
     openImp('bill');
     $('imp-drop-main').textContent = title || 'Material list';
     var lines = items.map(function(it, i){
@@ -3312,6 +3763,7 @@
     sales = await load(KEYS.sales);
     customers = await load(KEYS.cust);
     backorders = await load(KEYS.bo);
+    jobs = await load(KEYS.jobs);
     reviews = (await load(KEYS.review)).filter(function(d){   // approved ones drop off the list after 30 days
       return d.status!=='approved' || Date.now() - new Date(d.reviewedDate) < 30*864e5;
     });

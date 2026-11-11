@@ -176,11 +176,19 @@ td .rm { background: none; border: 0; color: var(--muted); text-decoration: unde
   <div id="banners" style="display:grid;gap:8px"></div>
 
   <div class="controls">
+    <label class="field" for="jobSel">Job
+      <select id="jobSel" style="width:100%;font-size:15px;padding:8px 10px;"></select>
+    </label>
+    <div class="actions"><button class="btn ghost" id="newJobBtn">New job</button></div>
+  </div>
+  <p class="note" id="jobNote" style="margin:-8px 0 0;"></p>
+
+  <div class="controls">
     <label class="field" for="title">Sheet title
       <input type="text" id="title" value="">
     </label>
     <div class="actions">
-      <button class="btn" id="billBtn" title="Open this list in Bill out to check it, then pull it from inventory">Send to Bill out</button>
+      <button class="btn" id="billBtn">Save to job</button>
       <button class="btn ghost" id="dlBtn">Download Excel</button>
       <button class="btn ghost" id="copyBtn">Copy for Excel</button>
       <button class="btn ghost" id="clearBtn" hidden>Clear files</button>
@@ -842,7 +850,7 @@ function makeState(pkg) {
   return { pkg, files: [], sample: false, title: '', titleEdited: false, opt: loadOpt(pkg), result: null,
     shear: {}, suggest: {}, suggestNotes: '', layout: null, plan: null, view: 'layout', zoom: { layout: 0, plan: 0 },
     shearKey: null, layoutMsg: LAYOUT_MSG, planMsg: PLAN_MSG, clearShown: false,
-    precutSet: {}, mixKey: null, assignZoom: 2 };
+    precutSet: {}, mixKey: null, assignZoom: 2, jobId: '' };
 }
 const PKGS = {};
 for (const k of Object.keys(PKG_INFO)) PKGS[k] = makeState(k);
@@ -938,7 +946,8 @@ function recompute() {
   renderBreakdown();
   renderShearList();
   const has = !!state.result;
-  $('copyBtn').disabled = !has; $('dlBtn').disabled = !has; $('billBtn').disabled = !has;
+  $('copyBtn').disabled = !has; $('dlBtn').disabled = !has;
+  updateJobUi();
 }
 
 function renderBanners(dups, empty, suspect) {
@@ -1227,11 +1236,46 @@ function billLines(r) {
   }
   return out;
 }
+/* ---------- job: where the list is saved, and whether it goes through Bill out ---------- */
+// Insourced job: our lumber, so the list is saved and goes on to Bill out, Review and Sales.
+// Outsourced job: the customer brings the lumber, so the list is only saved to the job.
+const host = window.parent !== window ? window.parent : null;
+let jobOpts = [];
+function currentJob() { return jobOpts.find(j => j.id === state.jobId) || null; }
+function refreshJobs() {
+  jobOpts = host && host.tallyJobOptions ? host.tallyJobOptions() : [];
+  const groups = {};
+  for (const j of jobOpts) (groups[j.customer] = groups[j.customer] || []).push(j);
+  $('jobSel').innerHTML = '<option value="">Pick the job this list is for</option>' + Object.keys(groups).map(c =>
+    `<optgroup label="${esc(c)}">${groups[c].map(j => `<option value="${esc(j.id)}">${esc(j.name)} (${j.type === 'in' ? 'insourced' : 'outsourced'})</option>`).join('')}</optgroup>`).join('');
+  if (!currentJob()) state.jobId = '';
+  $('jobSel').value = state.jobId || '';
+  updateJobUi();
+}
+function updateJobUi() {
+  const j = currentJob(), b = $('billBtn');
+  b.textContent = j && j.type === 'in' ? 'Save & send to Bill out' : 'Save to job';
+  b.disabled = !state.result || !j;
+  $('jobNote').textContent = !j ? (jobOpts.length ? 'Pick the job this list is for, or make a new one, to save it.' : 'Make a job for this customer to save the list to it.')
+    : j.type === 'in' ? 'Insourced job: saving sends the lumber to Bill out, then Review and Sales.'
+    : 'Outsourced job: the list is saved to the job only. Nothing comes out of inventory.';
+}
+$('jobSel').onchange = e => { state.jobId = e.target.value; updateJobUi(); };
+$('newJobBtn').onclick = () => {
+  if (!host || !host.tallyNewJob) return;
+  host.tallyNewJob(id => { state.jobId = id; refreshJobs(); });
+};
 $('billBtn').onclick = () => {
-  if (!state.result) return;
-  const host = window.parent;
-  if (!host || host === window || !host.tallyBillFromList) { toast('Open the Material list from the Lumber Tally to send it to Bill out.'); return; }
-  host.tallyBillFromList(billLines(state.result), state.title);
+  const j = currentJob();
+  if (!state.result || !j || !host || !host.tallySaveList) return;
+  const plain = rows => rows.map(r => r.map(c => (c && typeof c === 'object') ? c : (c ?? '')));
+  const lines = billLines(state.result);
+  const saved = host.tallySaveList(j.id, {
+    title: state.title, pkg: PKG_INFO[state.pkg].h1,
+    grid: plain(gridRows()), site: state.result.site ? plain(toSiteGrid(state.result)) : null,
+    lines, panels: activePanels().panels.length, pieces: state.result.pieceCount
+  });
+  if (saved && j.type === 'in') host.tallyBillFromList(lines, state.title, j.id);
 };
 
 /* ---------- shear walls ---------- */
@@ -1654,6 +1698,7 @@ function switchPkg(key, fromHash) {
   $('layoutDrop').classList.toggle('loaded', !!state.layout); $('planDrop').classList.toggle('loaded', !!state.plan);
   $('planPage').innerHTML = state.plan ? planOptions(state.plan) : '';
   if (!suggestCtl) $('suggestStatus').textContent = '';
+  refreshJobs();
   renderAllow(); renderFiles(); recompute(); renderViewer(); renderSuggestBox(); updateSuggestBtn(); renderAssign();
   if (!fromHash) { try { history.replaceState(null, '', '#' + (key === 'mixed' ? 'panel-precut' : key)); } catch (e) {} }
 }
