@@ -3719,7 +3719,7 @@
   $('mlist-bill').addEventListener('click', function(){
     var m = mlistNow(); if(!m || !m.list) return;
     closeMlist(); closeJob(); closeCustDetail();
-    window.tallyBillFromList(m.list.lines, m.list.title, m.job.id);
+    window.tallyBillFromList(m.list.lines, m.list.title, m.job.id, m.list.hw);
   });
   $('mlist-delete').addEventListener('click', function(){
     var m = mlistNow(); if(!m || !m.list) return;
@@ -5401,11 +5401,31 @@
   }
 
   // "Send to Bill out" on the material list: the lines open in the Bill out upload preview to check, fix or back order
-  window.tallyBillFromList = function(items, title, jobId){
+  // Hardware the material list can order (glue, screws...)
+  window.tallyHardwareOptions = function(){
+    return hardware.slice().sort(function(a, b){ return hwCat(a).localeCompare(hwCat(b)) || hwSort(a, b); })
+      .map(function(h){ return { id:h.id, name:h.name, part:h.part||'', cat:hwCat(h), unit:h.unit||'each', quantity:Number(h.quantity)||0 }; });
+  };
+  // Glue and screws from a material list go on the ticket; anything short is back ordered
+  function billHwFromList(hwItems){
+    var missing = [];
+    (hwItems||[]).forEach(function(x){
+      var h = x.hwId && hwById(x.hwId), n = Math.floor(Number(x.qty)||0);
+      if(!(n>0)) return;
+      if(!h){ missing.push(x.name); return; }
+      var avail = Math.max(0, Number(h.quantity) - hwInCart(h.id));
+      if(avail>0) addHwCart(h.id, Math.min(avail, n));
+      if(n>avail) addHwToBoCart(h, n - avail);
+    });
+    renderHwPicker(); renderCart(); saveDraft();
+    return missing;
+  }
+  window.tallyBillFromList = function(items, title, jobId, hwItems){
     if(!session || !can('bill')) return;
     var job = jobById(jobId);
+    items = items || []; hwItems = hwItems || [];
     if(job && job.type==='out'){ toast('Outsourced job lumber does not go through Bill out.'); return; }
-    if(!items.length){ toast('There is no lumber on this list to bill out.'); return; }
+    if(!items.length && !hwItems.length){ toast('There is no lumber on this list to bill out.'); return; }
     go('bill');
     // An insourced job's list goes on that customer's ticket, tagged with the job
     if(job && customers.some(function(c){ return c.id===job.customerId; })){
@@ -5413,6 +5433,9 @@
       toggleWalkin();
       renderJobSelect(job.id);
     }
+    var missing = billHwFromList(hwItems);
+    if(missing.length) setTimeout(function(){ toast('Not in inventory, so not on the ticket: '+missing.join(', ')+'. Order these separately.'); }, items.length ? 3800 : 0);
+    if(!items.length) return;
     openImp('bill');
     $('imp-drop-main').textContent = title || 'Material list';
     var lines = items.map(function(it, i){

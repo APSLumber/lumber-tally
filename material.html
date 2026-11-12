@@ -117,6 +117,12 @@ td.n { text-align: right; font-family: var(--font-data); font-variant-numeric: t
 .pl.pre { border: 1.5px solid var(--precut-line); background: var(--precut-fill); }
 /* shear walls */
 :root { --drawing: #ffffff; --mark: #0d7a45; --mark-fill: rgba(16, 150, 80, .42); --mark2-fill: rgba(9, 95, 52, .62); --sug: #d97a00; --sug-fill: rgba(255, 170, 0, .22); }
+.hw-add { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.hw-add select, .hw-add input { font: inherit; border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; background: var(--paper); color: var(--ink); }
+.hw-add select { flex: 1 1 240px; min-width: 0; }
+.hw-add #hwName { flex: 1 1 200px; min-width: 0; }
+.hw-add #hwQty { width: 110px; }
+#hwTable td input { width: 80px; font: inherit; border: 1px solid var(--line); border-radius: 6px; padding: 4px 6px; text-align: right; }
 .shear { background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 18px 18px 20px; display: grid; gap: 14px; min-width: 0; }
 .shear h2 { font-family: var(--font-display); font-size: 22px; margin: 0; }
 .shear > p { margin: 0; }
@@ -199,6 +205,18 @@ td .rm { background: none; border: 0; color: var(--muted); text-decoration: unde
   <section class="sheet" id="sheet" aria-label="Material list"></section>
 
   <section class="sheet" id="siteSheet" aria-label="Ship to site list" hidden></section>
+
+  <section class="shear" id="hwOrder" aria-labelledby="hwOrderTitle">
+    <h2 id="hwOrderTitle">Glue and screws</h2>
+    <p class="note" style="margin:0">Add the glue, screws and other hardware to order with this list. They print on the material sheet and are saved with it. On an insourced job they go on the Bill out ticket too.</p>
+    <div class="hw-add">
+      <select id="hwPick" aria-label="Hardware item"></select>
+      <input type="text" id="hwName" placeholder="What is it? Like PL400 glue" aria-label="Item name" hidden>
+      <input type="number" id="hwQty" min="1" step="1" placeholder="How many" aria-label="How many">
+      <button class="btn" id="hwAddBtn">Add</button>
+    </div>
+    <div class="tbl-wrap"><table id="hwTable"></table></div>
+  </section>
 
   <section class="shear" id="assign" aria-labelledby="assignTitle" hidden>
     <h2 id="assignTitle">Panel or precut walls</h2>
@@ -851,7 +869,7 @@ function makeState(pkg) {
   return { pkg, files: [], sample: false, title: '', titleEdited: false, opt: loadOpt(pkg), result: null,
     shear: {}, suggest: {}, suggestNotes: '', layout: null, plan: null, view: 'layout', zoom: { layout: 0, plan: 0 },
     shearKey: null, layoutMsg: LAYOUT_MSG, planMsg: PLAN_MSG, clearShown: false,
-    precutSet: {}, mixKey: null, assignZoom: 2, jobId: '' };
+    precutSet: {}, mixKey: null, assignZoom: 2, jobId: '', hw: [] };
 }
 const PKGS = {};
 for (const k of Object.keys(PKG_INFO)) PKGS[k] = makeState(k);
@@ -1046,7 +1064,7 @@ function renderSheet() {
   const head = `<div class="colhead"><span>Type</span><span>Length</span><span>Quantity</span></div>`;
   $('sheet').innerHTML = `<div class="co">Advanced Precut Systems</div><div class="addr">710 Pacific Ave W, Dassel MN 55325</div>
     <h2>${esc(state.title)}</h2>
-    <div class="cols"><div>${head}${left}</div><div>${head}${right}</div></div>
+    <div class="cols"><div>${head}${left}</div><div>${head}${right}</div></div>${hwSheetHtml()}
     <p class="note" style="margin-top:10px">${fmtQ(r.pieceCount)} pieces read from ${state.sample ? SAMPLE.panelCount : activePanels().panels.length} panels. Wall sheets: ${r.right.sheets.walls} sheathed walls, ${fmtQ(Math.round(r.right.sheets.plateFt))} ft of bottom plate. Standard wall height ${esc(fmtFtIn(r.right.sheets.stdHeight)) || 'unknown'}${stdOverride() ? ' (set by you)' : ' (most common)'}; ${r.right.sheets.tall} taller exterior wall${r.right.sheets.tall === 1 ? '' : 's'} got extra sheets. Ordering ${r.right.sheets.type} sheets for that height.${r.right.sheets.tooTall ? ' The standard height is over 121", so 4x10 sheets will not cover it. Check the sheet size.' : ''}${r.right.shear && r.right.shear.rows.length ? ` Shear walls: ${r.right.shear.rows.length} marked below.` : ' No shear walls marked yet.'}</p>`;
 }
 
@@ -1134,7 +1152,14 @@ $('clearBtn').onclick = () => { state.files = []; state.titleEdited = false; $('
 $('title').addEventListener('input', e => { state.title = e.target.value; state.titleEdited = true; renderSheet(); });
 
 /* ---------- output ---------- */
-function gridRows() { return toGrid(state.result, state.title); }
+function gridRows() {
+  const rows = toGrid(state.result, state.title);
+  if (state.hw.length) {
+    rows.push([], ['', { v: 'Glue and screws', bold: true }]);
+    state.hw.forEach(h => rows.push(['', h.name + (h.part ? ' (' + h.part + ')' : ''), unitWord(h.unit, h.qty), h.qty]));
+  }
+  return rows;
+}
 $('copyBtn').onclick = () => {
   if (!state.result) return;
   const tsv = gridRows().map(r => r.map(c => c && typeof c === 'object' ? c.v : (c ?? '')).join('\t')).join('\n');
@@ -1237,6 +1262,63 @@ function billLines(r) {
   }
   return out;
 }
+/* ---------- glue and screws to order with the list ---------- */
+const UNIT_PLURAL = { each: 'each', box: 'boxes', case: 'cases', pail: 'pails', bucket: 'buckets', bag: 'bags', roll: 'rolls', pack: 'packs' };
+function unitWord(unit, n) { if (!unit) return ''; return n === 1 || unit === 'each' ? unit : (UNIT_PLURAL[unit] || unit + 's'); }
+function hwOptions() { return host && host.tallyHardwareOptions ? host.tallyHardwareOptions() : []; }
+function renderHwPick() {
+  const opts = hwOptions(), groups = {};
+  for (const h of opts) (groups[h.cat] = groups[h.cat] || []).push(h);
+  const keep = $('hwPick').value;
+  $('hwPick').innerHTML = '<option value="">Pick glue, screws or other hardware…</option>' +
+    Object.keys(groups).map(c => `<optgroup label="${esc(c)}">${groups[c].map(h => `<option value="${esc(h.id)}">${esc(h.name)}${h.part ? ' (' + esc(h.part) + ')' : ''} · ${h.quantity} ${esc(unitWord(h.unit, h.quantity))} in stock</option>`).join('')}</optgroup>`).join('') +
+    '<option value="__other">Something not in inventory…</option>';
+  if ([...$('hwPick').options].some(o => o.value === keep)) $('hwPick').value = keep;
+  $('hwName').hidden = $('hwPick').value !== '__other';
+}
+function renderHwTable() {
+  const t = $('hwTable');
+  if (!state.hw.length) { t.innerHTML = '<tbody><tr><td class="note" style="border:0;padding-left:0">Nothing added yet.</td></tr></tbody>'; return; }
+  t.innerHTML = '<thead><tr><th>Item</th><th>Part</th><th style="text-align:right">How many</th><th></th><th></th></tr></thead><tbody>' +
+    state.hw.map((h, i) => `<tr><td>${esc(h.name)}${h.hwId ? '' : ' <span class="chip warn">not in inventory</span>'}</td><td>${esc(h.part || '')}</td>
+      <td style="text-align:right"><input type="number" min="1" step="1" value="${h.qty}" data-q="${i}" aria-label="How many ${esc(h.name)}"></td>
+      <td>${esc(unitWord(h.unit, h.qty))}</td><td><button class="rm" data-rm="${i}">Remove</button></td></tr>`).join('') + '</tbody>';
+  t.querySelectorAll('[data-q]').forEach(inp => inp.onchange = () => {
+    const n = Math.floor(+inp.value);
+    if (n > 0) state.hw[+inp.dataset.q].qty = n; else inp.value = state.hw[+inp.dataset.q].qty;
+    renderHwTable(); renderSheet();
+  });
+  t.querySelectorAll('[data-rm]').forEach(b => b.onclick = () => { state.hw.splice(+b.dataset.rm, 1); renderHwTable(); renderSheet(); });
+}
+function hwSheetHtml() {
+  if (!state.hw.length) return '';
+  return `<div class="blk" style="margin-top:14px;max-width:520px"><h3>Glue and screws</h3>` +
+    state.hw.map(h => `<div class="grp"><div>${esc(h.name)}${h.part ? ' <span style="color:var(--muted)">' + esc(h.part) + '</span>' : ''}</div><div class="l">${esc(unitWord(h.unit, h.qty))}</div><div class="q">${fmtQ(h.qty)}</div></div>`).join('') + '</div>';
+}
+$('hwPick').onchange = () => { $('hwName').hidden = $('hwPick').value !== '__other'; if (!$('hwName').hidden) $('hwName').focus(); else $('hwQty').focus(); };
+function addHwLine() {
+  const v = $('hwPick').value, qty = Math.floor(+$('hwQty').value);
+  if (!v) { toast('Pick an item first.'); return; }
+  if (!(qty > 0)) { toast('Enter how many.'); $('hwQty').focus(); return; }
+  let line;
+  if (v === '__other') {
+    const name = $('hwName').value.trim();
+    if (!name) { toast('Type what the item is.'); $('hwName').focus(); return; }
+    line = { hwId: null, name, part: '', unit: '', qty };
+  } else {
+    const h = hwOptions().find(x => x.id === v);
+    if (!h) return;
+    line = { hwId: h.id, name: h.name, part: h.part || '', unit: h.unit || 'each', qty };
+  }
+  const same = state.hw.find(x => (x.hwId && x.hwId === line.hwId) || (!x.hwId && !line.hwId && x.name.toLowerCase() === line.name.toLowerCase()));
+  if (same) same.qty += qty; else state.hw.push(line);
+  $('hwQty').value = ''; $('hwName').value = ''; $('hwPick').value = ''; $('hwName').hidden = true;
+  renderHwTable(); renderSheet();
+}
+$('hwAddBtn').onclick = addHwLine;
+$('hwQty').onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); addHwLine(); } };
+$('hwName').onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); $('hwQty').focus(); } };
+
 /* ---------- job: where the list is saved, and whether it goes through Bill out ---------- */
 // Insourced job: our lumber, so the list is saved and goes on to Bill out, approval and Sales.
 // Outsourced job: the customer brings the lumber, so the list is only saved to the job.
@@ -1252,6 +1334,7 @@ function refreshJobs() {
   if (!currentJob()) state.jobId = '';
   $('jobSel').value = state.jobId || '';
   updateJobUi();
+  renderHwPick(); renderHwTable();
 }
 function updateJobUi() {
   const j = currentJob(), b = $('billBtn');
@@ -1276,9 +1359,9 @@ $('billBtn').onclick = () => {
   const saved = host.tallySaveList(j.id, {
     title: state.title, pkg: PKG_INFO[state.pkg].h1,
     grid: plain(gridRows()), site: state.result.site ? plain(toSiteGrid(state.result)) : null,
-    lines, panels: activePanels().panels.length, pieces: state.result.pieceCount
+    lines, hw: state.hw.map(h => Object.assign({}, h)), panels: activePanels().panels.length, pieces: state.result.pieceCount
   });
-  if (saved && j.type === 'in') host.tallyBillFromList(lines, state.title, j.id);
+  if (saved && j.type === 'in') host.tallyBillFromList(lines, state.title, j.id, state.hw);
 };
 
 /* ---------- shear walls ---------- */
