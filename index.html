@@ -414,6 +414,9 @@
   .bay-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:12px;}
   .bay-head h3{margin:0;}
   .bay-scroll{overflow-x:auto;}
+  .spot-acts{display:flex;gap:6px;align-items:center;flex:none;}
+  .spot-recv{width:84px;padding:7px 8px;border:1px solid var(--line2);border-radius:8px;font:inherit;font-size:14px;}
+  .spot-new{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;}
   .bay-rack{min-width:480px;border-left:10px solid #6B5134;border-right:10px solid #6B5134;background:#F4F1E8;padding-top:8px;}
   .bay-shelf{padding-top:6px;}
   .bay-secs{display:grid;}
@@ -587,6 +590,8 @@
     .hw-row .show-sm{display:block;margin-top:4px;}
     .hw-pick{grid-template-columns:minmax(0,1fr) 64px 92px;}
     .map-viewer{max-height:62vh;}
+    .spot-item{flex-wrap:wrap;}
+    .spot-acts{margin-left:auto;}
   }
   @media screen and (max-width:360px){
     .tab-btn{font-size:9px;}
@@ -3880,7 +3885,7 @@
     var el = $(cid), sel = spotPicks[cid];
     var chips = sel.map(function(id){ var s = spotById(id); return '<span class="loc-chip">'+esc(spotName(s))+'<b data-rm="'+id+'" role="button" aria-label="Remove">×</b></span>'; }).join('');
     var opts = maps.map(function(m){
-      var left = m.spots.filter(function(s){ return sel.indexOf(s.id)<0; });
+      var left = m.spots.filter(function(s){ return sel.indexOf(s.id)<0; }).slice().sort(function(x, y){ return (x.bay||0)-(y.bay||0) || (x.shelf||0)-(y.shelf||0) || (x.sec||0)-(y.sec||0); });
       return left.length ? '<optgroup label="'+esc(m.name)+'">'+left.map(function(s){ return '<option value="'+s.id+'">'+esc(s.name)+'</option>'; }).join('')+'</optgroup>' : '';
     }).join('');
     el.innerHTML = chips + (maps.length
@@ -4000,13 +4005,16 @@
       var i = e.item;
       return '<div class="spot-item"><div><div class="name'+(e.kind==='lu' ? ' mono' : '')+'">'+esc(e.kind==='lu' ? dims(i) : hwLabel(i))+'</div>'+
         '<div class="meta">'+(e.kind==='lu' ? qtyText(i.bunkSize, i.quantity) : unitText(i.unit, i.quantity))+' in stock</div></div>'+
-        (admin ? '<button class="btn sm" data-unplace="'+e.kind+':'+i.id+'">Remove from here</button>' : '')+'</div>';
-    }).join('') || '<div class="sec-empty">Nothing is marked as stored here yet.</div>';
+        (admin ? '<div class="spot-acts"><input type="number" min="1" step="1" class="spot-recv" data-recv="'+e.kind+':'+i.id+'" placeholder="'+(e.kind==='lu' ? '+ pcs' : '+ '+esc(UNIT_PLURAL[i.unit||'each']||'qty'))+'" aria-label="How many to add">'+
+          '<button class="btn sm primary" data-recv-go="'+e.kind+':'+i.id+'">Add</button>'+
+          '<button class="icon-btn" data-unplace="'+e.kind+':'+i.id+'" title="Remove from this section" aria-label="Remove from this section">&times;</button></div>' : '')+'</div>';
+    }).join('') || '<div class="sec-empty">Nothing is stored here yet.</div>';
     var addOpts = '';
     if(admin){
       var lu = stock.filter(function(i){ return (i.spots||[]).indexOf(s.id)<0; }).sort(bySize);
       var hw = hardware.filter(function(h){ return (h.spots||[]).indexOf(s.id)<0; }).sort(hwSort);
-      addOpts = '<div class="spot-pick" style="margin-top:10px;"><select id="spot-add"><option value="">Add an item stored here…</option>'+
+      addOpts = '<div class="spot-new"><button class="btn primary" id="spot-new-hw">+ New hardware here</button><button class="btn" id="spot-new-lu">+ New lumber here</button></div>'+
+        '<div class="spot-pick" style="margin-top:8px;"><select id="spot-add"><option value="">Move an item already in inventory here…</option>'+
         (hw.length ? '<optgroup label="Hardware">'+hw.map(function(h){ return '<option value="hw:'+h.id+'">'+esc(hwLabel(h))+'</option>'; }).join('')+'</optgroup>' : '')+
         (lu.length ? '<optgroup label="Lumber">'+lu.map(function(i){ return '<option value="lu:'+i.id+'">'+esc(dims(i))+'</option>'; }).join('')+'</optgroup>' : '')+
       '</select></div>';
@@ -4018,6 +4026,16 @@
       b.addEventListener('click', function(){ placeItem(b.dataset.unplace, s.id, false); });
     });
     if($('spot-add')) $('spot-add').addEventListener('change', function(){ if(this.value) placeItem(this.value, s.id, true); });
+    // New inventory straight into this section: the usual add form, with this section already picked
+    if($('spot-new-hw')) $('spot-new-hw').addEventListener('click', function(){ openHw(null); renderSpotPick('h-spots', [s.id]); });
+    if($('spot-new-lu')) $('spot-new-lu').addEventListener('click', function(){ openStock(null); renderSpotPick('f-spots', [s.id]); });
+    // Received more of something already on this section
+    el.querySelectorAll('[data-recv-go]').forEach(function(b){
+      var inp = el.querySelector('[data-recv="'+b.dataset.recvGo+'"]');
+      var go = function(){ receiveAt(b.dataset.recvGo, inp.value); };
+      b.addEventListener('click', go);
+      inp.addEventListener('keydown', function(e){ if(e.key==='Enter'){ e.preventDefault(); go(); } });
+    });
     if($('spot-rename')) $('spot-rename').addEventListener('click', function(){ openSpotEdit(s); });
     bindBayView();
   }
@@ -4054,9 +4072,26 @@
   function bindBayView(){
     var el = $('map-spot');
     el.querySelectorAll('[data-shelf]').forEach(function(b){
-      b.addEventListener('click', function(){ mapSel = mapSel===b.dataset.shelf ? null : b.dataset.shelf; renderMap(); });
+      b.addEventListener('click', function(){
+        mapSel = mapSel===b.dataset.shelf ? null : b.dataset.shelf; renderMap();
+        if(mapSel) setTimeout(function(){ var sp = document.querySelector('#map-spot .spot-panel'); if(sp) sp.scrollIntoView({ block:'nearest', behavior:'smooth' }); }, 60);
+      });
     });
     if($('bay-close')) $('bay-close').addEventListener('click', function(){ mapBay = null; mapSel = null; renderMap(); });
+  }
+  function receiveAt(ref, raw){
+    var n = Number(raw), p = ref.split(':'), hw = p[0]==='hw';
+    var item = hw ? hwById(p[1]) : stock.find(function(i){ return i.id===p[1]; });
+    if(!item) return;
+    if(!(n>0) || Math.floor(n)!==n){ toast('Enter a whole number to add.'); return; }
+    item.quantity = Number(item.quantity||0) + n;
+    save(hw ? KEYS.hw : KEYS.stock, hw ? hardware : stock);
+    if(hw) syncHwCart();
+    renderAll();
+    toast('Added '+(hw ? unitText(item.unit, n)+' of '+hwLabel(item) : n.toLocaleString()+(n===1?' pc':' pcs')+' of '+dims(item))+'. Now '+
+      (hw ? unitText(item.unit, item.quantity) : qtyText(item.bunkSize, item.quantity))+'.');
+    var ready = boReadyCount();
+    if(ready) setTimeout(function(){ toast(ready+(ready===1?' back order':' back orders')+' can be filled now. See Bill out › Back orders.'); }, 2600);
   }
   function placeItem(ref, spotId, on){
     var p = ref.split(':'), item = p[0]==='hw' ? hwById(p[1]) : stock.find(function(i){ return i.id===p[1]; });
