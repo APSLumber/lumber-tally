@@ -3912,7 +3912,8 @@
     if(!m) return null;
     if(!m.room && m.name===HW_ROOM.name && m.spots.some(function(s){ return /^Bay \d+ · Shelf \d+/.test(s.name); })) m.room = HW_ROOM;
     // The hardware room always follows the current HW_ROOM layout (e.g. when a shelf is added to every bay)
-    if(m.room && m.room.name===HW_ROOM.name && JSON.stringify(m.room)!==JSON.stringify(HW_ROOM)) m.room = HW_ROOM;
+    var redraw = false;
+    if(m.room && m.room.name===HW_ROOM.name && JSON.stringify(m.room)!==JSON.stringify(HW_ROOM)){ m.room = HW_ROOM; redraw = true; }
     if(m.room) m.spots.forEach(function(s){
       if(!s.bay){
         var x = /^Bay (\d+) · Shelf (\d+)(?: · ([A-Z]))?$/.exec(s.name);
@@ -3925,7 +3926,7 @@
       var bays = 2*Math.floor(m.room.depth/m.room.bayLen), secs = m.room.sections || 1, missing = false;
       for(var b=1; b<=bays; b++) for(var k=1; k<=m.room.shelves; k++) for(var c=1; c<=secs; c++)
         if(!m.spots.some(function(s){ return s.bay===b && s.shelf===k && s.sec===c; })) missing = true;
-      if(missing) fillRoom(m);
+      if(missing || redraw) fillRoom(m);
     }
     return m.room || null;
   }
@@ -4322,7 +4323,8 @@
   /* ---------- a shelving room drawn to scale from its measurements ---------- */
   // The hardware room: 18' deep x 7' wide, four 9' x 2' bays (two along each long wall, 3' aisle between),
   // 3 shelves in each bay, each shelf split into 5 sections (A-E, left to right as you face the bay from the aisle)
-  var HW_ROOM = { name:'Hardware room', depth:18, width:7, bayLen:9, bayDepth:2, shelves:3, sections:5 };
+  // A 3' door on the left (short) wall, centered so it opens into the aisle
+  var HW_ROOM = { name:'Hardware room', depth:18, width:7, bayLen:9, bayDepth:2, shelves:3, sections:5, door:{ side:'left', width:3 } };
   function secLetter(n){ return String.fromCharCode(64 + n); }
   function roomBays(r){
     var px = 60, pad = 70, W = r.depth*px, H = r.width*px, perWall = Math.floor(r.depth/r.bayLen), out = [], n = 0;
@@ -4358,7 +4360,17 @@
       }
     });
     var aisle = r.width - 2*r.bayDepth;
-    svg.push(t(pad + W/2, pad + H/2 + 8, aisle+'′ aisle', 22, 400, '#5D6459'));
+    if(r.door && r.door.side==='left'){
+      var dw = r.door.width*px, y0 = pad + (H - dw)/2;
+      svg.push('<rect x="'+(pad-5)+'" y="'+y0+'" width="10" height="'+dw+'" fill="#F4F1E8"/>');
+      svg.push('<line x1="'+(pad-8)+'" y1="'+y0+'" x2="'+(pad+8)+'" y2="'+y0+'" stroke="#1F2420" stroke-width="4"/>');
+      svg.push('<line x1="'+(pad-8)+'" y1="'+(y0+dw)+'" x2="'+(pad+8)+'" y2="'+(y0+dw)+'" stroke="#1F2420" stroke-width="4"/>');
+      // door leaf swung open into the room, with its swing arc
+      svg.push('<line x1="'+pad+'" y1="'+(y0+dw)+'" x2="'+(pad+dw)+'" y2="'+(y0+dw)+'" stroke="#1F2420" stroke-width="4"/>');
+      svg.push('<path d="M '+(pad+dw)+' '+(y0+dw)+' A '+dw+' '+dw+' 0 0 0 '+pad+' '+y0+'" fill="none" stroke="#8E958A" stroke-width="2" stroke-dasharray="6 5"/>');
+      svg.push(t(pad + dw/2 - 10, y0 + dw - 14, r.door.width+'′ door', 18, 700, '#1F2420'));
+    }
+    svg.push(t(pad + W/2 + (r.door && r.door.side==='left' ? 40 : 0), pad + H/2 + 8, aisle+'′ aisle', 22, 400, '#5D6459'));
     svg.push('<line x1="'+pad+'" y1="'+(pad-30)+'" x2="'+(pad+W)+'" y2="'+(pad-30)+'" stroke="#8E958A" stroke-width="2"/>');
     svg.push(t(pad + W/2, pad - 40, r.depth+'′ deep', 20, 700, '#5D6459'));
     svg.push('<line x1="'+(pad-30)+'" y1="'+pad+'" x2="'+(pad-30)+'" y2="'+(pad+H)+'" stroke="#8E958A" stroke-width="2"/>');
