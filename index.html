@@ -413,18 +413,25 @@
   .bay-view{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin-top:12px;}
   .bay-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:12px;}
   .bay-head h3{margin:0;}
-  .bay-rack{border-left:10px solid #6B5134;border-right:10px solid #6B5134;background:#F4F1E8;padding-top:8px;}
-  .bay-shelf{display:flex;flex-direction:column;justify-content:flex-end;width:100%;min-height:120px;padding:10px 8px 0;margin:0;border:none;background:none;cursor:pointer;text-align:left;font:inherit;color:inherit;}
-  .bay-shelf:hover{background:rgba(47,93,58,0.06);}
-  .bay-shelf.sel{background:rgba(184,134,11,0.14);}
-  .bay-items{display:flex;flex-wrap:wrap;gap:6px;align-items:flex-end;min-height:56px;}
-  .bay-box{display:flex;flex-direction:column;background:#fff;border:2px solid var(--green);border-radius:4px;padding:6px 9px;min-width:84px;box-shadow:0 1px 2px rgba(0,0,0,0.15);}
+  .bay-scroll{overflow-x:auto;}
+  .bay-rack{min-width:480px;border-left:10px solid #6B5134;border-right:10px solid #6B5134;background:#F4F1E8;padding-top:8px;}
+  .bay-shelf{padding-top:6px;}
+  .bay-secs{display:grid;}
+  .bay-sec{position:relative;display:flex;flex-direction:column;justify-content:flex-end;min-height:104px;padding:22px 5px 5px;margin:0;border:none;border-left:1.5px dashed #C8C3B0;background:none;cursor:pointer;text-align:left;font:inherit;color:inherit;}
+  .bay-sec:first-child{border-left:none;}
+  .bay-sec:hover{background:rgba(47,93,58,0.06);}
+  .bay-sec.sel{background:rgba(184,134,11,0.16);box-shadow:inset 0 0 0 3px var(--gold);}
+  .bay-sec.hit{background:var(--rust-pale);box-shadow:inset 0 0 0 3px var(--rust);}
+  .bay-letter{position:absolute;top:4px;left:7px;font:700 12px 'Inter',sans-serif;color:var(--faint);}
+  .bay-items{display:flex;flex-direction:column;gap:4px;}
+  .bay-box{display:flex;flex-direction:column;background:#fff;border:2px solid var(--green);border-radius:4px;padding:4px 6px;min-width:0;box-shadow:0 1px 2px rgba(0,0,0,0.15);overflow-wrap:anywhere;}
   .bay-box.lu{border-color:#8A6A45;background:#FBF6EC;}
-  .bay-box .bn{font:700 13px 'Inter',sans-serif;}
-  .bay-box .bq{font-size:12px;color:var(--soft);}
-  .bay-empty{font-size:13px;color:var(--soft);font-style:italic;padding-bottom:4px;}
-  .bay-board{display:block;margin:6px -8px 0;padding:2px 10px;background:#8A6A45;color:#fff;font:700 12px 'Inter',sans-serif;}
-  .bay-shelf.hit .bay-board{background:var(--rust);}
+  .bay-box .bn{font:700 12px 'Inter',sans-serif;}
+  .bay-box .bq{font-size:11px;color:var(--soft);}
+  .bay-board{display:block;padding:2px 10px;background:#8A6A45;color:#fff;font:700 12px 'Inter',sans-serif;}
+  .bay-count{position:absolute;top:6px;right:8px;padding:2px 8px;border-radius:10px;background:var(--green);color:#fff;font:700 12px 'Inter',sans-serif;}
+  .bay-hit.hit{outline:4px solid var(--rust);outline-offset:-2px;animation:baypulse 1.1s ease-in-out infinite;}
+  @keyframes baypulse{0%,100%{background:rgba(181,71,43,0.08);}50%{background:rgba(181,71,43,0.28);}}
   .pin.hit{z-index:1;} .pin.sel{z-index:2;}
   .pin.sel span{background:var(--ink);outline:3px solid var(--gold);} .pin.sel::after{border-top-color:var(--ink);}
   .pin.hit span{background:var(--rust);animation:pinpulse 1.1s ease-in-out infinite;} .pin.hit::after{border-top-color:var(--rust);}
@@ -577,6 +584,7 @@
     .subnav button{flex:1;justify-content:center;padding:10px 6px;font-size:13px;}
     .hw-row{grid-template-columns:minmax(0,1fr) 92px;row-gap:4px;}
     .hw-row .hide-sm{display:none;}
+    .hw-row .show-sm{display:block;margin-top:4px;}
     .hw-pick{grid-template-columns:minmax(0,1fr) 64px 92px;}
     .map-viewer{max-height:62vh;}
   }
@@ -3897,18 +3905,21 @@
   // A drawn shelving room: which bay and shelf each spot is (maps drawn before this was kept get it from the spot name)
   function mapRoom(m){
     if(!m) return null;
-    if(!m.room && m.name===HW_ROOM.name && m.spots.some(function(s){ return /^Bay \d+ · Shelf \d+$/.test(s.name); })) m.room = HW_ROOM;
+    if(!m.room && m.name===HW_ROOM.name && m.spots.some(function(s){ return /^Bay \d+ · Shelf \d+/.test(s.name); })) m.room = HW_ROOM;
     // The hardware room always follows the current HW_ROOM layout (e.g. when a shelf is added to every bay)
     if(m.room && m.room.name===HW_ROOM.name && JSON.stringify(m.room)!==JSON.stringify(HW_ROOM)) m.room = HW_ROOM;
     if(m.room) m.spots.forEach(function(s){
-      if(s.bay) return;
-      var x = /^Bay (\d+) · Shelf (\d+)$/.exec(s.name);
-      if(x){ s.bay = Number(x[1]); s.shelf = Number(x[2]); }
+      if(!s.bay){
+        var x = /^Bay (\d+) · Shelf (\d+)(?: · ([A-Z]))?$/.exec(s.name);
+        if(x){ s.bay = Number(x[1]); s.shelf = Number(x[2]); if(x[3]) s.sec = x[3].charCodeAt(0) - 64; }
+      }
+      // a whole-shelf spot from before sections becomes section A, so its items keep a home
+      if(s.bay && !s.sec){ s.sec = 1; if(/^Bay \d+ · Shelf \d+$/.test(s.name)) s.name += ' · A'; }
     });
     if(m.room && !roomFilling[m.id]){
-      var bays = 2*Math.floor(m.room.depth/m.room.bayLen), missing = false;
-      for(var b=1; b<=bays; b++) for(var k=1; k<=m.room.shelves; k++)
-        if(!m.spots.some(function(s){ return s.bay===b && s.shelf===k; })) missing = true;
+      var bays = 2*Math.floor(m.room.depth/m.room.bayLen), secs = m.room.sections || 1, missing = false;
+      for(var b=1; b<=bays; b++) for(var k=1; k<=m.room.shelves; k++) for(var c=1; c<=secs; c++)
+        if(!m.spots.some(function(s){ return s.bay===b && s.shelf===k && s.sec===c; })) missing = true;
       if(missing) fillRoom(m);
     }
     return m.room || null;
@@ -3917,7 +3928,7 @@
   function fillRoom(m){
     var d = roomDrawing(m.room);
     d.spots.forEach(function(ns){
-      var old = m.spots.find(function(s){ return s.bay===ns.bay && s.shelf===ns.shelf; });
+      var old = m.spots.find(function(s){ return s.bay===ns.bay && s.shelf===ns.shelf && s.sec===ns.sec; });
       if(old){ old.x = ns.x; old.y = ns.y; } else m.spots.push(ns);
     });
     m.w = d.w; m.h = d.h; roomFilling[m.id] = true;
@@ -3954,7 +3965,7 @@
     $('map-edit-toggle').classList.toggle('active', mapEditing);
     $('map-edit-toggle').textContent = mapEditing ? 'Done editing' : 'Edit spots';
     $('map-hint').textContent = mapEditing ? 'Tap an empty place on the map to add a spot. Drag a spot to move it, or tap it to rename or delete it.'
-      : mapRoom(m) ? 'Tap a bay to see its shelves from the front. Search above to find an item.' : 'Tap a spot to see what is stored there. Search above to find an item.';
+      : mapRoom(m) ? 'Tap a bay to see its shelves and sections from the front. Search above to find an item.' : 'Tap a spot to see what is stored there. Search above to find an item.';
     var stage = $('map-stage');
     stage.classList.toggle('editing', mapEditing);
     stage.style.width = mapWidth();
@@ -3962,12 +3973,15 @@
     mapImgUrl(m).then(function(url){
       if(curMap()!==m || stage.dataset.map===token+'|'+url+'|'+mapEditing+'|'+JSON.stringify(m.spots)+'|'+JSON.stringify(mapHits)+'|'+mapSel+'|'+mapBay+'|'+stock.length+'|'+hardware.length) return drawSpotPanel();
       stage.dataset.map = token+'|'+url+'|'+mapEditing+'|'+JSON.stringify(m.spots)+'|'+JSON.stringify(mapHits)+'|'+mapSel+'|'+mapBay+'|'+stock.length+'|'+hardware.length;
-      var room = !mapEditing && mapRoom(m), geo = room && roomBays(room);
+      var room = mapRoom(m), geo = room && !mapEditing && roomBays(room);
       stage.innerHTML = (url ? '<img src="'+url+'" alt="'+esc(m.name)+' map" draggable="false">' : '<div class="empty">The map picture is not on this device.</div>')+
         (geo ? geo.bays.map(function(b){
-          return '<div class="bay-hit'+(mapBay===b.n ? ' sel' : '')+'" data-bay="'+b.n+'" title="Bay '+b.n+'" style="left:'+(b.x/geo.tw*100)+'%;top:'+(b.y/geo.th*100)+'%;width:'+(b.w/geo.tw*100)+'%;height:'+(b.h/geo.th*100)+'%;"></div>';
+          var inBay = m.spots.filter(function(x){ return x.bay===b.n; });
+          var cnt = inBay.reduce(function(t, x){ return t + itemsAt(x.id).length; }, 0), hit = inBay.some(function(x){ return mapHits[x.id]; });
+          return '<div class="bay-hit'+(mapBay===b.n ? ' sel' : '')+(hit ? ' hit' : '')+'" data-bay="'+b.n+'" title="Bay '+b.n+'" style="left:'+(b.x/geo.tw*100)+'%;top:'+(b.y/geo.th*100)+'%;width:'+(b.w/geo.tw*100)+'%;height:'+(b.h/geo.th*100)+'%;">'+
+            (cnt ? '<span class="bay-count">'+cnt+(cnt===1 ? ' item' : ' items')+'</span>' : '')+'</div>';
         }).join('') : '')+
-        m.spots.map(function(s){
+        m.spots.filter(function(s){ return !(room && s.bay); }).map(function(s){
           var n = itemsAt(s.id).length;
           return '<button class="pin'+(n ? '' : ' empty')+(mapHits[s.id] ? ' hit' : '')+(mapSel===s.id ? ' sel' : '')+'" data-pin="'+s.id+'" style="left:'+(s.x*100)+'%;top:'+(s.y*100)+'%;">'+
             '<span>'+esc(s.bay ? s.name.replace(/^Bay \d+ · /, '') : s.name)+(n ? ' ('+n+')' : '')+'</span></button>';
@@ -4007,24 +4021,35 @@
     if($('spot-rename')) $('spot-rename').addEventListener('click', function(){ openSpotEdit(s); });
     bindBayView();
   }
-  // One bay seen from the aisle: shelves stacked top to bottom with what sits on each
+  // One bay seen from the aisle: shelves stacked top to bottom, each split into sections A, B, C... left to right
   function bayView(m, n){
-    var r = mapRoom(m);
-    var shelves = m.spots.filter(function(s){ return s.bay===n; }).sort(function(a, b){ return b.shelf - a.shelf; });
-    if(!shelves.length) return '';
-    return '<div class="bay-view"><div class="bay-head"><div><h3>Bay '+n+'</h3><div class="meta">Front view from the aisle · '+r.bayLen+'\u2032 wide · '+shelves.length+' shelves</div></div>'+
-      '<button class="btn sm" id="bay-close">Close</button></div>'+
-      '<div class="bay-rack">'+shelves.map(function(s){
+    var r = mapRoom(m), secs = r.sections || 1;
+    var spots = m.spots.filter(function(s){ return s.bay===n; });
+    var shelfNums = [];
+    spots.forEach(function(s){ if(shelfNums.indexOf(s.shelf)<0) shelfNums.push(s.shelf); });
+    shelfNums.sort(function(a, b){ return b - a; });
+    if(!shelfNums.length) return '';
+    var rows = shelfNums.map(function(k){
+      var cells = [];
+      for(var c=1; c<=secs; c++){
+        var s = spots.find(function(x){ return x.shelf===k && x.sec===c; });
+        if(!s) continue;
         var items = itemsAt(s.id).map(function(e){
           var i = e.item;
           return '<span class="bay-box'+(e.kind==='lu' ? ' lu' : '')+'"><span class="bn">'+esc(e.kind==='lu' ? dims(i) : (i.part || i.name))+'</span>'+
             '<span class="bq">'+(e.kind==='lu' ? qtyText(i.bunkSize, i.quantity) : unitText(i.unit, i.quantity))+'</span></span>';
         }).join('');
-        return '<button type="button" class="bay-shelf'+(mapSel===s.id ? ' sel' : '')+(mapHits[s.id] ? ' hit' : '')+'" data-shelf="'+s.id+'">'+
-          '<span class="bay-items">'+(items || '<span class="bay-empty">Empty shelf</span>')+'</span>'+
-          '<span class="bay-board">'+esc(s.name.replace(/^Bay \d+ · /, ''))+'</span></button>';
-      }).join('')+'</div>'+
-      '<div class="meta" style="margin-top:8px;">'+(mapSel ? 'Details for the picked shelf are below.' : 'Tap a shelf to see or change what is on it.')+'</div></div>';
+        cells.push('<button type="button" class="bay-sec'+(mapSel===s.id ? ' sel' : '')+(mapHits[s.id] ? ' hit' : '')+'" data-shelf="'+s.id+'" aria-label="'+esc(s.name)+'">'+
+          '<span class="bay-letter">'+secLetter(c)+'</span><span class="bay-items">'+items+'</span></button>');
+      }
+      return '<div class="bay-shelf"><div class="bay-secs" style="grid-template-columns:repeat('+secs+',minmax(0,1fr));">'+cells.join('')+'</div>'+
+        '<span class="bay-board">Shelf '+k+'</span></div>';
+    }).join('');
+    return '<div class="bay-view"><div class="bay-head"><div><h3>Bay '+n+'</h3><div class="meta">Front view from the aisle · '+r.bayLen+'\u2032 wide · '+
+        shelfNums.length+' shelves'+(secs>1 ? ' × '+secs+' sections' : '')+'</div></div>'+
+      '<button class="btn sm" id="bay-close">Close</button></div>'+
+      '<div class="bay-scroll"><div class="bay-rack">'+rows+'</div></div>'+
+      '<div class="meta" style="margin-top:8px;">'+(window.innerWidth<560 ? 'Swipe the shelves sideways to see all '+secs+' sections. ' : '')+(mapSel ? 'Details for the picked section are below.' : 'Tap a section to see or change what is in it.')+'</div></div>';
   }
   function bindBayView(){
     var el = $('map-spot');
@@ -4084,7 +4109,7 @@
     mapRoom(s.map); var sp = s.map.spots.find(function(x){ return x.id===id; }); mapBay = sp && sp.bay ? sp.bay : null;
     go('map');
     setTimeout(function(){
-      var pin = document.querySelector('.pin[data-pin="'+id+'"]');
+      var pin = document.querySelector('.pin[data-pin="'+id+'"]') || document.querySelector('.bay-sec[data-shelf="'+id+'"]');
       if(pin) pin.scrollIntoView({ block:'center', inline:'center' });
     }, 80);
   }
@@ -4260,8 +4285,10 @@
   $('mapedit-overlay').addEventListener('click', function(e){ if(e.target.id==='mapedit-overlay') closeMapEdit(); });
 
   /* ---------- a shelving room drawn to scale from its measurements ---------- */
-  // The hardware room: 18' deep x 7' wide, four 9' x 2' bays (two along each long wall, 3' aisle between), 3 shelves in each bay
-  var HW_ROOM = { name:'Hardware room', depth:18, width:7, bayLen:9, bayDepth:2, shelves:3 };
+  // The hardware room: 18' deep x 7' wide, four 9' x 2' bays (two along each long wall, 3' aisle between),
+  // 3 shelves in each bay, each shelf split into 5 sections (A-E, left to right as you face the bay from the aisle)
+  var HW_ROOM = { name:'Hardware room', depth:18, width:7, bayLen:9, bayDepth:2, shelves:3, sections:5 };
+  function secLetter(n){ return String.fromCharCode(64 + n); }
   function roomBays(r){
     var px = 60, pad = 70, W = r.depth*px, H = r.width*px, perWall = Math.floor(r.depth/r.bayLen), out = [], n = 0;
     [0, 1].forEach(function(side){
@@ -4282,10 +4309,16 @@
         var x = pad + k*r.bayLen*px, y = side ? pad + H - r.bayDepth*px : pad, w = r.bayLen*px, h = r.bayDepth*px;
         svg.push('<rect x="'+(x+4)+'" y="'+(y+4)+'" width="'+(w-8)+'" height="'+(h-8)+'" fill="#E3ECE0" stroke="#2F5D3A" stroke-width="3" rx="4"/>');
         svg.push(t(x + w/2, y + (side ? h - 12 : 26), 'Bay '+bay, 22, 700, '#244A2E'));
-        // one spot per shelf, spread along the bay
-        for(var s=1; s<=r.shelves; s++){
-          spots.push({ id:uid('sp'), name:'Bay '+bay+' · Shelf '+s, bay:bay, shelf:s,
-            x:(x + w*(s-0.5)/r.shelves) / (W+pad*2), y:(y + h*0.72) / (H+pad*2) });
+        // sections along the bay; A is on your left as you face the bay from the aisle (so it flips on the far wall)
+        var secs = r.sections || 1, sw = w/secs;
+        for(var c=1; c<=secs; c++){
+          var cx = side ? x + w - (c-0.5)*sw : x + (c-0.5)*sw;
+          if(c<secs){ var lx = side ? x + w - c*sw : x + c*sw; svg.push('<line x1="'+lx+'" y1="'+(y+8)+'" x2="'+lx+'" y2="'+(y+h-8)+'" stroke="#2F5D3A" stroke-width="1.5" stroke-dasharray="6 5" opacity="0.6"/>'); }
+          svg.push(t(cx, side ? y + 30 : y + h - 14, secLetter(c), 18, 700, '#5D6459'));
+          for(var s=1; s<=r.shelves; s++){
+            spots.push({ id:uid('sp'), name:'Bay '+bay+' · Shelf '+s+' · '+secLetter(c), bay:bay, shelf:s, sec:c,
+              x:cx / (W+pad*2), y:(y + h/2) / (H+pad*2) });
+          }
         }
       }
     });
@@ -4295,7 +4328,7 @@
     svg.push(t(pad + W/2, pad - 40, r.depth+'′ deep', 20, 700, '#5D6459'));
     svg.push('<line x1="'+(pad-30)+'" y1="'+pad+'" x2="'+(pad-30)+'" y2="'+(pad+H)+'" stroke="#8E958A" stroke-width="2"/>');
     svg.push('<text x="'+(pad-40)+'" y="'+(pad+H/2)+'" font-family="Arial, sans-serif" font-size="20" font-weight="700" fill="#5D6459" text-anchor="middle" transform="rotate(-90 '+(pad-40)+' '+(pad+H/2)+')">'+r.width+'′ wide</text>');
-    svg.push(t(pad + W - 4, pad + H + 34, 'Bays '+r.bayLen+'′ × '+r.bayDepth+'′, '+r.shelves+' shelves each', 18, 400, '#8E958A', 'end'));
+    svg.push(t(pad + W - 4, pad + H + 34, 'Bays '+r.bayLen+'′ × '+r.bayDepth+'′, '+r.shelves+' shelves each'+(r.sections>1 ? ', '+r.sections+' sections per shelf' : ''), 18, 400, '#8E958A', 'end'));
     var w = W+pad*2, h = H+pad*2;
     return { svg:'<svg xmlns="http://www.w3.org/2000/svg" width="'+w+'" height="'+h+'" viewBox="0 0 '+w+' '+h+'">'+svg.join('')+'</svg>', w:w, h:h, spots:spots };
   }
