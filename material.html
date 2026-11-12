@@ -160,6 +160,15 @@ td .rm { background: none; border: 0; color: var(--muted); text-decoration: unde
     <p id="pageLede">Drop in the wall panel PDFs for a floor. Every piece list is read in your browser and totaled into the shop's material sheet.</p>
   </header>
 
+  <!-- Step one is the job: it decides whether the list goes through Bill out -->
+  <div class="controls">
+    <label class="field" for="jobSel">Job
+      <select id="jobSel" style="width:100%;font-size:15px;padding:8px 10px;"></select>
+    </label>
+    <div class="actions"><button class="btn ghost" id="newJobBtn">New job</button></div>
+  </div>
+  <p class="note" id="jobNote" style="margin:-8px 0 0;"></p>
+
   <nav class="seg pkg-tabs" role="tablist" aria-label="Package type">
     <button role="tab" id="pkg-panel" data-pkg="panel" aria-selected="true">Panel package</button>
     <button role="tab" id="pkg-precut" data-pkg="precut" aria-selected="false">Precut package</button>
@@ -174,14 +183,6 @@ td .rm { background: none; border: 0; color: var(--muted); text-decoration: unde
 
   <div class="files" id="files"></div>
   <div id="banners" style="display:grid;gap:8px"></div>
-
-  <div class="controls">
-    <label class="field" for="jobSel">Job
-      <select id="jobSel" style="width:100%;font-size:15px;padding:8px 10px;"></select>
-    </label>
-    <div class="actions"><button class="btn ghost" id="newJobBtn">New job</button></div>
-  </div>
-  <p class="note" id="jobNote" style="margin:-8px 0 0;"></p>
 
   <div class="controls">
     <label class="field" for="title">Sheet title
@@ -1237,7 +1238,7 @@ function billLines(r) {
   return out;
 }
 /* ---------- job: where the list is saved, and whether it goes through Bill out ---------- */
-// Insourced job: our lumber, so the list is saved and goes on to Bill out, Review and Sales.
+// Insourced job: our lumber, so the list is saved and goes on to Bill out, approval and Sales.
 // Outsourced job: the customer brings the lumber, so the list is only saved to the job.
 const host = window.parent !== window ? window.parent : null;
 let jobOpts = [];
@@ -1257,10 +1258,12 @@ function updateJobUi() {
   b.textContent = j && j.type === 'in' ? 'Save & send to Bill out' : 'Save to job';
   b.disabled = !state.result || !j;
   $('jobNote').textContent = !j ? (jobOpts.length ? 'Pick the job this list is for, or make a new one, to save it.' : 'Make a job for this customer to save the list to it.')
-    : j.type === 'in' ? 'Insourced job: saving sends the lumber to Bill out, then Review and Sales.'
+    : j.type === 'in' ? 'Insourced job: saving sends the lumber to Bill out, then approval and Sales.'
     : 'Outsourced job: the list is saved to the job only. Nothing comes out of inventory.';
 }
 $('jobSel').onchange = e => { state.jobId = e.target.value; updateJobUi(); };
+// "New material list" on a job page picks that job here (for whichever package is showing)
+function selectJob(id) { state.jobId = id || ''; refreshJobs(); }
 $('newJobBtn').onclick = () => {
   if (!host || !host.tallyNewJob) return;
   host.tallyNewJob(id => { state.jobId = id; refreshJobs(); });
@@ -1707,6 +1710,7 @@ const hashPkg = () => ({ '#precut': 'precut', '#panel-precut': 'mixed', '#panel'
 window.addEventListener('hashchange', () => switchPkg(hashPkg(), true));
 
 switchPkg(hashPkg(), true);
+if (host && host.tallyTakePendingJob) { const id = host.tallyTakePendingJob(); if (id) selectJob(id); }
 </script>
 
 </body></html>

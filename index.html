@@ -346,6 +346,50 @@
   #cf-overlay{z-index:60;}
   .toast{z-index:80 !important;}
 
+  /* Navigation: More menu and Bill out's sections */
+  header.top{position:relative;}
+  .more-menu{position:absolute;right:20px;top:calc(100% - 8px);z-index:45;min-width:210px;padding:6px;background:var(--card);border:1px solid var(--line);border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,0.18);}
+  .more-menu button{display:flex;align-items:center;gap:10px;width:100%;padding:11px 12px;border:none;border-radius:7px;background:none;font:600 14px 'Inter',sans-serif;color:var(--ink);text-align:left;cursor:pointer;}
+  .more-menu button:hover{background:var(--green-pale);}
+  .more-menu svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;color:var(--green);}
+  .tab-btn.open{background:rgba(255,255,255,0.14);}
+  .subnav{display:flex;gap:2px;margin:0 0 18px;border-bottom:2px solid var(--line);overflow-x:auto;scrollbar-width:none;}
+  .subnav button{display:inline-flex;align-items:center;padding:10px 16px;margin-bottom:-2px;border:none;border-bottom:3px solid transparent;background:none;font:600 14px 'Inter',sans-serif;color:var(--soft);white-space:nowrap;cursor:pointer;}
+  .subnav button:hover{color:var(--ink);}
+  .subnav button.active{color:var(--green);border-bottom-color:var(--green);}
+  .page-title{margin:0 0 14px;font-size:22px;font-weight:700;letter-spacing:-0.01em;}
+  .back-link{display:inline-block;padding:0;margin:0 0 6px;font-size:14px;text-decoration:none;}
+  .keep-row{display:flex;align-items:center;gap:8px;margin:2px 0 12px;font-size:13px;color:var(--soft);cursor:pointer;}
+  .keep-row input{width:16px;height:16px;margin:0;accent-color:var(--green);}
+
+  /* Home */
+  .home-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;}
+  .home-card{display:flex;flex-direction:column;gap:2px;padding:14px 16px;border:1px solid var(--line);border-radius:var(--radius);background:var(--card);text-align:left;font-family:inherit;cursor:pointer;}
+  .home-card:hover{border-color:var(--green);}
+  .home-card .n{font:700 26px 'JetBrains Mono',monospace;color:var(--faint);}
+  .home-card .l{font-size:14px;font-weight:700;color:var(--ink);}
+  .home-card .s{font-size:12px;color:var(--soft);}
+  .home-card.warn{border-color:var(--gold);} .home-card.warn .n{color:#8A6215;}
+  .home-card.bad{border-color:var(--rust);} .home-card.bad .n{color:var(--rust);}
+  .home-card.good{border-color:var(--green);} .home-card.good .n{color:var(--green);}
+  .home-card.info .n{color:var(--ink);}
+  .home-actions{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-top:14px;}
+  .home-act{justify-content:center;padding:14px;font-size:14px;}
+  .home-act svg{color:var(--green);}
+  #home-jobs .job-row,#jobs-list .job-row{padding:12px 16px;}
+
+  /* Jobs list and job page */
+  .seg-tabs{display:inline-flex;border:1px solid var(--line2);border-radius:8px;overflow:hidden;background:var(--card);}
+  .seg-tabs button{padding:9px 14px;border:none;background:none;font:600 13.5px 'Inter',sans-serif;color:var(--soft);cursor:pointer;}
+  .seg-tabs button + button{border-left:1px solid var(--line2);}
+  .seg-tabs button.active{background:var(--green);color:#fff;}
+  .job-head{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin:2px 0 18px;}
+  .job-head .page-title{display:flex;align-items:center;flex-wrap:wrap;gap:4px;margin:0 0 4px;}
+  .job-head .meta{font-size:13px;}
+  .job-actions{display:flex;flex-wrap:wrap;gap:8px;}
+  .job-body{display:grid;gap:16px;}
+  .job-body > div{padding:14px 16px;border:1px solid var(--line);border-radius:var(--radius);background:var(--card);}
+
   /* Jobs */
   .sec-label{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:4px;font-size:11px;color:var(--faint);text-transform:uppercase;letter-spacing:0.05em;font-weight:700;}
   .job-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;padding:10px 4px;border-bottom:1px solid var(--line);cursor:pointer;}
@@ -403,7 +447,7 @@
     .tabs{position:fixed;left:0;right:0;bottom:0;z-index:30;width:auto;gap:2px;padding:4px 4px calc(4px + env(safe-area-inset-bottom));border-radius:0;background:var(--green-dark);overflow:visible;box-shadow:0 -2px 12px rgba(0,0,0,0.18);}
     .tab-btn{flex:1 1 0;min-width:0;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:50px;padding:5px 1px;font-size:10px;line-height:1.1;white-space:normal;text-align:center;}
     .tab-btn svg{display:block;}
-    .tab-count{position:absolute;top:1px;left:calc(50% + 5px);margin:0;min-width:16px;padding:0 4px;line-height:16px;font-size:10px;}
+    .tab-btn .tab-count{position:absolute;top:1px;left:calc(50% + 5px);margin:0;min-width:16px;padding:0 4px;line-height:16px;font-size:10px;}
 
     main{padding:14px 16px calc(84px + env(safe-area-inset-bottom));}
     .toast{bottom:calc(72px + env(safe-area-inset-bottom));width:calc(100% - 32px);text-align:center;}
@@ -458,16 +502,22 @@
     .install{display:flex;align-items:center;gap:10px;padding:10px 12px;margin-bottom:12px;background:var(--green-pale);border:1px solid var(--green);border-radius:8px;font-size:13px;line-height:1.4;}
     .install > div{flex:1;}
   }
-  /* Up to 8 tabs share the phone's bottom bar */
-  @media screen and (max-width:440px){
-    .tab-btn{font-size:9px;letter-spacing:-0.02em;padding-left:0;padding-right:0;}
+  /* Phones: the More menu opens above the bottom bar, and pages stack */
+  @media screen and (max-width:700px){
+    .more-menu{position:fixed;top:auto;right:8px;bottom:calc(66px + env(safe-area-inset-bottom));}
+    .page-title{font-size:19px;}
+    .home-cards{grid-template-columns:1fr 1fr;gap:8px;}
+    .home-card{padding:11px 12px;}
+    .home-card .n{font-size:22px;}
+    .home-actions{grid-template-columns:1fr 1fr;gap:8px;}
+    .home-act{padding:12px 8px;font-size:13px;}
+    .seg-tabs{width:100%;} .seg-tabs button{flex:1;}
+    .job-actions{width:100%;} .job-actions .btn{flex:1 1 40%;justify-content:center;}
+    .subnav{margin:0 -16px 14px;padding:0 8px;}
+    .subnav button{flex:1;justify-content:center;padding:10px 6px;font-size:13px;}
   }
   @media screen and (max-width:360px){
-    .tab-btn{font-size:7.5px;}
-    .tab-btn svg{width:18px;height:18px;}
-  }
-  @media screen and (max-width:330px){
-    .tab-btn{hyphens:auto;-webkit-hyphens:auto;overflow-wrap:anywhere;}
+    .tab-btn{font-size:9px;}
   }
   .paper .p-bo{margin-top:16px;padding-top:8px;border-top:1px dashed var(--gold);}
   .paper .p-bo-title{font-family:'Inter',sans-serif;font-weight:700;font-size:13px;color:#8A6215;margin-bottom:4px;}
@@ -485,6 +535,7 @@
       <p class="lead">Use the username and password your admin gave you.</p>
       <div class="field"><label for="g-user">Username</label><input type="text" id="g-user" autocomplete="username" autocapitalize="none" spellcheck="false"></div>
       <div class="field"><label for="g-pass">Password</label><input type="password" id="g-pass" autocomplete="current-password"></div>
+      <label class="keep-row"><input type="checkbox" id="g-keep"> Keep me signed in on this device</label>
       <div class="form-err" id="g-err"></div>
       <button class="btn primary" type="submit">Sign in</button>
       <div class="gate-links"><button type="button" class="link-btn" id="g-forgot">Forgot the admin password?</button></div>
@@ -520,15 +571,19 @@
       <div class="mark">APS</div>
       <div><h1><span class="full-name">Advanced Precut Systems </span>Lumber Tally</h1><p id="sub">loading…</p></div>
     </div>
+    <!-- Main tabs. Other pages (job, material list, approvals, back orders, customers, accounts) light up the tab they belong to. -->
     <div class="tabs" id="tabs">
-      <button class="tab-btn" data-view="material"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h7l5 5v13H7z"/><path d="M14 3v5h5M10 12h6M10 16h6"/></svg>Material list</button>
+      <button class="tab-btn" data-view="home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11 12 4l9 7"/><path d="M5 10v10h14V10"/></svg>Home</button>
+      <button class="tab-btn" data-view="jobs"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M3 13h18"/></svg>Jobs</button>
+      <button class="tab-btn" data-view="bill"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg>Bill out<span class="tab-count" id="bill-count" hidden></span></button>
       <button class="tab-btn" data-view="inventory"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h18M3 12h18M3 17h18"/></svg>Inventory</button>
-      <button class="tab-btn" data-view="bill"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg>Bill out</button>
-      <button class="tab-btn" data-view="review"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg>Review<span class="tab-count" id="rv-count" hidden></span></button>
-      <button class="tab-btn" data-view="backorders"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Back orders<span class="tab-count" id="bo-count" hidden></span></button>
       <button class="tab-btn" data-view="sales"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Sales</button>
-      <button class="tab-btn" data-view="customers"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M3 20c0-3.5 2.7-6 6-6s6 2.5 6 6"/><path d="M16 5a3.5 3.5 0 0 1 0 6.5M18 14.5c2 .8 3 2.8 3 5.5"/></svg>Customers</button>
-      <button class="tab-btn" data-view="accounts"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg>Accounts</button>
+      <button class="tab-btn" data-view="more" id="more-btn" aria-haspopup="menu"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>More</button>
+    </div>
+    <div class="more-menu" id="more-menu" role="menu" hidden>
+      <button role="menuitem" data-go="material"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h7l5 5v13H7z"/><path d="M14 3v5h5M10 12h6M10 16h6"/></svg>Material list</button>
+      <button role="menuitem" data-go="customers"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M3 20c0-3.5 2.7-6 6-6s6 2.5 6 6"/><path d="M16 5a3.5 3.5 0 0 1 0 6.5M18 14.5c2 .8 3 2.8 3 5.5"/></svg>Customers</button>
+      <button role="menuitem" data-go="accounts"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg>Accounts</button>
     </div>
     <div class="hdr-btns">
       <button class="btn signout" id="chpw" aria-label="Change password"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="15" r="4"/><path d="m11 12 9-9M16 7l3 3"/></svg><span>Change password</span></button>
@@ -545,8 +600,62 @@
     <button class="cart-remove" id="install-x" aria-label="Dismiss">&times;</button>
   </div>
 
+  <!-- Bill out's three parts, shown above whichever one is open -->
+  <nav class="subnav" id="bill-subnav" hidden>
+    <button data-go="bill">New ticket</button>
+    <button data-go="review">Approvals<span class="tab-count" id="rv-count" hidden></span></button>
+    <button data-go="backorders">Back orders<span class="tab-count" id="bo-count" hidden></span></button>
+  </nav>
+
+  <!-- HOME -->
+  <section class="view active" id="view-home">
+    <h2 class="page-title" id="home-hello">Home</h2>
+    <div class="home-cards" id="home-cards"></div>
+    <div class="home-actions" id="home-actions"></div>
+    <div class="sec-label" style="margin-top:22px;"><span>Recent jobs</span><button class="link-btn" data-go="jobs" style="padding:0;font-size:12px;text-transform:none;letter-spacing:0;">All jobs</button></div>
+    <div class="card" id="home-jobs"></div>
+  </section>
+
+  <!-- JOBS -->
+  <section class="view" id="view-jobs">
+    <div class="controls">
+      <div class="search">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        <input type="text" id="jobs-search" placeholder="Search jobs or customers">
+      </div>
+      <div class="seg-tabs" id="jobs-filter">
+        <button data-f="all" class="active">All</button>
+        <button data-f="in">Insourced</button>
+        <button data-f="out">Outsourced</button>
+      </div>
+      <button class="btn primary" id="jobs-new">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+        New job
+      </button>
+    </div>
+    <div class="card" id="jobs-list"></div>
+  </section>
+
+  <!-- ONE JOB -->
+  <section class="view" id="view-job">
+    <button class="link-btn back-link" data-go="jobs">‹ All jobs</button>
+    <div class="job-head">
+      <div>
+        <h2 class="page-title" id="job-title">Job</h2>
+        <div class="meta" id="job-meta"></div>
+      </div>
+      <div class="job-actions">
+        <button class="btn primary" id="job-newlist">New material list</button>
+        <button class="btn" id="job-ticket">Start a ticket</button>
+        <button class="btn" id="job-edit">Edit</button>
+        <button class="btn danger" id="job-delete">Delete</button>
+      </div>
+    </div>
+    <div class="job-body" id="job-body"></div>
+  </section>
+
   <!-- INVENTORY -->
-  <section class="view active" id="view-inventory">
+  <section class="view" id="view-inventory">
     <div class="stats">
       <div class="stat"><div class="label">Items</div><div class="value" id="stat-items">—</div></div>
       <div class="stat"><div class="label">Pieces in stock</div><div class="value" id="stat-pieces">—</div></div>
@@ -591,7 +700,7 @@
         <div class="card" id="picker"></div>
       </div>
       <div class="ticket">
-        <h3>Sale ticket</h3>
+        <h3>Ticket</h3>
         <div class="field" style="margin-bottom:6px;">
           <label for="cust-select">Customer</label>
           <div class="cust-pick">
@@ -619,7 +728,7 @@
 
   <!-- REVIEW -->
   <section class="view" id="view-review">
-    <h2 class="section" style="margin-bottom:4px;">Bill out review</h2>
+    <h2 class="section" style="margin-bottom:4px;">Approvals</h2>
     <p class="acct-note" id="rv-lead"></p>
     <div id="review-list"></div>
   </section>
@@ -683,7 +792,7 @@
     <h2 class="section" style="margin-top:24px;">Other admin</h2>
     <div class="card" id="admin2-card"></div>
     <div class="acct-head"><h2 class="section" style="margin:0;">User accounts</h2><span class="meta" id="acct-count" style="margin:0;"></span></div>
-    <p class="acct-note">User accounts can open Bill out, Review, Back orders and Customers only, and their bill outs need an admin's approval. Inventory, Sales, and Accounts are admin-only.</p>
+    <p class="acct-note">User accounts can use Home, Jobs, Bill out, the Material list and Customers. Their tickets need an admin's approval before they reach Sales. Inventory, Sales and Accounts are admin-only.</p>
     <div class="card" id="acct-list"></div>
   </section>
 
@@ -907,18 +1016,6 @@
   </div>
 </div>
 
-<!-- Job -->
-<div class="overlay" id="job-overlay">
-  <div class="modal wide">
-    <div class="modal-head"><h2 id="job-title">Job</h2><button id="job-close" aria-label="Close"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
-    <div class="modal-body" id="job-body"></div>
-    <div class="modal-foot">
-      <button class="btn danger" id="job-delete" style="margin-right:auto;">Delete job</button>
-      <button class="btn" id="job-edit">Edit</button>
-      <button class="btn" id="job-close-2">Close</button>
-    </div>
-  </div>
-</div>
 <input type="file" id="photo-input" accept="image/*" multiple hidden>
 
 <!-- New / edit job -->
@@ -1164,7 +1261,8 @@
   var MAX_USERS = 10;
   var USERNAME_RULE = 'Username must be 3 to 30 characters: letters, numbers, dot, dash, or underscore.';
   var PASS_RULE = 'Password must be at least 6 characters.';
-  var ROLE_VIEWS = { admin:['inventory','bill','review','backorders','material','customers','sales','accounts'], user:['bill','review','backorders','material','customers'] };
+  var ROLE_VIEWS = { admin:['home','jobs','job','inventory','bill','review','backorders','material','customers','sales','accounts'],
+    user:['home','jobs','job','bill','review','backorders','material','customers'] };
   function can(view){ return !!session && ROLE_VIEWS[session.role].indexOf(view)>-1; }
   function saveAccounts(){ save(KEYS.acct, accounts); }
   function adminRec(id){ return id==='admin' ? accounts.admin : (id==='admin2' && accounts.admin2) ? accounts.admin2 : null; }
@@ -1186,14 +1284,22 @@
   function ferr(id, msg){ var e = $(id); e.textContent = msg; e.classList.add('show'); }
   function fclear(id){ $(id).classList.remove('show'); }
 
-  /* session lives only in this tab: closing the tab signs you out */
+  /* The session lives in this tab, so closing it signs you out, unless "Keep me signed in on this device" was ticked */
+  var keepSignedIn = false;
   function storeSession(){
     try{
-      if(session) sessionStorage.setItem('tally:session', JSON.stringify({role:session.role, id:session.id}));
-      else sessionStorage.removeItem('tally:session');
+      var v = session ? JSON.stringify({role:session.role, id:session.id}) : null;
+      sessionStorage.removeItem('tally:session'); localStorage.removeItem('tally:session-keep');
+      if(v) (keepSignedIn ? localStorage : sessionStorage).setItem(keepSignedIn ? 'tally:session-keep' : 'tally:session', v);
     }catch(e){}
   }
-  function readSession(){ try{ var v = sessionStorage.getItem('tally:session'); return v ? JSON.parse(v) : null; }catch(e){ return null; } }
+  function readSession(){
+    try{
+      var kept = localStorage.getItem('tally:session-keep');
+      if(kept){ keepSignedIn = true; return JSON.parse(kept); }
+      var v = sessionStorage.getItem('tally:session'); return v ? JSON.parse(v) : null;
+    }catch(e){ return null; }
+  }
   function restoreSession(){
     var s = readSession();
     if(!s || !accounts) return false;
@@ -1210,17 +1316,32 @@
   function applySession(){
     document.body.classList.add('authed');
     $('sub').textContent = 'Signed in as '+session.name+' · '+(session.role==='admin' ? 'Admin' : 'User');
-    document.querySelectorAll('.tab-btn').forEach(function(b){ b.hidden = !can(b.dataset.view); });
+    document.querySelectorAll('.tab-btn').forEach(function(b){ b.hidden = b.dataset.view!=='more' && !can(b.dataset.view); });
+    document.querySelectorAll('#more-menu [data-go]').forEach(function(b){ b.hidden = !can(b.dataset.go); });
     document.querySelectorAll('.view').forEach(function(v){ v.hidden = !can(v.id.replace('view-','')); });
-    $('complete-btn').textContent = session.role==='admin' ? 'Complete sale' : 'Submit for review';
+    $('complete-btn').textContent = session.role==='admin' ? 'Complete sale' : 'Send for approval';
     renderAll();
+    restoreDraft();
     // material.html opened on its own sends people to ./#material
-    go(location.hash==='#material' && can('material') ? 'material' : session.role==='admin' ? 'inventory' : 'bill');
+    go(location.hash==='#material' && can('material') ? 'material' : 'home');
   }
+  // Which main tab lights up for each page
+  var TAB_OF = { home:'home', jobs:'jobs', job:'jobs', bill:'bill', review:'bill', backorders:'bill',
+    inventory:'inventory', sales:'sales', material:'more', customers:'more', accounts:'more' };
+  var currentView = 'home';
   function go(view){
     if(!can(view)) return;
-    document.querySelectorAll('.tab-btn').forEach(function(b){ b.classList.toggle('active', b.dataset.view===view); });
+    closeMore();
+    if(currentView==='job' && view!=='job') closeJob();
+    currentView = view;
+    document.querySelectorAll('.tab-btn').forEach(function(b){ b.classList.toggle('active', b.dataset.view===TAB_OF[view]); });
     document.querySelectorAll('.view').forEach(function(v){ v.classList.toggle('active', v.id==='view-'+view); });
+    $('bill-subnav').hidden = TAB_OF[view]!=='bill';
+    document.querySelectorAll('#bill-subnav [data-go]').forEach(function(b){ b.classList.toggle('active', b.dataset.go===view); });
+    window.scrollTo(0, 0);
+    if(view==='home') renderHome();
+    if(view==='jobs') renderJobs();
+    if(view==='job') renderJob();
     if(view==='inventory') renderInventory();
     if(view==='bill'){ renderPicker(); renderCustSelect(); }
     if(view==='customers') renderCustomers();
@@ -1231,8 +1352,19 @@
     if(view==='material') loadMaterial();
   }
   document.querySelectorAll('.tab-btn').forEach(function(btn){
-    btn.addEventListener('click', function(){ go(btn.dataset.view); });
+    btn.addEventListener('click', function(e){
+      if(btn.dataset.view==='more'){ e.stopPropagation(); toggleMore(); return; }
+      go(btn.dataset.view);
+    });
   });
+  // Any button marked data-go="view" opens that page (Bill out's sections, back links, More menu, Home)
+  document.addEventListener('click', function(e){
+    var b = e.target.closest && e.target.closest('[data-go]');
+    if(b && session) go(b.dataset.go);
+  });
+  function toggleMore(){ $('more-menu').hidden = !$('more-menu').hidden; $('more-btn').classList.toggle('open', !$('more-menu').hidden); }
+  function closeMore(){ $('more-menu').hidden = true; $('more-btn').classList.remove('open'); }
+  document.addEventListener('click', function(e){ if(!$('more-menu').hidden && !e.target.closest('#more-menu')) closeMore(); });
 
   function showGate(mode){
     ['login','setup','recover'].forEach(function(m){ $('gate-'+m).hidden = (m!==mode); });
@@ -1251,6 +1383,7 @@
     if(!ok){ ferr('g-err', 'Username or password is incorrect.'); $('g-pass').value = ''; return; }
     if(hit.role==='user' && !hit.rec.active){ ferr('g-err', 'This account is turned off. Ask the admin to turn it back on.'); $('g-pass').value = ''; return; }
     $('g-pass').value = ''; $('g-user').value = '';
+    keepSignedIn = $('g-keep').checked;
     startSession(hit.role, hit.rec);
   });
   $('g-forgot').addEventListener('click', function(){ showGate('recover'); });
@@ -1303,11 +1436,44 @@
     if(f) f();
   });
 
+  /* ---------- unfinished ticket: kept per person on this device, so closing the app doesn't lose it ---------- */
+  var draftReady = false;
+  function draftKey(){ return 'tally:draft:'+session.id; }
+  function saveDraft(){
+    if(!session || !draftReady) return;
+    try{
+      if(!cart.length && !boCart.length) return localStorage.removeItem(draftKey());
+      localStorage.setItem(draftKey(), JSON.stringify({ cart:cart, boCart:boCart,
+        custId:$('cust-select').value, custName:$('customer').value, jobId:$('job-select').value }));
+    }catch(e){}
+  }
+  function restoreDraft(){
+    draftReady = false;
+    var d = null;
+    try{ d = JSON.parse(localStorage.getItem(draftKey()) || 'null'); }catch(e){}
+    if(d){
+      cart = (d.cart||[]).filter(function(c){ return stock.some(function(i){ return i.id===c.stockId; }); });
+      boCart = d.boCart || [];
+      syncCart();
+      $('cust-select').value = customers.some(function(c){ return c.id===d.custId; }) ? d.custId : '';
+      $('customer').value = d.custName || '';
+      toggleWalkin();
+      renderJobSelect(d.jobId || '');
+      renderCart(); renderPicker();
+    }
+    draftReady = true;
+  }
+  ['cust-select','job-select'].forEach(function(id){ $(id).addEventListener('change', saveDraft); });
+  $('customer').addEventListener('input', saveDraft);
+
   /* ---------- sign out ---------- */
   $('signout').addEventListener('click', function(){
-    session = null; storeSession();
+    saveDraft();   // an unfinished ticket waits for this person's next sign-in
+    draftReady = false;
+    session = null; keepSignedIn = false; storeSession();
     cart = []; boCart = [];
     $('customer').value = ''; $('cust-select').value = '';
+    closeMore();
     closeStock(); closeDelete(); closeTicket(); closeCust(); closeCustDetail(); closeCdel(); closeSdel();
     closeAcct(); closePw(); closeCf(); closeImp(); closeBoAdd(); closeReturn(); closeReject();
     closePhoto(); closeMlist(); closeJobEdit(); closeJob();
@@ -1421,7 +1587,7 @@
     editingAcct = user ? user.id : null; acctSlot = slot || null;
     var isA2 = slot==='admin2';
     $('acct-title').textContent = isA2 ? (user ? 'Edit 2nd admin' : 'Create 2nd admin') : user ? 'Edit user account' : 'Create user account (slot '+slot+')';
-    $('acct-note').textContent = isA2 ? 'A 2nd admin can open every tab and manage the 10 user accounts.' : 'This account can open Bill out, Review, Back orders and Customers only. An admin approves its bill outs.';
+    $('acct-note').textContent = isA2 ? 'A 2nd admin can open every tab and manage the 10 user accounts.' : 'This account can use Home, Jobs, Bill out, the Material list and Customers. An admin approves its tickets.';
     $('a-name').value = user ? user.name : '';
     $('a-user').value = user ? user.username : '';
     $('a-pass').value = '';
@@ -1591,7 +1757,7 @@
           '<div class="c-title"><div class="name">'+fmtLen(i.length)+(out?'<span class="badge out">Out</span>':(isLow(i)?'<span class="badge low">Low</span>':''))+'</div>'+
             '<div class="meta">'+(i.bunkSize>0 ? i.bunkSize+' per bunk' : 'loose only')+
               (owed[specKey(i)] ? ' · <span class="bo-note">'+owed[specKey(i)].toLocaleString()+' back ordered</span>' : '')+
-              (held[specKey(i)] ? ' · <span class="bo-note">'+held[specKey(i)].toLocaleString()+' held for review</span>' : '')+'</div></div>'+
+              (held[specKey(i)] ? ' · <span class="bo-note">'+held[specKey(i)].toLocaleString()+' held for approval</span>' : '')+'</div></div>'+
           '<div class="num c-num'+(b?'':' zero')+'">'+b+'</div>'+
           '<div class="num c-num'+(l?'':' zero')+'">'+l+'</div>'+
           '<div class="num c-num strong">'+Number(i.quantity).toLocaleString()+'</div>'+
@@ -1914,6 +2080,7 @@
     var lines = cart.length + boCart.length;
     $('ticket-bar').hidden = !lines;
     $('ticket-bar-text').textContent = lines+(lines===1?' line':' lines')+' · '+pieces.toLocaleString()+' pcs'+(boCart.length ? ' + back order' : '');
+    saveDraft();
   }
   $('ticket-bar').addEventListener('click', function(){ document.querySelector('.ticket').scrollIntoView({behavior:'smooth', block:'start'}); });
 
@@ -1962,7 +2129,7 @@
     reviews.unshift(draft);
     save(KEYS.review, reviews);
     renderAll();
-    toast('Sent to the admin for review. It reaches Sales once approved.');
+    toast('Sent for approval. It reaches Sales once an admin approves it.');
   });
 
   // Turns a bill out into a numbered ticket in Sales: admins' own right away, users' once approved
@@ -2497,35 +2664,80 @@
   $('jobedit-close').addEventListener('click', closeJobEdit);
   $('jobedit-overlay').addEventListener('click', function(e){ if(e.target.id==='jobedit-overlay') closeJobEdit(); });
 
+  /* ---------- jobs list ---------- */
+  var jobsFilter = 'all', jobsSearch = '';
+  // When the job last had anything happen to it: lists, photos or tickets
+  function jobActivity(j){
+    var t = new Date(j.date).getTime();
+    j.lists.concat(photoList(j, 'photos'), photoList(j, 'loads')).forEach(function(x){ t = Math.max(t, new Date(x.date).getTime()); });
+    sales.forEach(function(s){ if(s.jobId===j.id) t = Math.max(t, new Date(s.date).getTime()); });
+    return t;
+  }
+  function jobRowHtml(j){
+    var n = j.type==='out' ? photoList(j, 'photos').length : sales.filter(function(s){ return s.jobId===j.id; }).length;
+    var loads = photoList(j, 'loads').length;
+    return '<div class="job-row" data-job="'+j.id+'"><div><div class="name">'+esc(j.name)+jobBadge(j)+'</div>'+
+      '<div class="meta">'+esc(custNameOf(j.customerId))+' · '+j.lists.length+(j.lists.length===1?' material list':' material lists')+' · '+
+        n+(j.type==='out' ? (n===1?' delivery paper':' delivery papers') : (n===1?' ticket':' tickets'))+' · '+loads+(loads===1?' truck load':' truck loads')+'</div></div>'+
+      '<span class="go">›</span></div>';
+  }
+  function bindJobRows(el){ el.querySelectorAll('[data-job]').forEach(function(r){ r.addEventListener('click', function(){ openJob(r.dataset.job); }); }); }
+  function renderJobs(){
+    document.querySelectorAll('#jobs-filter button').forEach(function(b){ b.classList.toggle('active', b.dataset.f===jobsFilter); });
+    var q = jobsSearch;
+    var list = jobs.filter(function(j){
+      return (jobsFilter==='all' || j.type===jobsFilter) && (!q || (j.name+' '+custNameOf(j.customerId)).toLowerCase().indexOf(q)>-1);
+    }).sort(function(a,b){ return jobActivity(b) - jobActivity(a); });
+    var el = $('jobs-list');
+    if(!jobs.length){
+      el.innerHTML = '<div class="empty"><div class="big">No jobs yet</div><div>A job holds a customer\'s material lists, tickets and photos for one project.</div><button class="btn primary" id="jobs-empty-new">New job</button></div>';
+      $('jobs-empty-new').addEventListener('click', function(){ openJobEdit(null, null, openJob); });
+      return;
+    }
+    el.innerHTML = list.map(jobRowHtml).join('') || '<div class="empty"><div class="big">Nothing matches</div><div>Try a different search or filter.</div></div>';
+    bindJobRows(el);
+  }
+  $('jobs-search').addEventListener('input', function(e){ jobsSearch = e.target.value.trim().toLowerCase(); renderJobs(); });
+  document.querySelectorAll('#jobs-filter button').forEach(function(b){ b.addEventListener('click', function(){ jobsFilter = b.dataset.f; renderJobs(); }); });
+  $('jobs-new').addEventListener('click', function(){ openJobEdit(null, null, openJob); });
+
   /* ---------- job page ---------- */
   var jobViewId = null, jobThumbs = [];
-  function openJob(id){ jobViewId = id; renderJob(); $('job-overlay').classList.add('open'); }
+  function openJob(id){
+    closeCustDetail();
+    jobViewId = id;
+    go('job');
+  }
+  // Leaving the job page frees its photo thumbnails
   function closeJob(){
-    $('job-overlay').classList.remove('open'); jobViewId = null;
     jobThumbs.forEach(URL.revokeObjectURL); jobThumbs = [];
   }
   function renderJob(){
     var j = jobById(jobViewId);
-    if(!j){ closeJob(); return; }
+    if(!j){ if(currentView==='job') go('jobs'); return; }
     jobThumbs.forEach(URL.revokeObjectURL); jobThumbs = [];
-    $('job-title').textContent = j.name;
+    $('job-title').innerHTML = esc(j.name)+jobBadge(j);
+    $('job-meta').innerHTML = '<button class="link-btn" id="job-cust" style="padding:0;font-size:13px;">'+esc(custNameOf(j.customerId))+'</button>'+
+      ' · started '+new Date(j.date).toLocaleDateString()+(j.by ? ' by '+esc(j.by) : '');
+    $('job-cust').addEventListener('click', function(){ if(customers.some(function(c){ return c.id===j.customerId; })) openCustDetail(j.customerId); });
+    $('job-ticket').hidden = j.type!=='in' || !can('bill');
+    $('job-delete').hidden = !session || session.role!=='admin';
     var lists = j.lists.map(function(l){
       return '<div class="job-row" data-list="'+l.id+'"><div><div class="name">'+esc(l.title)+'</div>'+
         '<div class="meta">'+fmtDate(l.date)+(l.by ? ' · by '+esc(l.by) : '')+' · '+esc(l.pkg)+'</div></div><span class="go">›</span></div>';
-    }).join('') || '<div class="sec-empty">No material lists yet. Build one on the Material list tab, pick this job, and save it.</div>';
-    var html = '<div style="color:var(--soft);">'+esc(custNameOf(j.customerId))+jobBadge(j)+'<span style="margin-left:8px;">Started '+new Date(j.date).toLocaleDateString()+'</span></div>'+
-      '<div><div class="sec-label"><span>Material lists</span></div>'+lists+'</div>';
+    }).join('') || '<div class="sec-empty">No material lists yet. Tap New material list to build one for this job.</div>';
+    var html = '<div class="job-sec"><div class="sec-label"><span>Material lists</span></div>'+lists+'</div>';
     if(j.type==='in'){
       var tickets = sales.filter(function(s){ return s.jobId===j.id; });
       var waiting = pendingReviews().filter(function(d){ return d.jobId===j.id; }).length;
-      html += '<div><div class="sec-label"><span>Tickets</span></div>'+
+      html += '<div class="job-sec"><div class="sec-label"><span>Tickets</span></div>'+
         (tickets.map(function(t){
           return '<div class="hist-row" data-id="'+t.id+'"><div class="num strong">'+esc(t.number)+'</div>'+
             '<div class="meta" style="margin:0;">'+fmtDate(t.date)+'</div>'+
             '<div class="num">'+saleNet(t).pieces.toLocaleString()+' pcs</div>'+
             '<div class="num strong">'+fmt(saleNet(t).bf)+' bd ft</div></div>';
-        }).join('') || '<div class="sec-empty">No tickets yet. Send a material list to Bill out, or pick this job on a Bill out ticket.</div>')+
-        (waiting ? '<div class="sec-empty">'+waiting+(waiting===1?' bill out is':' bill outs are')+' waiting for review.</div>' : '')+'</div>';
+        }).join('') || '<div class="sec-empty">No tickets yet. Save a material list for this job, or tap Start a ticket.</div>')+
+        (waiting ? '<div class="sec-empty">'+waiting+(waiting===1?' ticket is':' tickets are')+' waiting for approval.</div>' : '')+'</div>';
     } else html += photoSection(j, 'photos');
     // Every job: a picture of each truck load sent out
     html += photoSection(j, 'loads')+
@@ -2547,10 +2759,17 @@
       }).catch(function(){});
     });
   }
-  $('job-close').addEventListener('click', closeJob);
-  $('job-close-2').addEventListener('click', closeJob);
-  $('job-overlay').addEventListener('click', function(e){ if(e.target.id==='job-overlay') closeJob(); });
   $('job-edit').addEventListener('click', function(){ var j = jobById(jobViewId); if(j) openJobEdit(j); });
+  $('job-newlist').addEventListener('click', function(){ openMaterialFor(jobViewId); });
+  // Start a Bill out ticket for this customer and job
+  $('job-ticket').addEventListener('click', function(){
+    var j = jobById(jobViewId); if(!j) return;
+    if((cart.length || boCart.length) && $('cust-select').value!==j.customerId){
+      toast('Your Bill out ticket has items for someone else. Complete or clear it first.'); go('bill'); return;
+    }
+    go('bill');
+    if(customers.some(function(c){ return c.id===j.customerId; })){ $('cust-select').value = j.customerId; toggleWalkin(); renderJobSelect(j.id); saveDraft(); }
+  });
   function deleteJobData(j){
     photoList(j, 'photos').concat(photoList(j, 'loads')).forEach(function(p){ photoDel(p.id).catch(function(){}); });
   }
@@ -2562,9 +2781,9 @@
         deleteJobData(j);
         jobs = jobs.filter(function(x){ return x.id!==j.id; });
         saveJobs();
-        closeJob();
-        if(viewingCustId && $('cdetail-overlay').classList.contains('open')) openCustDetail(viewingCustId);
+        go('jobs');
         renderJobSelect();
+        toast('Deleted job '+j.name+'.');
       });
   });
 
@@ -2779,7 +2998,7 @@
     });
     return out;
   }
-  function finishWord(){ return session && session.role==='admin' ? 'complete the sale' : 'submit it for review'; }
+  function finishWord(){ return session && session.role==='admin' ? 'complete the sale' : 'send it for approval'; }
 
   function reviewCard(d, status, actions){
     var pieces = 0, bf = 0;
@@ -2806,27 +3025,27 @@
     var admin = session.role==='admin';
     var mine = reviews.filter(function(d){ return d.byId===session.id; });
     var badge = admin ? pendingReviews().length : mine.filter(function(d){ return d.status==='rejected'; }).length;
-    $('rv-count').textContent = badge;
-    $('rv-count').hidden = !badge;
+    // the count shows on Bill out's Approvals section and on the Bill out tab itself
+    ['rv-count','bill-count'].forEach(function(id){ $(id).textContent = badge; $(id).hidden = !badge; });
     var el = $('review-list');
     if(admin){
-      $('rv-lead').textContent = 'Bill outs from user accounts wait here. Approving one creates its ticket in Sales. Sending one back returns its lumber to inventory.';
+      $('rv-lead').textContent = 'Tickets from user accounts wait here. Approving one puts it in Sales. Sending one back returns its lumber to inventory.';
       var waiting = pendingReviews().sort(function(a,b){ return new Date(a.date) - new Date(b.date); });
       el.innerHTML = waiting.length ? waiting.map(function(d){
         return reviewCard(d, '<span class="badge low" style="margin-left:0;">Waiting</span>',
           '<button class="btn" data-act="reject">Send back</button><button class="btn primary" data-act="approve">Approve</button>');
-      }).join('') : '<div class="card"><div class="empty"><div class="big">Nothing to review</div><div>Bill outs from user accounts will show up here.</div></div></div>';
+      }).join('') : '<div class="card"><div class="empty"><div class="big">Nothing waiting for approval</div><div>Tickets from user accounts show up here.</div></div></div>';
       return;
     }
-    $('rv-lead').textContent = 'Your bill outs go to an admin before they reach Sales. Their lumber is held out of inventory while they wait.';
+    $('rv-lead').textContent = 'Your tickets go to an admin for approval before they reach Sales. Their lumber is held out of inventory while they wait.';
     el.innerHTML = mine.length ? mine.slice().sort(function(a,b){ return new Date(b.date) - new Date(a.date); }).map(function(d){
-      if(d.status==='pending') return reviewCard(d, '<span class="badge low" style="margin-left:0;">Waiting for admin</span>', '');
+      if(d.status==='pending') return reviewCard(d, '<span class="badge low" style="margin-left:0;">Waiting for approval</span>', '');
       if(d.status==='rejected') return reviewCard(d, '<span class="badge off">Sent back</span>',
         '<button class="btn" data-act="dismiss">Remove</button><button class="btn primary" data-act="reopen">Put back on ticket</button>');
       var hasSale = sales.some(function(s){ return s.id===d.saleId; });
       return reviewCard(d, '<span class="badge on">Approved · '+esc(d.number||'')+'</span>',
         '<button class="btn" data-act="dismiss">Remove</button>'+(hasSale ? '<button class="btn primary" data-act="view">View ticket</button>' : ''));
-    }).join('') : '<div class="card"><div class="empty"><div class="big">Nothing submitted yet</div><div>Bill outs you submit will show up here with their status.</div></div></div>';
+    }).join('') : '<div class="card"><div class="empty"><div class="big">Nothing sent for approval yet</div><div>Tickets you send show up here with their status.</div></div></div>';
   }
 
   $('review-list').addEventListener('click', function(e){
@@ -3616,7 +3835,7 @@
   $('imp-overlay').addEventListener('click', function(e){ if(e.target.id==='imp-overlay') closeImp(); });
 
   document.addEventListener('keydown', function(e){
-    if(e.key==='Escape'){ closeStock(); closeDelete(); closeTicket(); closeCust(); closeCustDetail(); closeCdel(); closeSdel(); closeAcct(); closePw(); closeCf(); closeImp(); closeBoAdd(); closeReturn(); closeReject(); closePhoto(); closeMlist(); closeJobEdit(); closeJob(); }
+    if(e.key==='Escape'){ closeStock(); closeDelete(); closeTicket(); closeCust(); closeCustDetail(); closeCdel(); closeSdel(); closeAcct(); closePw(); closeCf(); closeImp(); closeBoAdd(); closeReturn(); closeReject(); closePhoto(); closeMlist(); closeJobEdit(); closeMore(); }
   });
 
   /* =====================================================
@@ -3652,6 +3871,72 @@
     if(doc && doc.body){ doc.documentElement.style.setProperty('--host-vh', (window.innerHeight/100)+'px'); f.style.height = doc.body.offsetHeight+'px'; }
   });
   window.tallyToast = function(msg){ toast(msg); };
+  // "New material list" on a job: open the Material list with that job picked
+  var pendingMaterialJob = null;
+  function openMaterialFor(jobId){
+    pendingMaterialJob = jobId || null;
+    go('material');
+    var w = $('material-frame').contentWindow;
+    try{ if(w && w.selectJob && pendingMaterialJob){ w.selectJob(pendingMaterialJob); pendingMaterialJob = null; } }catch(e){}
+  }
+  // the Material list asks for it once it has loaded
+  window.tallyTakePendingJob = function(){ var id = pendingMaterialJob; pendingMaterialJob = null; return id; };
+
+  /* =====================================================
+     HOME (what needs attention, quick actions, recent jobs)
+  ===================================================== */
+  function renderHome(){
+    if(!session) return;
+    var admin = session.role==='admin';
+    var hour = new Date().getHours();
+    $('home-hello').textContent = (hour<12 ? 'Good morning' : hour<17 ? 'Good afternoon' : 'Good evening')+', '+session.name.split(' ')[0];
+    var cards = [];
+    var card = function(n, label, sub, view, tone){
+      cards.push('<button class="home-card'+(n ? ' '+tone : '')+'" data-home="'+view+'"><span class="n">'+n.toLocaleString()+'</span>'+
+        '<span class="l">'+label+'</span><span class="s">'+sub+'</span></button>');
+    };
+    if(admin){
+      card(pendingReviews().length, 'Waiting for approval', 'Tickets from user accounts', 'review', 'warn');
+    } else {
+      var mine = reviews.filter(function(d){ return d.byId===session.id; });
+      card(mine.filter(function(d){ return d.status==='rejected'; }).length, 'Sent back to you', 'Fix and send again', 'review', 'bad');
+      card(mine.filter(function(d){ return d.status==='pending'; }).length, 'Waiting for approval', 'Tickets you sent', 'review', 'info');
+    }
+    card(boReadyCount(), 'Back orders ready to fill', openBackorders().length+' open back order'+(openBackorders().length===1?'':'s'), 'backorders', 'good');
+    if(admin) card(stock.filter(isLow).length, 'Low stock', 'At or below their alert', 'low', 'warn');
+    if(cart.length || boCart.length) card(cart.length + boCart.length, 'Unfinished ticket', 'Lines on your Bill out ticket', 'bill', 'info');
+    $('home-cards').innerHTML = cards.join('');
+    $('home-cards').querySelectorAll('[data-home]').forEach(function(b){
+      b.addEventListener('click', function(){
+        var v = b.dataset.home;
+        if(v==='low'){ lowOnly = true; $('low-toggle').classList.add('active'); v = 'inventory'; }
+        go(v);
+      });
+    });
+    var actions = [
+      ['material', 'New material list', 'M7 3h7l5 5v13H7zM14 3v5h5'],
+      ['bill', 'New ticket', 'M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6'],
+      ['newjob', 'New job', 'M12 5v14M5 12h14']
+    ];
+    if(admin) actions.push(['stock', 'Upload stock', 'M12 15V3M7 8l5-5 5 5M5 21h14']);
+    $('home-actions').innerHTML = actions.map(function(a){
+      return '<button class="btn home-act" data-act="'+a[0]+'"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="'+a[2]+'"/></svg>'+a[1]+'</button>';
+    }).join('');
+    $('home-actions').querySelectorAll('[data-act]').forEach(function(b){
+      b.addEventListener('click', function(){
+        var a = b.dataset.act;
+        if(a==='material') openMaterialFor(null);
+        else if(a==='bill') go('bill');
+        else if(a==='newjob') openJobEdit(null, null, openJob);
+        else if(a==='stock'){ go('inventory'); openImp('stock'); }
+      });
+    });
+    var recent = jobs.slice().sort(function(a,b){ return jobActivity(b) - jobActivity(a); }).slice(0, 5);
+    $('home-jobs').innerHTML = recent.map(jobRowHtml).join('') ||
+      '<div class="empty" style="padding:28px 16px;"><div class="big">No jobs yet</div><div>Make a job for each customer project to keep its material lists, tickets and photos together.</div></div>';
+    bindJobRows($('home-jobs'));
+  }
+
   // "Send to Bill out" on the material list: the lines open in the Bill out upload preview to check, fix or back order
   window.tallyBillFromList = function(items, title, jobId){
     if(!session || !can('bill')) return;
@@ -3718,6 +4003,9 @@
     if(can('accounts')) renderAccounts();
     renderBackorders();
     renderReview();
+    if(currentView==='home') renderHome();
+    if(currentView==='jobs') renderJobs();
+    if(currentView==='job') renderJob();
   }
   // Lumber is tracked by size and type. Items saved back when species was kept are combined by size, once.
   function mergeBySize(list){
