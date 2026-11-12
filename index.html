@@ -250,6 +250,10 @@
   .paper th{text-align:left;font-size:10.5px;text-transform:uppercase;color:var(--faint);padding:5px 0;border-bottom:1px solid var(--line2);}
   .paper td{padding:8px 0;border-bottom:1px solid var(--line);vertical-align:top;}
   .paper .r{text-align:right;}
+  .sync-note{margin:4px 0 0;font-size:12px;font-weight:600;color:#F4E8CC;}
+  .sync-note.bad{color:#FFD7CC;}
+  .legacy{border:2px solid var(--gold);background:var(--gold-pale);border-radius:var(--radius);padding:16px;margin-bottom:18px;}
+  .legacy h3{margin:0 0 6px;}
   .paper .sub{color:var(--faint);font-size:11px;margin-top:2px;}
   .paper .p-total{display:flex;justify-content:space-between;font-size:17px;font-weight:700;margin-top:12px;padding-top:10px;border-top:2px solid var(--ink);}
 
@@ -646,7 +650,7 @@
   <div class="inner">
     <div class="brand">
       <div class="mark">APS</div>
-      <div><h1><span class="full-name">Advanced Precut Systems </span>Lumber Tally</h1><p id="sub">loading…</p></div>
+      <div><h1><span class="full-name">Advanced Precut Systems </span>Lumber Tally</h1><p id="sub">loading…</p><p class="sync-note" id="sync-note" hidden></p></div>
     </div>
     <!-- Main tabs. Other pages (job, material list, approvals, back orders, customers, accounts) light up the tab they belong to. -->
     <div class="tabs" id="tabs">
@@ -921,6 +925,7 @@
   <!-- ACCOUNTS (admin only) -->
   <section class="view" id="view-accounts">
     <div class="flash" id="acct-flash" hidden></div>
+    <div id="legacy-card"></div>
     <h2 class="section">Your account</h2>
     <div class="card" id="me-card"></div>
     <h2 class="section" style="margin-top:24px;">Other admin</h2>
@@ -1281,6 +1286,7 @@
   </div>
 </div>
 
+<script src="supabase.js"></script>
 <script>
 (function(){
   'use strict';
@@ -1358,23 +1364,269 @@
     return pieces+(pieces===1?' pc':' pcs');
   }
 
-  /* ---------- storage (uses the host's storage when present, else localStorage) ---------- */
-  async function load(key){
+  /* =====================================================
+     SHARED STORAGE (Supabase)
+     Everything is kept in one "records" table: collection + id + the item's JSON. The app works from an on-device
+     copy (localStorage) so it opens with no signal; changes wait in an outbox and go up as soon as there is signal.
+     Other people's changes arrive live and are merged in.
+  ===================================================== */
+  var SB_URL = 'https://dsocdyepudbbeihzfnqm.supabase.co';
+  var SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzb2NkeWVwdWRiYmVpaHpmbnFtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQ1MDc1NzksImV4cCI6MjExMDA4MzU3OX0.lBoZDrq9CEBor-dnLGFD_tC7tWs_7a9rY8TrTBmNd_k';   // public key; the database only answers signed-in staff
+  var EMAIL_DOMAIN = 'lumbertally.local';   // sign-ins are username + password; this hidden address never gets mail
+  var SYNC_COLLS = ['stock','sales','cust','bo','review','jobs','hw','maps','seq'];
+  function collOf(key){ for(var k in KEYS) if(KEYS[k]===key) return k; return null; }
+  // JSON with sorted keys, so the same item always compares equal however it was stored
+  function stable(v){
+    if(v===null || typeof v!=='object') return JSON.stringify(v===undefined ? null : v);
+    if(Array.isArray(v)) return '['+v.map(stable).join(',')+']';
+    return '{'+Object.keys(v).sort().filter(function(k){ return v[k]!==undefined && typeof v[k]!=='function'; })
+      .map(function(k){ return JSON.stringify(k)+':'+stable(v[k]); }).join(',')+'}';
+  }
+  var snap = {};          // what the shared copy has: coll -> { id: { s: stable json, o: order } }
+  var outbox = {};        // changes not sent yet: 'coll|id' -> { coll, id, data (null = delete), ord }
+  var upq = {};           // photo uploads not sent yet: id -> 'put' | 'del'
+  var sbUserId = null;    // signed in to the shared storage
+  var ordN = 0;
+  function nextOrd(){ return Date.now() + (ordN++ % 1000)/1000; }
+  try{ outbox = JSON.parse(localStorage.getItem('tally:outbox') || '{}') || {}; }catch(e){ outbox = {}; }
+  try{ upq = JSON.parse(localStorage.getItem('tally:upq') || '{}') || {}; }catch(e){ upq = {}; }
+  function saveOutbox(){ try{ localStorage.setItem('tally:outbox', JSON.stringify(outbox)); localStorage.setItem('tally:upq', JSON.stringify(upq)); }catch(e){} }
+
+  // Before shared storage, each device kept its own data under these same names. Keep that copy aside (once) so an
+  // admin can upload it, and start the on-device copy fresh from the shared data.
+  (function setAsideOldData(){
     try{
-      if(window.storage && window.storage.get){
-        var r = await window.storage.get(key, false);
-        return (r && r.value) ? JSON.parse(r.value) : [];
-      }
+      if(localStorage.getItem('tally:store')==='shared1') return;
+      Object.keys(KEYS).forEach(function(k){
+        var v = localStorage.getItem(KEYS[k]);
+        if(v!=null && localStorage.getItem('tally:legacy:'+KEYS[k])==null) localStorage.setItem('tally:legacy:'+KEYS[k], v);
+        if(k!=='acct') localStorage.removeItem(KEYS[k]);
+      });
+      localStorage.setItem('tally:store', 'shared1');
     }catch(e){}
-    try{ var v = localStorage.getItem(key); return v ? JSON.parse(v) : []; }catch(e){ return []; }
+  })();
+
+  // The on-device copy
+  async function load(key){
+    try{ var v = localStorage.getItem(key); return v ? JSON.parse(v) : (collOf(key)==='seq' ? null : []); }catch(e){ return []; }
+  }
+  function cacheColl(key, data){ try{ localStorage.setItem(key, JSON.stringify(data)); }catch(e){} }
+  // Start the change tracking from what is on the device
+  function snapFrom(c, data){
+    var sn = snap[c] = {};
+    if(c==='seq'){ if(data) sn.seq = { s:stable(data), o:0 }; return; }
+    (data||[]).forEach(function(i, n){ if(i && i.id!=null) sn[String(i.id)] = { s:stable(i), o:n }; });
+  }
+
+  function queueOp(c, id, data, ord){
+    outbox[c+'|'+id] = { coll:c, id:id, data:data==null ? null : JSON.parse(JSON.stringify(data)), ord:ord };
   }
   function save(key, data){
-    var s = JSON.stringify(data);
-    try{
-      if(window.storage && window.storage.set){ window.storage.set(key, s, false).catch(function(){}); return; }
-    }catch(e){}
-    try{ localStorage.setItem(key, s); }catch(e){}
+    cacheColl(key, data);
+    var c = collOf(key);
+    if(!c || SYNC_COLLS.indexOf(c)<0) return;
+    var sn = snap[c] || (snap[c] = {});
+    if(c==='seq'){
+      var st = stable(data);
+      if(!sn.seq || sn.seq.s!==st){ sn.seq = { s:st, o:0 }; queueOp(c, 'seq', data, 0); }
+      return flushSoon();
+    }
+    var seen = {};
+    data.forEach(function(item){
+      if(item.id==null) item.id = uid(c);
+      var id = String(item.id), cur = sn[id], st = stable(item);
+      seen[id] = true;
+      if(cur && cur.s===st) return;
+      var o = cur ? cur.o : nextOrd();
+      sn[id] = { s:st, o:o };
+      queueOp(c, id, item, o);
+    });
+    Object.keys(sn).forEach(function(id){ if(!seen[id]){ delete sn[id]; queueOp(c, id, null, 0); } });
+    flushSoon();
   }
+
+  // The app's lists, by collection
+  function getColl(c){
+    return { stock:stock, sales:sales, cust:customers, bo:backorders, review:reviews, jobs:jobs, hw:hardware, maps:maps }[c];
+  }
+  function setColl(c, v){
+    if(c==='stock') stock = v; else if(c==='sales') sales = v; else if(c==='cust') customers = v; else if(c==='bo') backorders = v;
+    else if(c==='review') reviews = v; else if(c==='jobs') jobs = v; else if(c==='hw') hardware = v; else if(c==='maps') maps = v;
+    else if(c==='seq'){ if(v && typeof v.n==='number' && v.n>nextNo) nextNo = v.n; }
+  }
+  function fixNextNo(){
+    sales.forEach(function(x){ var m = /(\d+)$/.exec(x.number||''); if(m && Number(m[1]) >= nextNo) nextNo = Number(m[1]) + 1; });
+  }
+
+  // Everything from the shared copy (local changes not sent yet stay on top)
+  var lastPull = 0;
+  async function pullAll(){
+    var rows = [], from = 0;
+    for(;;){
+      var r = await sb.from('records').select('coll,id,data,ord').order('coll').order('ord').order('id').range(from, from+999);
+      if(r.error) throw r.error;
+      rows = rows.concat(r.data);
+      if(r.data.length<1000) break;
+      from += 1000;
+    }
+    var by = {};
+    SYNC_COLLS.forEach(function(c){ by[c] = []; });
+    rows.forEach(function(r){ if(by[r.coll]) by[r.coll].push(r); });
+    SYNC_COLLS.forEach(function(c){
+      var sn = snap[c] = {};
+      var list = by[c].map(function(r){ sn[r.id] = { s:stable(r.data), o:r.ord }; return { id:r.id, data:r.data, o:r.ord }; });
+      Object.keys(outbox).forEach(function(k){
+        var op = outbox[k]; if(op.coll!==c) return;
+        list = list.filter(function(x){ return x.id!==op.id; });
+        if(op.data) list.push({ id:op.id, data:op.data, o:op.ord });
+      });
+      list.sort(function(a, b){ return a.o - b.o; });
+      if(c==='seq'){ setColl(c, list[0] ? list[0].data : null); return; }
+      var arr = list.map(function(x){ return x.data; });
+      if(c==='review') arr = arr.filter(function(d){ return d.status!=='approved' || Date.now() - new Date(d.reviewedDate) < 30*864e5; });
+      setColl(c, arr);
+      cacheColl(KEYS[c], arr);
+    });
+    fixNextNo();
+    lastPull = Date.now();
+  }
+
+  // Someone else changed something: merge it in, keeping the same item objects so open screens stay connected
+  var renderTimer = null;
+  function renderSoon(){
+    clearTimeout(renderTimer);
+    renderTimer = setTimeout(function(){
+      var a = document.activeElement;
+      // don't redraw under someone who is typing; try again when they stop
+      if(a && /INPUT|TEXTAREA|SELECT/.test(a.tagName) && !a.closest('#gate')) return renderSoon();
+      if(session) renderAll();
+    }, 700);
+  }
+  function applyRemote(ev){
+    var row = ev.new && ev.new.coll ? ev.new : ev.old;
+    if(!row || SYNC_COLLS.indexOf(row.coll)<0) return;
+    var c = row.coll, id = String(row.id);
+    if(outbox[c+'|'+id]) return;
+    var sn = snap[c] || (snap[c] = {});
+    if(c==='seq'){ if(ev.eventType!=='DELETE'){ sn.seq = { s:stable(row.data), o:0 }; setColl(c, row.data); } return; }
+    var arr = getColl(c), idx = arr.findIndex(function(x){ return String(x.id)===id; });
+    if(ev.eventType==='DELETE'){
+      if(!sn[id] && idx<0) return;
+      delete sn[id];
+      if(idx>-1) arr.splice(idx, 1);
+    } else {
+      var st = stable(row.data);
+      if(sn[id] && sn[id].s===st) return;
+      sn[id] = { s:st, o:row.ord };
+      if(idx>-1){
+        var cur = arr[idx];
+        Object.keys(cur).forEach(function(k){ delete cur[k]; });
+        Object.assign(cur, row.data);
+      } else {
+        var at = arr.findIndex(function(x){ var o = sn[String(x.id)]; return o && o.o > row.ord; });
+        if(at<0) arr.push(row.data); else arr.splice(at, 0, row.data);
+      }
+      if(c==='sales') fixNextNo();
+    }
+    cacheColl(KEYS[c], arr);
+    renderSoon();
+  }
+
+  // Send waiting changes
+  var flushing = false, flushTimer = null, flushFails = 0;
+  function flushSoon(){ saveOutbox(); updateSyncNote(); clearTimeout(flushTimer); flushTimer = setTimeout(flush, 300); }
+  async function flush(){
+    if(flushing || !sb || !sbUserId || !navigator.onLine){ updateSyncNote(); return; }
+    var keys = Object.keys(outbox), ups = Object.keys(upq);
+    if(!keys.length && !ups.length){ flushFails = 0; updateSyncNote(); return; }
+    flushing = true;
+    var sent = {};
+    try{
+      var ops = keys.map(function(k){ sent[k] = outbox[k]; return outbox[k]; });
+      var puts = ops.filter(function(o){ return o.data; });
+      for(var i=0; i<puts.length; i+=200){
+        var r = await sb.from('records').upsert(puts.slice(i, i+200).map(function(o){ return { coll:o.coll, id:o.id, data:o.data, ord:o.ord }; }));
+        if(r.error) throw r.error;
+      }
+      var dels = {};
+      ops.filter(function(o){ return !o.data; }).forEach(function(o){ (dels[o.coll] = dels[o.coll] || []).push(o.id); });
+      for(var c in dels){
+        var d = await sb.from('records').delete().eq('coll', c).in('id', dels[c]);
+        if(d.error) throw d.error;
+      }
+      Object.keys(sent).forEach(function(k){ if(outbox[k]===sent[k]) delete outbox[k]; });
+      saveOutbox();
+      await flushFiles();
+      flushFails = 0;
+    }catch(e){
+      flushFails++;
+      setTimeout(flush, Math.min(60000, 5000*flushFails));
+    }finally{
+      flushing = false;
+      updateSyncNote();
+      if(Object.keys(outbox).some(function(k){ return !sent[k] || outbox[k]!==sent[k]; })) flushSoon();
+    }
+  }
+  async function flushFiles(){
+    var ids = Object.keys(upq);
+    for(var i=0; i<ids.length; i++){
+      var id = ids[i], what = upq[id];
+      if(what==='del'){
+        var d = await sb.storage.from('files').remove([id]);
+        if(d.error) throw d.error;
+      } else {
+        var blob = await idbGet(id);
+        if(blob){
+          var u = await sb.storage.from('files').upload(id, blob, { upsert:true, contentType:blob.type || 'application/octet-stream' });
+          if(u.error) throw u.error;
+        }
+      }
+      if(upq[id]===what) delete upq[id];
+      saveOutbox();
+      updateSyncNote();
+    }
+  }
+  function updateSyncNote(){
+    var el = $('sync-note'); if(!el) return;
+    var n = Object.keys(outbox).length, f = Object.keys(upq).length;
+    var waiting = n + f;
+    if(!session){ el.hidden = true; return; }
+    if(!navigator.onLine){ el.hidden = false; el.className = 'sync-note bad'; el.textContent = 'No signal · '+(waiting ? waiting+(waiting===1?' change':' changes')+' will send when you reconnect' : 'showing the last saved copy'); return; }
+    if(waiting && (flushFails || flushing)){ el.hidden = false; el.className = 'sync-note'+(flushFails>1 ? ' bad' : ''); el.textContent = flushFails>1 ? 'Could not save to the shared copy yet · retrying ('+waiting+' waiting)' : 'Saving '+waiting+(waiting===1?' change':' changes')+(f ? ' ('+f+(f===1?' photo':' photos')+')' : '')+'…'; return; }
+    el.hidden = true;
+  }
+
+  var channel = null;
+  async function startSync(){
+    if(!sb) return;
+    try{
+      var u = (await sb.auth.getSession()).data.session;
+      sbUserId = u ? u.user.id : null;
+    }catch(e){ sbUserId = null; }
+    if(!sbUserId){ updateSyncNote(); return; }
+    if(!channel){
+      channel = sb.channel('records-live').on('postgres_changes', { event:'*', schema:'public', table:'records' }, applyRemote)
+        .subscribe(function(status){ if(status==='SUBSCRIBED' && Date.now() - lastPull > 5000) refresh(); });
+    }
+    await flush();
+    await refresh();
+  }
+  async function refresh(){
+    if(!sbUserId || !navigator.onLine) return;
+    try{ await pullAll(); if(session) renderAll(); }catch(e){}
+    updateSyncNote();
+  }
+  function stopSync(){
+    if(channel && sb){ sb.removeChannel(channel); channel = null; }
+    sbUserId = null;
+    updateSyncNote();
+  }
+  window.addEventListener('online', function(){ updateSyncNote(); flush().then(refresh); });
+  window.addEventListener('offline', updateSyncNote);
+  document.addEventListener('visibilitychange', function(){
+    if(document.visibilityState==='visible' && sbUserId && Date.now() - lastPull > 60000){ flush().then(refresh); }
+  });
+  setInterval(function(){ if(Object.keys(outbox).length || Object.keys(upq).length) flush(); }, 30000);
 
   /* =====================================================
      PASSWORD HASHING (salted, iterated SHA-256, no libraries)
@@ -1464,64 +1716,71 @@
   function makeSecret(secret){ var salt = newSalt(); return { salt:salt, hash:hashSecret(secret, salt) }; }
 
   /* =====================================================
-     ACCOUNTS + SIGN-IN
+     ACCOUNTS + SIGN-IN (shared sign-in; the list of people is the "staff" table)
   ===================================================== */
-  var accounts = null;   // { admin:{...}, users:[{id,slot,name,username,salt,hash,active}] }
-  var session = null;    // { role, id, name, username }
+  var accounts = null;   // { admin:{main admin}, admin2:{2nd admin}, users:[{id,slot,name,username,active}] }
+  var staffList = [];    // staff rows: { user_id, username, name, role, main, slot, active }
+  var session = null;    // { role, id, name, username, main }
   var MAX_USERS = 10;
   var USERNAME_RULE = 'Username must be 3 to 30 characters: letters, numbers, dot, dash, or underscore.';
   var PASS_RULE = 'Password must be at least 6 characters.';
+  var NET_RULE = 'This needs an internet connection. Try again when you have signal.';
   var ROLE_VIEWS = { admin:['home','jobs','job','inventory','hardware','map','bill','review','backorders','material','customers','sales','accounts'],
     user:['home','jobs','job','bill','review','backorders','material','map','customers'] };
   function can(view){ return !!session && ROLE_VIEWS[session.role].indexOf(view)>-1; }
-  function saveAccounts(){ save(KEYS.acct, accounts); }
-  function adminRec(id){ return id==='admin' ? accounts.admin : (id==='admin2' && accounts.admin2) ? accounts.admin2 : null; }
   function normUser(x){ return String(x||'').trim().toLowerCase(); }
   function validUsername(x){ return /^[a-z0-9._-]{3,30}$/.test(normUser(x)); }
-  function findByUsername(x){
-    var n = normUser(x);
-    if(normUser(accounts.admin.username)===n) return { role:'admin', rec:accounts.admin };
-    if(accounts.admin2 && normUser(accounts.admin2.username)===n) return { role:'admin', rec:accounts.admin2 };
-    var u = accounts.users.find(function(a){ return normUser(a.username)===n; });
-    return u ? { role:'user', rec:u } : null;
-  }
   function usernameTaken(x, exceptId){
     var n = normUser(x);
-    if(normUser(accounts.admin.username)===n && exceptId!=='admin') return true;
-    if(accounts.admin2 && normUser(accounts.admin2.username)===n && exceptId!=='admin2') return true;
-    return accounts.users.some(function(a){ return normUser(a.username)===n && a.id!==exceptId; });
+    return staffList.some(function(a){ return a.username===n && a.user_id!==exceptId; });
   }
   function ferr(id, msg){ var e = $(id); e.textContent = msg; e.classList.add('show'); }
   function fclear(id){ $(id).classList.remove('show'); }
 
-  /* The session lives in this tab, so closing it signs you out, unless "Keep me signed in on this device" was ticked */
+  function staffRec(x){ return { id:x.user_id, name:x.name, username:x.username, slot:x.slot, active:x.active, main:x.main, role:x.role }; }
+  function setStaff(list){
+    staffList = list || [];
+    try{ localStorage.setItem('tally:staff', JSON.stringify(staffList)); }catch(e){}
+    var main = staffList.find(function(x){ return x.main; }), a2 = staffList.find(function(x){ return x.role==='admin' && !x.main; });
+    accounts = { admin:main ? staffRec(main) : null, users:staffList.filter(function(x){ return x.role==='user'; }).map(staffRec) };
+    if(a2) accounts.admin2 = staffRec(a2);
+  }
+  try{ setStaff(JSON.parse(localStorage.getItem('tally:staff') || '[]')); }catch(e){ setStaff([]); }
+  function loadStaff(){
+    return sb.from('staff').select('*').then(function(r){ if(r.error) throw r.error; setStaff(r.data); return r.data; });
+  }
+  function newEmail(){
+    var b = randBytes(10), x = '';
+    for(var i=0; i<b.length; i++) x += ('0'+b[i].toString(16)).slice(-2);
+    return 'u'+x+'@'+EMAIL_DOMAIN;
+  }
+
+  /* Signed in stays in this tab only, unless "Keep me signed in on this device" was ticked */
   var keepSignedIn = false;
-  function storeSession(){
-    try{
-      var v = session ? JSON.stringify({role:session.role, id:session.id}) : null;
-      sessionStorage.removeItem('tally:session'); localStorage.removeItem('tally:session-keep');
-      if(v) (keepSignedIn ? localStorage : sessionStorage).setItem(keepSignedIn ? 'tally:session-keep' : 'tally:session', v);
-    }catch(e){}
+  var authStore = {
+    getItem:function(k){ try{ return localStorage.getItem(k) || sessionStorage.getItem(k); }catch(e){ return null; } },
+    setItem:function(k, v){ try{ (keepSignedIn ? localStorage : sessionStorage).setItem(k, v); (keepSignedIn ? sessionStorage : localStorage).removeItem(k); }catch(e){} },
+    removeItem:function(k){ try{ localStorage.removeItem(k); sessionStorage.removeItem(k); }catch(e){} }
+  };
+  try{ keepSignedIn = !!localStorage.getItem('tally-auth'); }catch(e){}
+  var sb = window.supabase ? window.supabase.createClient(SB_URL, SB_KEY, {
+    auth:{ storage:authStore, storageKey:'tally-auth', persistSession:true, autoRefreshToken:true, detectSessionInUrl:false } }) : null;
+  // A second connection used only to create new accounts, so the admin stays signed in as themselves
+  var sbMaker = null;
+  function maker(){
+    if(!sbMaker) sbMaker = window.supabase.createClient(SB_URL, SB_KEY, { auth:{ persistSession:false, autoRefreshToken:false, detectSessionInUrl:false, storageKey:'tally-maker' } });
+    return sbMaker;
   }
-  function readSession(){
-    try{
-      var kept = localStorage.getItem('tally:session-keep');
-      if(kept){ keepSignedIn = true; return JSON.parse(kept); }
-      var v = sessionStorage.getItem('tally:session'); return v ? JSON.parse(v) : null;
-    }catch(e){ return null; }
-  }
-  function restoreSession(){
-    var s = readSession();
-    if(!s || !accounts) return false;
-    if(s.role==='admin'){ var ar = adminRec(s.id); if(ar){ startSession('admin', ar); return true; } return false; }
-    var u = accounts.users.find(function(x){ return x.id===s.id && x.active; });
-    if(u){ startSession('user', u); return true; }
-    return false;
-  }
-  function startSession(role, rec){
-    session = { role:role, id:rec.id, name:rec.name, username:rec.username };
-    storeSession();
+  function storedUserId(){ try{ var v = authStore.getItem('tally-auth'); return v ? JSON.parse(v).user.id : null; }catch(e){ return null; } }
+  if(sb) sb.auth.onAuthStateChange(function(ev){
+    // signed out elsewhere (password reset, account deleted): leave the app too
+    if(ev==='SIGNED_OUT' && session) $('signout').click();
+  });
+
+  function startSession(me){
+    session = { role:me.role, id:me.user_id, name:me.name, username:me.username, main:!!me.main };
     applySession();
+    startSync();
   }
   function applySession(){
     document.body.classList.add('authed');
@@ -1532,6 +1791,7 @@
     $('complete-btn').textContent = session.role==='admin' ? 'Complete sale' : 'Send for approval';
     renderAll();
     restoreDraft();
+    updateSyncNote();
     // material.html opened on its own sends people to ./#material
     go(location.hash==='#material' && can('material') ? 'material' : 'home');
   }
@@ -1563,7 +1823,7 @@
     if(view==='bill'){ renderPicker(); renderHwPicker(); renderCustSelect(); }
     if(view==='customers') renderCustomers();
     if(view==='sales') renderSales();
-    if(view==='accounts') renderAccounts();
+    if(view==='accounts'){ renderAccounts(); if(sb && navigator.onLine) loadStaff().then(function(){ if(currentView==='accounts') renderAccounts(); }, function(){}); }
     if(view==='backorders') renderBackorders();
     if(view==='review') renderReview();
     if(view==='material') loadMaterial();
@@ -1591,45 +1851,91 @@
     setTimeout(function(){ try{ $(first).focus(); }catch(e){} }, 0);
   }
 
-  $('gate-login').addEventListener('submit', function(e){
+  function gateBusy(form, on){ form.querySelectorAll('button').forEach(function(b){ b.disabled = on; }); }
+  function noNet(errId){ if(sb && navigator.onLine) return false; ferr(errId, NET_RULE); return true; }
+
+  $('gate-login').addEventListener('submit', async function(e){
     e.preventDefault();
     fclear('g-err');
-    var u = $('g-user').value, p = $('g-pass').value;
-    var hit = (u && p) ? findByUsername(u) : null;
-    var ok = hit ? hashSecret(p, hit.rec.salt)===hit.rec.hash : (hashSecret(p, 'x'), false);
-    if(!ok){ ferr('g-err', 'Username or password is incorrect.'); $('g-pass').value = ''; return; }
-    if(hit.role==='user' && !hit.rec.active){ ferr('g-err', 'This account is turned off. Ask the admin to turn it back on.'); $('g-pass').value = ''; return; }
-    $('g-pass').value = ''; $('g-user').value = '';
-    keepSignedIn = $('g-keep').checked;
-    startSession(hit.role, hit.rec);
+    var form = this, u = normUser($('g-user').value), p = $('g-pass').value;
+    var bad = function(){ ferr('g-err', 'Username or password is incorrect.'); $('g-pass').value = ''; };
+    if(!u || !p) return bad();
+    if(noNet('g-err')) return;
+    gateBusy(form, true);
+    try{
+      var em = await sb.rpc('login_email', { p_username:u });
+      if(em.error) throw em.error;
+      if(!em.data) return bad();
+      keepSignedIn = $('g-keep').checked;
+      var r = await sb.auth.signInWithPassword({ email:em.data, password:p });
+      if(r.error){ if(r.error.status===400) return bad(); throw r.error; }
+      await loadStaff();
+      var me = staffList.find(function(x){ return x.user_id===r.data.user.id; });
+      if(!me || !me.active){
+        await sb.auth.signOut({ scope:'local' });
+        ferr('g-err', 'This account is turned off. Ask the admin to turn it back on.'); $('g-pass').value = '';
+        return;
+      }
+      $('g-pass').value = ''; $('g-user').value = '';
+      startSession(me);
+    }catch(err){ ferr('g-err', 'Could not reach the server. Check the signal and try again.'); }
+    finally{ gateBusy(form, false); }
   });
   $('g-forgot').addEventListener('click', function(){ showGate('recover'); });
   $('r-back').addEventListener('click', function(){ showGate('login'); });
 
-  $('gate-setup').addEventListener('submit', function(e){
+  // First time only: the first account made becomes the main admin
+  $('gate-setup').addEventListener('submit', async function(e){
     e.preventDefault();
     fclear('s-err');
-    var name = $('s-name').value.trim(), user = $('s-user').value, p1 = $('s-pass').value, p2 = $('s-pass2').value;
+    var form = this, name = $('s-name').value.trim(), user = $('s-user').value, p1 = $('s-pass').value, p2 = $('s-pass2').value;
     var msg = !name ? 'Enter your name.' : !validUsername(user) ? USERNAME_RULE : p1.length<6 ? PASS_RULE : p1!==p2 ? "Passwords don't match." : '';
     if(msg){ ferr('s-err', msg); return; }
-    var code = newRecoveryCode(), pw = makeSecret(p1), rc = makeSecret(normCode(code));
-    accounts = { admin:{ id:'admin', name:name, username:normUser(user), salt:pw.salt, hash:pw.hash, recSalt:rc.salt, recHash:rc.hash }, users:[] };
-    saveAccounts();
-    showRecovery(code, 'The admin account is ready. Save this recovery code somewhere safe.', function(){ startSession('admin', accounts.admin); });
+    if(noNet('s-err')) return;
+    gateBusy(form, true);
+    try{
+      keepSignedIn = true;
+      var r = await sb.auth.signUp({ email:newEmail(), password:p1 });
+      if(r.error) throw r.error;
+      var code = newRecoveryCode();
+      var c = await sb.rpc('claim_first_admin', { p_username:normUser(user), p_name:name, p_code:normCode(code) });
+      if(c.error) throw c.error;
+      if(!c.data){
+        await sb.auth.signOut({ scope:'local' });
+        ferr('s-err', 'An admin account already exists. Sign in instead.');
+        setTimeout(function(){ showGate('login'); }, 1800);
+        return;
+      }
+      await loadStaff();
+      var me = staffList.find(function(x){ return x.main; });
+      showRecovery(code, 'The admin account is ready. Save this recovery code somewhere safe.', function(){ startSession(me); offerUpload(); });
+    }catch(err){ ferr('s-err', 'Could not create the account: '+(err.message || err)); }
+    finally{ gateBusy(form, false); }
   });
 
-  $('gate-recover').addEventListener('submit', function(e){
+  $('gate-recover').addEventListener('submit', async function(e){
     e.preventDefault();
     fclear('r-err');
-    var code = normCode($('r-code').value), p1 = $('r-pass').value, p2 = $('r-pass2').value;
-    var ok = code && hashSecret(code, accounts.admin.recSalt)===accounts.admin.recHash;
-    var msg = !ok ? "That recovery code isn't right." : p1.length<6 ? PASS_RULE : p1!==p2 ? "Passwords don't match." : '';
+    var form = this, code = normCode($('r-code').value), p1 = $('r-pass').value, p2 = $('r-pass2').value;
+    var msg = !code ? "Enter the recovery code." : p1.length<6 ? PASS_RULE : p1!==p2 ? "Passwords don't match." : '';
     if(msg){ ferr('r-err', msg); return; }
-    var pw = makeSecret(p1), ncode = newRecoveryCode(), rc = makeSecret(normCode(ncode));
-    accounts.admin.salt = pw.salt; accounts.admin.hash = pw.hash;
-    accounts.admin.recSalt = rc.salt; accounts.admin.recHash = rc.hash;
-    saveAccounts();
-    showRecovery(ncode, 'Password reset. Your old recovery code no longer works, so save this new one.', function(){ startSession('admin', accounts.admin); });
+    if(noNet('r-err')) return;
+    gateBusy(form, true);
+    try{
+      var r = await sb.rpc('recover_admin', { p_code:code, p_password:p1 });
+      if(r.error) throw r.error;
+      if(!r.data){ ferr('r-err', "That recovery code isn't right."); return; }
+      var em = await sb.rpc('login_email', { p_username:r.data });
+      keepSignedIn = false;
+      var s2 = await sb.auth.signInWithPassword({ email:em.data, password:p1 });
+      if(s2.error) throw s2.error;
+      var ncode = newRecoveryCode();
+      await sb.rpc('set_recovery_code', { p_code:normCode(ncode) });
+      await loadStaff();
+      var me = staffList.find(function(x){ return x.main; });
+      showRecovery(ncode, 'Password reset. Your old recovery code no longer works, so save this new one.', function(){ startSession(me); });
+    }catch(err){ ferr('r-err', 'Could not reach the server. Check the signal and try again.'); }
+    finally{ gateBusy(form, false); }
   });
 
   /* ---------- recovery code dialog ---------- */
@@ -1688,7 +1994,9 @@
   $('signout').addEventListener('click', function(){
     saveDraft();   // an unfinished ticket waits for this person's next sign-in
     draftReady = false;
-    session = null; keepSignedIn = false; storeSession();
+    session = null; stopSync();
+    if(sb) sb.auth.signOut({ scope:'local' }).catch(function(){});
+    keepSignedIn = false;
     cart = []; boCart = []; hwCart = [];
     $('customer').value = ''; $('cust-select').value = '';
     closeMore();
@@ -1722,15 +2030,16 @@
   }
 
   function renderAccounts(){
-    if(!can('accounts') || !accounts) return;
-    var a = accounts.admin;
+    if(!can('accounts') || !accounts || !accounts.admin) return;
+    renderLegacy();
+    var a = session.main ? accounts.admin : (accounts.admin2 || accounts.admin);
     $('me-card').innerHTML =
       '<div class="me-row"><div><div class="name">'+esc(a.name)+' <span class="badge admin" style="margin-left:6px;">Admin</span></div>'+
         '<div class="meta">'+esc(a.username)+'</div></div>'+
         '<div class="acct-actions"><button class="btn sm" data-act="me-pw">Change password</button>'+
-        (session.id==='admin' ? '<button class="btn sm" data-act="me-code">New recovery code</button>' : '')+'</div></div>';
-    var other = session.id==='admin' ? accounts.admin2 : accounts.admin, a2 = '';
-    if(session.id==='admin'){
+        (session.main ? '<button class="btn sm" data-act="me-code">New recovery code</button>' : '')+'</div></div>';
+    var other = session.main ? accounts.admin2 : accounts.admin, a2 = '';
+    if(session.main){
       a2 = other
         ? '<div class="acct-row" style="grid-template-columns:1fr auto;"><div><div class="name">'+esc(other.name)+' <span class="badge admin" style="margin-left:6px;">Admin</span></div><div class="meta">'+esc(other.username)+'</div></div>'+
           '<div class="acct-actions"><button class="btn sm" data-act="a2-edit">Edit</button><button class="btn sm" data-act="a2-pw">Password</button><button class="btn sm" data-act="a2-del">Delete</button></div></div>'
@@ -1771,33 +2080,98 @@
     else if(act==='edit' && u) openAcct(u, u.slot);
     else if(act==='pw' && u) openPw(u);
     else if(act==='me-pw') openPw(null);
-    else if(act==='a2-create' && session.id==='admin') openAcct(null, 'admin2');
-    else if(act==='a2-edit' && session.id==='admin' && accounts.admin2) openAcct(accounts.admin2, 'admin2');
-    else if(act==='a2-pw' && session.id==='admin' && accounts.admin2) openPw(accounts.admin2);
-    else if(act==='a2-del' && session.id==='admin' && accounts.admin2){
-      askConfirm('Delete 2nd admin', 'Delete '+accounts.admin2.name+'? They will no longer be able to sign in. Their past tickets stay in Sales with their name.', 'Delete', function(){
-        accounts.admin2 = null; delete accounts.admin2; saveAccounts(); renderAccounts(); flash('Deleted the 2nd admin.');
+    else if(act==='a2-create' && session.main) openAcct(null, 'admin2');
+    else if(act==='a2-edit' && session.main && accounts.admin2) openAcct(accounts.admin2, 'admin2');
+    else if(act==='a2-pw' && session.main && accounts.admin2) openPw(accounts.admin2);
+    else if(act==='a2-del' && session.main && accounts.admin2){
+      var a2 = accounts.admin2;
+      askConfirm('Delete 2nd admin', 'Delete '+a2.name+'? They will no longer be able to sign in. Their past tickets stay in Sales with their name.', 'Delete', function(){
+        acctCall(sb.rpc('admin_delete_user', { p_user:a2.id }), 'Deleted the 2nd admin.');
       });
     }
     else if(act==='toggle' && u){
-      u.active = !u.active; saveAccounts(); renderAccounts();
-      flash(u.name+' is now '+(u.active ? 'active.' : 'turned off. They can no longer sign in.'));
+      acctCall(sb.from('staff').update({ active:!u.active }).eq('user_id', u.id), u.name+' is now '+(!u.active ? 'active.' : 'turned off. They can no longer sign in.'));
     }
     else if(act==='del' && u){
       askConfirm('Delete account', 'Delete '+u.name+' ('+u.username+')? Their past tickets stay in Sales with their name. This cannot be undone.', 'Delete', function(){
-        accounts.users = accounts.users.filter(function(x){ return x.id!==u.id; });
-        saveAccounts(); renderAccounts(); flash('Deleted '+u.name+'.');
+        acctCall(sb.rpc('admin_delete_user', { p_user:u.id }), 'Deleted '+u.name+'.');
       });
     }
     else if(act==='me-code'){
       askConfirm('New recovery code', 'This replaces your current recovery code. The old one will stop working.', 'Make new code', function(){
-        var code = newRecoveryCode(), rc = makeSecret(normCode(code));
-        accounts.admin.recSalt = rc.salt; accounts.admin.recHash = rc.hash;
-        saveAccounts();
-        showRecovery(code, 'Here is your new recovery code. The old one no longer works.', function(){ flash('Recovery code replaced.'); });
+        if(!navigator.onLine){ flash(NET_RULE); return; }
+        var code = newRecoveryCode();
+        sb.rpc('set_recovery_code', { p_code:normCode(code) }).then(function(r){
+          if(r.error || !r.data){ flash('Could not save a new recovery code. Try again.'); return; }
+          showRecovery(code, 'Here is your new recovery code. The old one no longer works.', function(){ flash('Recovery code replaced.'); });
+        });
+      });
+    }
+    else if(act==='legacy-up') uploadLegacy();
+    else if(act==='legacy-skip'){
+      askConfirm('Skip this device\'s old data', 'Hide the upload card? The old data stays on this device; it is not deleted.', 'Hide', function(){
+        try{ localStorage.setItem('tally:legacy-uploaded', 'skip'); }catch(e){} renderAccounts();
       });
     }
   });
+  // Run an account change on the server, then refresh the list
+  function acctCall(promise, okMsg){
+    if(!navigator.onLine){ flash(NET_RULE); return; }
+    Promise.resolve(promise).then(function(r){
+      if(r.error || r.data===false){ flash('That did not save. '+(r.error ? r.error.message : 'You may not have permission.')); return; }
+      return loadStaff().then(function(){ renderAccounts(); flash(okMsg); });
+    }, function(){ flash('Could not reach the server. Try again.'); });
+  }
+
+  /* ---------- data kept on this device before shared storage ---------- */
+  var LEGACY_LABELS = { stock:['lumber item','lumber items'], hw:['hardware item','hardware items'], sales:['ticket','tickets'], cust:['customer','customers'],
+    jobs:['job','jobs'], bo:['back order','back orders'], review:['approval','approvals'], maps:['map','maps'] };
+  function legacyRead(c){ try{ return JSON.parse(localStorage.getItem('tally:legacy:'+KEYS[c]) || 'null'); }catch(e){ return null; } }
+  function legacySummary(){
+    try{ if(localStorage.getItem('tally:legacy-uploaded')) return ''; }catch(e){ return ''; }
+    var parts = [];
+    Object.keys(LEGACY_LABELS).forEach(function(c){
+      var v = legacyRead(c);
+      if(Array.isArray(v) && v.length) parts.push(v.length.toLocaleString()+' '+LEGACY_LABELS[c][v.length===1 ? 0 : 1]);
+    });
+    return parts.join(', ');
+  }
+  function renderLegacy(){
+    var el = $('legacy-card'), sum = session && session.role==='admin' ? legacySummary() : '';
+    el.innerHTML = sum ? '<div class="legacy"><h3>This device has data from before shared storage</h3>'+
+      '<p class="meta" style="margin:0 0 12px;">'+esc(sum)+', plus any photos and map pictures. Upload it once so everyone shares it. '+
+      'Use the device that has your real data. Nothing already shared is overwritten.</p>'+
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="btn primary" data-act="legacy-up">Upload this device\'s data</button>'+
+      '<button class="btn" data-act="legacy-skip">Not this device</button></div></div>' : '';
+  }
+  function offerUpload(){
+    var sum = legacySummary();
+    if(!sum) return;
+    askConfirm('Upload this device\'s data?', 'This device has '+sum+' from before shared storage. Upload it now so everyone shares it? You can also do this later from Accounts.', 'Upload', uploadLegacy);
+  }
+  async function uploadLegacy(){
+    if(!navigator.onLine){ flash(NET_RULE); toast(NET_RULE); return; }
+    var added = 0;
+    Object.keys(LEGACY_LABELS).forEach(function(c){
+      var raw = legacyRead(c);
+      if(!Array.isArray(raw)) return;
+      if(c==='stock' && raw.some(function(i){ return 'species' in i; })) raw = mergeBySize(raw);
+      var arr = getColl(c), have = {};
+      arr.forEach(function(i){ have[String(i.id)] = true; });
+      raw.forEach(function(i){ if(i && i.id!=null && !have[String(i.id)]){ arr.push(i); added++; } });
+      save(KEYS[c], arr);
+    });
+    var q = legacyRead('seq');
+    if(q && typeof q.n==='number' && q.n>nextNo) nextNo = q.n;
+    fixNextNo();
+    save(KEYS.seq, { n:nextNo });
+    var files = await idbKeys().catch(function(){ return []; });
+    files.forEach(function(id){ upq[String(id)] = 'put'; });
+    try{ localStorage.setItem('tally:legacy-uploaded', '1'); }catch(e){}
+    flushSoon();
+    renderAll();
+    toast('Uploading '+added.toLocaleString()+' records'+(files.length ? ' and '+files.length+' photos' : '')+'. Keep the app open until the "Saving" note at the top goes away.');
+  }
 
   /* ---------- create / edit user ---------- */
   var editingAcct = null, acctSlot = null;
@@ -1816,35 +2190,35 @@
   }
   function closeAcct(){ $('acct-overlay').classList.remove('open'); }
   $('a-gen').addEventListener('click', function(){ $('a-pass').value = newPassword(); });
-  $('acct-save').addEventListener('click', function(){
+  $('acct-save').addEventListener('click', async function(){
     if(!can('accounts')) return;
     fclear('a-err');
-    var name = $('a-name').value.trim(), user = $('a-user').value, pass = $('a-pass').value;
+    var btn = this, name = $('a-name').value.trim(), user = $('a-user').value, pass = $('a-pass').value;
     var msg = !name ? 'Enter a name.' :
       !validUsername(user) ? USERNAME_RULE :
       usernameTaken(user, editingAcct) ? 'That username is already taken.' :
       (!editingAcct && pass.length<6) ? PASS_RULE : '';
     if(!msg && !editingAcct && acctSlot!=='admin2' && (accounts.users.length>=MAX_USERS || accounts.users.some(function(x){ return x.slot===acctSlot; }))) msg = 'All 10 user slots are in use.';
+    if(!msg && !navigator.onLine) msg = NET_RULE;
     if(msg){ ferr('a-err', msg); return; }
-    if(acctSlot==='admin2'){
-      if(editingAcct){ accounts.admin2.name = name; accounts.admin2.username = normUser(user); flash('Saved changes to '+name+'.'); }
-      else {
-        var s2 = makeSecret(pass);
-        accounts.admin2 = { id:'admin2', name:name, username:normUser(user), salt:s2.salt, hash:s2.hash };
-        flash('Created 2nd admin '+name+'. Give them the username '+normUser(user)+' and the password you set.');
+    btn.disabled = true;
+    try{
+      if(editingAcct){
+        var r = await sb.from('staff').update({ name:name, username:normUser(user) }).eq('user_id', editingAcct);
+        if(r.error) throw r.error;
+        flash('Saved changes to '+name+'.');
+      } else {
+        var su = await maker().auth.signUp({ email:newEmail(), password:pass });
+        if(su.error) throw su.error;
+        var ins = await sb.from('staff').insert({ user_id:su.data.user.id, username:normUser(user), name:name,
+          role:acctSlot==='admin2' ? 'admin' : 'user', slot:acctSlot==='admin2' ? null : acctSlot });
+        if(ins.error) throw ins.error;
+        flash((acctSlot==='admin2' ? 'Created 2nd admin ' : 'Created ')+name+'. Give them the username '+normUser(user)+' and the password you set.');
       }
-      saveAccounts(); closeAcct(); renderAccounts(); return;
-    }
-    if(editingAcct){
-      var u = accounts.users.find(function(x){ return x.id===editingAcct; });
-      if(u){ u.name = name; u.username = normUser(user); }
-      flash('Saved changes to '+name+'.');
-    } else {
-      var sec = makeSecret(pass);
-      accounts.users.push({ id:uid('us'), slot:acctSlot, name:name, username:normUser(user), salt:sec.salt, hash:sec.hash, active:true });
-      flash('Created '+name+'. Give them the username '+normUser(user)+' and the password you set.');
-    }
-    saveAccounts(); closeAcct(); renderAccounts();
+      await loadStaff();
+      closeAcct(); renderAccounts();
+    }catch(err){ ferr('a-err', err && err.code==='23505' ? 'That username is already taken.' : 'Could not save: '+((err && err.message) || err)); }
+    finally{ btn.disabled = false; }
   });
   $('acct-cancel').addEventListener('click', closeAcct);
   $('acct-close').addEventListener('click', closeAcct);
@@ -1869,24 +2243,31 @@
   }
   function closePw(){ $('pw-overlay').classList.remove('open'); $('pw-cur').value = ''; $('pw-new').value = ''; $('pw-conf').value = ''; }
   $('pw-gen').addEventListener('click', function(){ $('pw-new').value = newPassword(); });
-  $('pw-save').addEventListener('click', function(){
+  $('pw-save').addEventListener('click', async function(){
     if(!session) return;
     fclear('pw-err');
-    var self = pwTarget===session.id;
+    var btn = this, self = pwTarget===session.id;
     if(!self && !can('accounts')) return;
-    var rec = adminRec(pwTarget) || accounts.users.find(function(x){ return x.id===pwTarget; });
-    if(!rec) return;
     var np = $('pw-new').value;
-    var msg = '';
-    if(self && hashSecret($('pw-cur').value, rec.salt)!==rec.hash) msg = 'Current password is incorrect.';
-    else if(np.length<6) msg = PASS_RULE;
-    else if(self && np!==$('pw-conf').value) msg = "Passwords don't match.";
+    var msg = np.length<6 ? PASS_RULE : (self && np!==$('pw-conf').value) ? "Passwords don't match." : !navigator.onLine ? NET_RULE : '';
     if(msg){ ferr('pw-err', msg); return; }
-    var sec = makeSecret(np);
-    rec.salt = sec.salt; rec.hash = sec.hash;
-    saveAccounts(); closePw();
-    if(self) toast('Your password was changed.');
-    else flash(self ? 'Your password was changed.' : 'Password reset for '+rec.name+'. Give them the new password.');
+    btn.disabled = true;
+    try{
+      if(self){
+        var me = (await sb.auth.getUser()).data.user;
+        var chk = await sb.auth.signInWithPassword({ email:me.email, password:$('pw-cur').value });
+        if(chk.error){ ferr('pw-err', 'Current password is incorrect.'); return; }
+        var up = await sb.auth.updateUser({ password:np });
+        if(up.error) throw up.error;
+        closePw(); toast('Your password was changed.');
+      } else {
+        var who = staffList.find(function(x){ return x.user_id===pwTarget; });
+        var r = await sb.rpc('admin_set_password', { p_user:pwTarget, p_password:np });
+        if(r.error || !r.data) throw (r.error || new Error('not allowed'));
+        closePw(); flash('Password reset for '+(who ? who.name : 'them')+'. Give them the new password.');
+      }
+    }catch(err){ ferr('pw-err', 'Could not change the password: '+((err && err.message) || err)); }
+    finally{ btn.disabled = false; }
   });
   $('pw-cancel').addEventListener('click', closePw);
   $('pw-close').addEventListener('click', closePw);
@@ -3189,9 +3570,22 @@
       });
     });
   }
-  function photoPut(id, blob){ return photoTx('readwrite', function(s){ return s.put(blob, id); }); }
-  function photoGet(id){ return photoTx('readonly', function(s){ return s.get(id); }); }
-  function photoDel(id){ return photoTx('readwrite', function(s){ return s.delete(id); }); }
+  function idbPut(id, blob){ return photoTx('readwrite', function(s){ return s.put(blob, id); }); }
+  function idbGet(id){ return photoTx('readonly', function(s){ return s.get(id); }); }
+  function idbDel(id){ return photoTx('readwrite', function(s){ return s.delete(id); }); }
+  function idbKeys(){ return photoTx('readonly', function(s){ return s.getAllKeys(); }); }
+  // Photos and map pictures: kept on this device and in the shared file storage
+  function photoPut(id, blob){ return idbPut(id, blob).then(function(){ upq[id] = 'put'; flushSoon(); }); }
+  function photoGet(id){
+    return idbGet(id).then(function(blob){
+      if(blob || !sb || !sbUserId || !navigator.onLine) return blob;
+      return sb.storage.from('files').download(id).then(function(r){
+        if(r.error || !r.data) return undefined;
+        return idbPut(id, r.data).then(function(){ return r.data; }, function(){ return r.data; });
+      }, function(){ return undefined; });
+    });
+  }
+  function photoDel(id){ return idbDel(id).then(function(){ upq[id] = 'del'; flushSoon(); }); }
   // Phone photos are large; a 2000px JPEG still reads fine and is a fraction of the size
   function shrinkImage(file){
     return new Promise(function(res, rej){
@@ -5097,29 +5491,41 @@
     return out;
   }
   (async function init(){
-    stock = await load(KEYS.stock);
-    if(stock.some(function(i){ return 'species' in i; })){
-      stock = mergeBySize(stock);
-      save(KEYS.stock, stock);
+    // Start from the on-device copy so the app opens right away, even with no signal
+    for(var i=0; i<SYNC_COLLS.length; i++){
+      var c = SYNC_COLLS[i], v = await load(KEYS[c]);
+      if(c==='seq'){ setColl(c, v); snapFrom(c, v); continue; }
+      v = Array.isArray(v) ? v : [];
+      if(c==='review') v = v.filter(function(d){ return d.status!=='approved' || Date.now() - new Date(d.reviewedDate) < 30*864e5; });
+      setColl(c, v); snapFrom(c, v);
     }
-    sales = await load(KEYS.sales);
-    customers = await load(KEYS.cust);
-    backorders = await load(KEYS.bo);
-    jobs = await load(KEYS.jobs);
-    hardware = await load(KEYS.hw);
-    maps = await load(KEYS.maps);
-    reviews = (await load(KEYS.review)).filter(function(d){   // approved ones drop off the list after 30 days
-      return d.status!=='approved' || Date.now() - new Date(d.reviewedDate) < 30*864e5;
+    // local changes not sent yet sit on top of the copy
+    Object.keys(outbox).forEach(function(k){
+      var op = outbox[k], arr = op.coll==='seq' ? null : getColl(op.coll);
+      if(!arr){ if(op.coll==='seq' && op.data) setColl('seq', op.data); return; }
+      var at = arr.findIndex(function(x){ return String(x.id)===op.id; });
+      if(op.data){ if(at>-1) arr[at] = op.data; else arr.push(op.data); } else if(at>-1) arr.splice(at, 1);
     });
-    var q = await load(KEYS.seq);
-    if(q && typeof q.n==='number') nextNo = q.n;
-    sales.forEach(function(s){
-      var m = /(\d+)$/.exec(s.number||'');
-      if(m && Number(m[1]) >= nextNo) nextNo = Number(m[1]) + 1;
-    });
-    var a = await load(KEYS.acct);
-    accounts = (a && !Array.isArray(a) && a.admin) ? a : null;
-    if(!(accounts && restoreSession())) showGate(accounts ? 'login' : 'setup');
+    fixNextNo();
+    if(!sb){ showGate('login'); ferr('g-err', 'The app could not load its sign-in. Reload the page.'); return; }
+    // Already signed in on this device: open straight away (works with no signal), then catch up
+    var uid0 = storedUserId(), me = uid0 && staffList.find(function(x){ return x.user_id===uid0 && x.active; });
+    if(me){
+      startSession(me);
+      if(navigator.onLine) loadStaff().then(function(){
+        var now = staffList.find(function(x){ return x.user_id===uid0; });
+        if(!now || !now.active){ $('signout').click(); ferr('g-err', 'This account is turned off. Ask the admin to turn it back on.'); }
+      }, function(){});
+      return;
+    }
+    if(uid0 && navigator.onLine){
+      try{ await loadStaff(); }catch(e){}
+      me = staffList.find(function(x){ return x.user_id===uid0 && x.active; });
+      if(me){ startSession(me); return; }
+    }
+    var exists = true;
+    if(navigator.onLine){ try{ var r = await sb.rpc('staff_exists'); if(!r.error) exists = !!r.data; }catch(e){} }
+    showGate(exists ? 'login' : 'setup');
   })();
 })();
 </script>
