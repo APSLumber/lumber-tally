@@ -407,6 +407,24 @@
   .pin span{padding:3px 8px;border-radius:12px;background:var(--green);color:#fff;font:700 12px 'Inter',sans-serif;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,0.3);}
   .pin::after{content:'';width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:8px solid var(--green);}
   .pin.empty span{background:#6E7A72;} .pin.empty::after{border-top-color:#6E7A72;}
+  .bay-hit{position:absolute;border-radius:6px;cursor:pointer;}
+  .bay-hit:hover{background:rgba(47,93,58,0.08);}
+  .bay-hit.sel{outline:4px solid var(--gold);outline-offset:-2px;background:rgba(184,134,11,0.10);}
+  .bay-view{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin-top:12px;}
+  .bay-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:12px;}
+  .bay-head h3{margin:0;}
+  .bay-rack{border-left:10px solid #6B5134;border-right:10px solid #6B5134;background:#F4F1E8;padding-top:8px;}
+  .bay-shelf{display:flex;flex-direction:column;justify-content:flex-end;width:100%;min-height:120px;padding:10px 8px 0;margin:0;border:none;background:none;cursor:pointer;text-align:left;font:inherit;color:inherit;}
+  .bay-shelf:hover{background:rgba(47,93,58,0.06);}
+  .bay-shelf.sel{background:rgba(184,134,11,0.14);}
+  .bay-items{display:flex;flex-wrap:wrap;gap:6px;align-items:flex-end;min-height:56px;}
+  .bay-box{display:flex;flex-direction:column;background:#fff;border:2px solid var(--green);border-radius:4px;padding:6px 9px;min-width:84px;box-shadow:0 1px 2px rgba(0,0,0,0.15);}
+  .bay-box.lu{border-color:#8A6A45;background:#FBF6EC;}
+  .bay-box .bn{font:700 13px 'Inter',sans-serif;}
+  .bay-box .bq{font-size:12px;color:var(--soft);}
+  .bay-empty{font-size:13px;color:var(--soft);font-style:italic;padding-bottom:4px;}
+  .bay-board{display:block;margin:6px -8px 0;padding:2px 10px;background:#8A6A45;color:#fff;font:700 12px 'Inter',sans-serif;}
+  .bay-shelf.hit .bay-board{background:var(--rust);}
   .pin.hit{z-index:1;} .pin.sel{z-index:2;}
   .pin.sel span{background:var(--ink);outline:3px solid var(--gold);} .pin.sel::after{border-top-color:var(--ink);}
   .pin.hit span{background:var(--rust);animation:pinpulse 1.1s ease-in-out infinite;} .pin.hit::after{border-top-color:var(--rust);}
@@ -3875,6 +3893,18 @@
     if(mapUrls[m.id]) return Promise.resolve(mapUrls[m.id]);
     return photoGet('map_'+m.id).then(function(blob){ return blob ? (mapUrls[m.id] = URL.createObjectURL(blob)) : null; });
   }
+  var mapBay = null;
+  // A drawn shelving room: which bay and shelf each spot is (maps drawn before this was kept get it from the spot name)
+  function mapRoom(m){
+    if(!m) return null;
+    if(!m.room && m.name===HW_ROOM.name && m.spots.some(function(s){ return /^Bay \d+ · Shelf \d+$/.test(s.name); })) m.room = HW_ROOM;
+    if(m.room) m.spots.forEach(function(s){
+      if(s.bay) return;
+      var x = /^Bay (\d+) · Shelf (\d+)$/.exec(s.name);
+      if(x){ s.bay = Number(x[1]); s.shelf = Number(x[2]); }
+    });
+    return m.room || null;
+  }
   function curMap(){ return maps.find(function(m){ return m.id===mapId; }) || maps[0] || null; }
   function saveMaps(){ save(KEYS.maps, maps); }
 
@@ -3901,15 +3931,19 @@
     $('map-edit-toggle').classList.toggle('active', mapEditing);
     $('map-edit-toggle').textContent = mapEditing ? 'Done editing' : 'Edit spots';
     $('map-hint').textContent = mapEditing ? 'Tap an empty place on the map to add a spot. Drag a spot to move it, or tap it to rename or delete it.'
-      : 'Tap a spot to see what is stored there. Search above to find an item.';
+      : mapRoom(m) ? 'Tap a bay to see its shelves from the front. Search above to find an item.' : 'Tap a spot to see what is stored there. Search above to find an item.';
     var stage = $('map-stage');
     stage.classList.toggle('editing', mapEditing);
     stage.style.width = mapWidth();
     var token = m.id;
     mapImgUrl(m).then(function(url){
-      if(curMap()!==m || stage.dataset.map===token+'|'+url+'|'+mapEditing+'|'+JSON.stringify(m.spots)+'|'+JSON.stringify(mapHits)+'|'+mapSel+'|'+stock.length+'|'+hardware.length) return drawSpotPanel();
-      stage.dataset.map = token+'|'+url+'|'+mapEditing+'|'+JSON.stringify(m.spots)+'|'+JSON.stringify(mapHits)+'|'+mapSel+'|'+stock.length+'|'+hardware.length;
+      if(curMap()!==m || stage.dataset.map===token+'|'+url+'|'+mapEditing+'|'+JSON.stringify(m.spots)+'|'+JSON.stringify(mapHits)+'|'+mapSel+'|'+mapBay+'|'+stock.length+'|'+hardware.length) return drawSpotPanel();
+      stage.dataset.map = token+'|'+url+'|'+mapEditing+'|'+JSON.stringify(m.spots)+'|'+JSON.stringify(mapHits)+'|'+mapSel+'|'+mapBay+'|'+stock.length+'|'+hardware.length;
+      var room = !mapEditing && mapRoom(m), geo = room && roomBays(room);
       stage.innerHTML = (url ? '<img src="'+url+'" alt="'+esc(m.name)+' map" draggable="false">' : '<div class="empty">The map picture is not on this device.</div>')+
+        (geo ? geo.bays.map(function(b){
+          return '<div class="bay-hit'+(mapBay===b.n ? ' sel' : '')+'" data-bay="'+b.n+'" title="Bay '+b.n+'" style="left:'+(b.x/geo.tw*100)+'%;top:'+(b.y/geo.th*100)+'%;width:'+(b.w/geo.tw*100)+'%;height:'+(b.h/geo.th*100)+'%;"></div>';
+        }).join('') : '')+
         m.spots.map(function(s){
           var n = itemsAt(s.id).length;
           return '<button class="pin'+(n ? '' : ' empty')+(mapHits[s.id] ? ' hit' : '')+(mapSel===s.id ? ' sel' : '')+'" data-pin="'+s.id+'" style="left:'+(s.x*100)+'%;top:'+(s.y*100)+'%;">'+
@@ -3922,7 +3956,8 @@
   function drawSpotPanel(){
     var m = curMap(), s = m && m.spots.find(function(x){ return x.id===mapSel; });
     var el = $('map-spot');
-    if(!s){ el.innerHTML = ''; return; }
+    var bay = m && mapBay && mapRoom(m) ? bayView(m, mapBay) : '';
+    if(!s){ el.innerHTML = bay; bindBayView(); return; }
     var admin = session.role==='admin', list = itemsAt(s.id);
     var rows = list.map(function(e){
       var i = e.item;
@@ -3939,7 +3974,7 @@
         (lu.length ? '<optgroup label="Lumber">'+lu.map(function(i){ return '<option value="lu:'+i.id+'">'+esc(dims(i))+'</option>'; }).join('')+'</optgroup>' : '')+
       '</select></div>';
     }
-    el.innerHTML = '<div class="spot-panel"><div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;">'+
+    el.innerHTML = bay + '<div class="spot-panel"><div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;">'+
       '<div><h3>'+esc(s.name)+'</h3><div class="meta">'+esc(m.name)+' · '+list.length+(list.length===1?' item':' items')+'</div></div>'+
       (admin ? '<button class="btn sm" id="spot-rename">Rename</button>' : '')+'</div>'+rows+addOpts+'</div>';
     el.querySelectorAll('[data-unplace]').forEach(function(b){
@@ -3947,6 +3982,33 @@
     });
     if($('spot-add')) $('spot-add').addEventListener('change', function(){ if(this.value) placeItem(this.value, s.id, true); });
     if($('spot-rename')) $('spot-rename').addEventListener('click', function(){ openSpotEdit(s); });
+    bindBayView();
+  }
+  // One bay seen from the aisle: shelves stacked top to bottom with what sits on each
+  function bayView(m, n){
+    var r = mapRoom(m);
+    var shelves = m.spots.filter(function(s){ return s.bay===n; }).sort(function(a, b){ return b.shelf - a.shelf; });
+    if(!shelves.length) return '';
+    return '<div class="bay-view"><div class="bay-head"><div><h3>Bay '+n+'</h3><div class="meta">Front view from the aisle · '+r.bayLen+'\u2032 wide · '+shelves.length+' shelves</div></div>'+
+      '<button class="btn sm" id="bay-close">Close</button></div>'+
+      '<div class="bay-rack">'+shelves.map(function(s){
+        var items = itemsAt(s.id).map(function(e){
+          var i = e.item;
+          return '<span class="bay-box'+(e.kind==='lu' ? ' lu' : '')+'"><span class="bn">'+esc(e.kind==='lu' ? dims(i) : (i.part || i.name))+'</span>'+
+            '<span class="bq">'+(e.kind==='lu' ? qtyText(i.bunkSize, i.quantity) : unitText(i.unit, i.quantity))+'</span></span>';
+        }).join('');
+        return '<button type="button" class="bay-shelf'+(mapSel===s.id ? ' sel' : '')+(mapHits[s.id] ? ' hit' : '')+'" data-shelf="'+s.id+'">'+
+          '<span class="bay-items">'+(items || '<span class="bay-empty">Empty shelf</span>')+'</span>'+
+          '<span class="bay-board">'+esc(s.name.replace(/^Bay \d+ · /, ''))+'</span></button>';
+      }).join('')+'</div>'+
+      '<div class="meta" style="margin-top:8px;">'+(mapSel ? 'Details for the picked shelf are below.' : 'Tap a shelf to see or change what is on it.')+'</div></div>';
+  }
+  function bindBayView(){
+    var el = $('map-spot');
+    el.querySelectorAll('[data-shelf]').forEach(function(b){
+      b.addEventListener('click', function(){ mapSel = mapSel===b.dataset.shelf ? null : b.dataset.shelf; renderMap(); });
+    });
+    if($('bay-close')) $('bay-close').addEventListener('click', function(){ mapBay = null; mapSel = null; renderMap(); });
   }
   function placeItem(ref, spotId, on){
     var p = ref.split(':'), item = p[0]==='hw' ? hwById(p[1]) : stock.find(function(i){ return i.id===p[1]; });
@@ -3978,8 +4040,8 @@
       if(other){ mapId = other.id; renderMap(); }
     }
   }
-  $('map-search').addEventListener('input', function(e){ mapSearch = e.target.value.trim().toLowerCase(); mapSel = null; renderMap(); });
-  $('map-tabs').addEventListener('click', function(e){ var b = e.target.closest('[data-map]'); if(b){ mapId = b.dataset.map; mapSel = null; renderMap(); } });
+  $('map-search').addEventListener('input', function(e){ mapSearch = e.target.value.trim().toLowerCase(); mapSel = null; mapBay = null; renderMap(); });
+  $('map-tabs').addEventListener('click', function(e){ var b = e.target.closest('[data-map]'); if(b){ mapId = b.dataset.map; mapSel = null; mapBay = null; renderMap(); } });
   $('map-edit-toggle').addEventListener('click', function(){ mapEditing = !mapEditing; renderMap(); });
   $('map-manage').addEventListener('click', function(){ openMapEdit(curMap()); });
   function setMapZoom(dir){
@@ -3996,6 +4058,7 @@
   function showSpot(id){
     var s = spotById(id); if(!s) return;
     mapId = s.map.id; mapSel = id; mapEditing = false;
+    mapRoom(s.map); var sp = s.map.spots.find(function(x){ return x.id===id; }); mapBay = sp && sp.bay ? sp.bay : null;
     go('map');
     setTimeout(function(){
       var pin = document.querySelector('.pin[data-pin="'+id+'"]');
@@ -4041,7 +4104,17 @@
       openSpotEdit(null, { x:(e.clientX - r.left)/r.width, y:(e.clientY - r.top)/r.height });
       return;
     }
-    if(pin){ mapSel = mapSel===pin.dataset.pin ? null : pin.dataset.pin; renderMap(); if(mapSel) $('map-spot').scrollIntoView({ block:'nearest', behavior:'smooth' }); }
+    var bh = e.target.closest('.bay-hit');
+    if(pin){
+      mapSel = mapSel===pin.dataset.pin ? null : pin.dataset.pin;
+      var sp = mapSel && curMap().spots.find(function(x){ return x.id===mapSel; });
+      mapBay = sp && sp.bay ? sp.bay : null;
+    } else if(bh){
+      var n = Number(bh.dataset.bay);
+      mapBay = mapBay===n ? null : n; mapSel = null;
+    } else return;
+    renderMap();
+    if(mapSel || mapBay) setTimeout(function(){ $('map-spot').scrollIntoView({ block:'start', behavior:'smooth' }); }, 60);
   });
 
   /* ---------- add / rename / delete a spot ---------- */
@@ -4166,6 +4239,13 @@
   /* ---------- a shelving room drawn to scale from its measurements ---------- */
   // The hardware room: 18' deep x 7' wide, four 9' x 2' bays (two along each long wall, 3' aisle between), 2 shelves in each bay
   var HW_ROOM = { name:'Hardware room', depth:18, width:7, bayLen:9, bayDepth:2, shelves:2 };
+  function roomBays(r){
+    var px = 60, pad = 70, W = r.depth*px, H = r.width*px, perWall = Math.floor(r.depth/r.bayLen), out = [], n = 0;
+    [0, 1].forEach(function(side){
+      for(var k=0; k<perWall; k++){ n++; out.push({ n:n, x:pad + k*r.bayLen*px, y:side ? pad + H - r.bayDepth*px : pad, w:r.bayLen*px, h:r.bayDepth*px }); }
+    });
+    return { tw:W+pad*2, th:H+pad*2, bays:out };
+  }
   function roomDrawing(r){
     var px = 60, pad = 70, W = r.depth*px, H = r.width*px, perWall = Math.floor(r.depth/r.bayLen);
     var svg = [], spots = [], bay = 0;
@@ -4181,7 +4261,7 @@
         svg.push(t(x + w/2, y + (side ? h - 12 : 26), 'Bay '+bay, 22, 700, '#244A2E'));
         // one spot per shelf, spread along the bay
         for(var s=1; s<=r.shelves; s++){
-          spots.push({ id:uid('sp'), name:'Bay '+bay+' · Shelf '+s,
+          spots.push({ id:uid('sp'), name:'Bay '+bay+' · Shelf '+s, bay:bay, shelf:s,
             x:(x + w*(s-0.5)/r.shelves) / (W+pad*2), y:(y + h*0.72) / (H+pad*2) });
         }
       }
@@ -4197,10 +4277,10 @@
     return { svg:'<svg xmlns="http://www.w3.org/2000/svg" width="'+w+'" height="'+h+'" viewBox="0 0 '+w+' '+h+'">'+svg.join('')+'</svg>', w:w, h:h, spots:spots };
   }
   function addRoomMap(r){
-    var d = roomDrawing(r), m = { id:uid('map'), name:r.name, w:d.w, h:d.h, spots:d.spots };
+    var d = roomDrawing(r), m = { id:uid('map'), name:r.name, w:d.w, h:d.h, spots:d.spots, room:r };
     photoPut('map_'+m.id, new Blob([d.svg], { type:'image/svg+xml' })).then(function(){
       maps.push(m); mapId = m.id; saveMaps(); renderMap();
-      toast('Drew the '+r.name+' with '+d.spots.length+' shelf spots. Tap a shelf to put items on it.');
+      toast('Drew the '+r.name+'. Tap a bay to see its shelves from the front.');
     }, function(){ toast('The map could not be saved on this device.'); });
   }
 
