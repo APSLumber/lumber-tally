@@ -3893,17 +3893,40 @@
     if(mapUrls[m.id]) return Promise.resolve(mapUrls[m.id]);
     return photoGet('map_'+m.id).then(function(blob){ return blob ? (mapUrls[m.id] = URL.createObjectURL(blob)) : null; });
   }
-  var mapBay = null;
+  var mapBay = null, roomFilling = {};
   // A drawn shelving room: which bay and shelf each spot is (maps drawn before this was kept get it from the spot name)
   function mapRoom(m){
     if(!m) return null;
     if(!m.room && m.name===HW_ROOM.name && m.spots.some(function(s){ return /^Bay \d+ · Shelf \d+$/.test(s.name); })) m.room = HW_ROOM;
+    // The hardware room always follows the current HW_ROOM layout (e.g. when a shelf is added to every bay)
+    if(m.room && m.room.name===HW_ROOM.name && JSON.stringify(m.room)!==JSON.stringify(HW_ROOM)) m.room = HW_ROOM;
     if(m.room) m.spots.forEach(function(s){
       if(s.bay) return;
       var x = /^Bay (\d+) · Shelf (\d+)$/.exec(s.name);
       if(x){ s.bay = Number(x[1]); s.shelf = Number(x[2]); }
     });
+    if(m.room && !roomFilling[m.id]){
+      var bays = 2*Math.floor(m.room.depth/m.room.bayLen), missing = false;
+      for(var b=1; b<=bays; b++) for(var k=1; k<=m.room.shelves; k++)
+        if(!m.spots.some(function(s){ return s.bay===b && s.shelf===k; })) missing = true;
+      if(missing) fillRoom(m);
+    }
     return m.room || null;
+  }
+  // Add any shelves the room is missing, line the shelf spots up again and redraw the room picture. Items keep their shelves.
+  function fillRoom(m){
+    var d = roomDrawing(m.room);
+    d.spots.forEach(function(ns){
+      var old = m.spots.find(function(s){ return s.bay===ns.bay && s.shelf===ns.shelf; });
+      if(old){ old.x = ns.x; old.y = ns.y; } else m.spots.push(ns);
+    });
+    m.w = d.w; m.h = d.h; roomFilling[m.id] = true;
+    saveMaps();
+    photoPut('map_'+m.id, new Blob([d.svg], { type:'image/svg+xml' })).then(function(){
+      if(mapUrls[m.id]){ URL.revokeObjectURL(mapUrls[m.id]); delete mapUrls[m.id]; }
+      delete roomFilling[m.id];
+      if(currentView==='map') renderMap();
+    }, function(){ delete roomFilling[m.id]; });
   }
   function curMap(){ return maps.find(function(m){ return m.id===mapId; }) || maps[0] || null; }
   function saveMaps(){ save(KEYS.maps, maps); }
@@ -3947,7 +3970,7 @@
         m.spots.map(function(s){
           var n = itemsAt(s.id).length;
           return '<button class="pin'+(n ? '' : ' empty')+(mapHits[s.id] ? ' hit' : '')+(mapSel===s.id ? ' sel' : '')+'" data-pin="'+s.id+'" style="left:'+(s.x*100)+'%;top:'+(s.y*100)+'%;">'+
-            '<span>'+esc(s.name)+(n ? ' ('+n+')' : '')+'</span></button>';
+            '<span>'+esc(s.bay ? s.name.replace(/^Bay \d+ · /, '') : s.name)+(n ? ' ('+n+')' : '')+'</span></button>';
         }).join('');
       drawSpotPanel();
     });
@@ -4237,8 +4260,8 @@
   $('mapedit-overlay').addEventListener('click', function(e){ if(e.target.id==='mapedit-overlay') closeMapEdit(); });
 
   /* ---------- a shelving room drawn to scale from its measurements ---------- */
-  // The hardware room: 18' deep x 7' wide, four 9' x 2' bays (two along each long wall, 3' aisle between), 2 shelves in each bay
-  var HW_ROOM = { name:'Hardware room', depth:18, width:7, bayLen:9, bayDepth:2, shelves:2 };
+  // The hardware room: 18' deep x 7' wide, four 9' x 2' bays (two along each long wall, 3' aisle between), 3 shelves in each bay
+  var HW_ROOM = { name:'Hardware room', depth:18, width:7, bayLen:9, bayDepth:2, shelves:3 };
   function roomBays(r){
     var px = 60, pad = 70, W = r.depth*px, H = r.width*px, perWall = Math.floor(r.depth/r.bayLen), out = [], n = 0;
     [0, 1].forEach(function(side){
