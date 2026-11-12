@@ -3869,8 +3869,11 @@
     e.stopPropagation();
     showSpot(c.dataset.spot);
   }, true);
+  // Drawn rooms (the hardware room) hold hardware only; lumber can go on picture maps like the yard
+  function hwOnlyMap(m){ return !!(m && mapRoom(m)); }
   function itemsAt(spotId){
-    return stock.filter(function(i){ return (i.spots||[]).indexOf(spotId)>-1; }).sort(bySize).map(function(i){ return { kind:'lu', item:i }; })
+    var sp = spotById(spotId), noLumber = sp && hwOnlyMap(sp.map);
+    return stock.filter(function(i){ return !noLumber && (i.spots||[]).indexOf(spotId)>-1; }).sort(bySize).map(function(i){ return { kind:'lu', item:i }; })
       .concat(hardware.filter(function(h){ return (h.spots||[]).indexOf(spotId)>-1; }).sort(hwSort).map(function(h){ return { kind:'hw', item:h }; }));
   }
 
@@ -3884,13 +3887,15 @@
   function drawSpotPick(cid){
     var el = $(cid), sel = spotPicks[cid];
     var chips = sel.map(function(id){ var s = spotById(id); return '<span class="loc-chip">'+esc(spotName(s))+'<b data-rm="'+id+'" role="button" aria-label="Remove">×</b></span>'; }).join('');
+    var lumberPick = cid==='f-spots';
     var opts = maps.map(function(m){
+      if(lumberPick && hwOnlyMap(m)) return '';
       var left = m.spots.filter(function(s){ return sel.indexOf(s.id)<0; }).slice().sort(function(x, y){ return (x.bay||0)-(y.bay||0) || (x.shelf||0)-(y.shelf||0) || (x.sec||0)-(y.sec||0); });
       return left.length ? '<optgroup label="'+esc(m.name)+'">'+left.map(function(s){ return '<option value="'+s.id+'">'+esc(s.name)+'</option>'; }).join('')+'</optgroup>' : '';
     }).join('');
-    el.innerHTML = chips + (maps.length
+    el.innerHTML = chips + (opts
       ? '<select aria-label="Add a location"><option value="">'+(sel.length ? 'Add another spot…' : 'Pick a spot on the map…')+'</option>'+opts+'</select>'
-      : '<span class="meta">Set up a map under Inventory › Map to mark where things are kept.</span>');
+      : '<span class="meta">'+(lumberPick && maps.length ? 'The hardware room is for hardware only. Upload a picture of the yard under Inventory › Map to mark where lumber is kept.' : 'Set up a map under Inventory › Map to mark where things are kept.')+'</span>');
     el.querySelectorAll('[data-rm]').forEach(function(b){ b.addEventListener('click', function(){ spotPicks[cid] = sel.filter(function(x){ return x!==b.dataset.rm; }); drawSpotPick(cid); }); });
     var s = el.querySelector('select');
     if(s) s.addEventListener('change', function(){ if(s.value){ sel.push(s.value); drawSpotPick(cid); } });
@@ -3927,6 +3932,13 @@
       for(var b=1; b<=bays; b++) for(var k=1; k<=m.room.shelves; k++) for(var c=1; c<=secs; c++)
         if(!m.spots.some(function(s){ return s.bay===b && s.shelf===k && s.sec===c; })) missing = true;
       if(missing || redraw) fillRoom(m);
+      var ids = m.spots.map(function(x){ return x.id; }), cleared = false;
+      stock.forEach(function(i){
+        if(!i.spots) return;
+        var keep = i.spots.filter(function(x){ return ids.indexOf(x)<0; });
+        if(keep.length!==i.spots.length){ i.spots = keep; cleared = true; }
+      });
+      if(cleared) save(KEYS.stock, stock);
     }
     return m.room || null;
   }
@@ -3954,6 +3966,7 @@
     var m = curMap();
     mapId = m ? m.id : null;
     $('map-edit-toggle').hidden = !admin || !m;
+    $('map-search').placeholder = maps.length && maps.every(hwOnlyMap) ? 'Find hardware, like LUS28 or 16d' : 'Find lumber or hardware, like 2×6×12 or LUS28';
     $('map-manage').hidden = !admin;
     $('map-manage').textContent = m ? 'Map settings' : 'Add a map';
     $('map-tabs').hidden = maps.length<2;
@@ -4012,10 +4025,11 @@
     }).join('') || '<div class="sec-empty">Nothing is stored here yet.</div>';
     var addOpts = '';
     if(admin){
-      var lu = stock.filter(function(i){ return (i.spots||[]).indexOf(s.id)<0; }).sort(bySize);
+      var hwOnly = hwOnlyMap(m);
+      var lu = hwOnly ? [] : stock.filter(function(i){ return (i.spots||[]).indexOf(s.id)<0; }).sort(bySize);
       var hw = hardware.filter(function(h){ return (h.spots||[]).indexOf(s.id)<0; }).sort(hwSort);
-      addOpts = '<div class="spot-new"><button class="btn primary" id="spot-new-hw">+ New hardware here</button><button class="btn" id="spot-new-lu">+ New lumber here</button></div>'+
-        '<div class="spot-pick" style="margin-top:8px;"><select id="spot-add"><option value="">Move an item already in inventory here…</option>'+
+      addOpts = '<div class="spot-new"><button class="btn primary" id="spot-new-hw">+ New hardware here</button>'+(hwOnly ? '' : '<button class="btn" id="spot-new-lu">+ New lumber here</button>')+'</div>'+
+        '<div class="spot-pick" style="margin-top:8px;"><select id="spot-add"><option value="">'+(hwOnly ? 'Move hardware already in inventory here…' : 'Move an item already in inventory here…')+'</option>'+
         (hw.length ? '<optgroup label="Hardware">'+hw.map(function(h){ return '<option value="hw:'+h.id+'">'+esc(hwLabel(h))+'</option>'; }).join('')+'</optgroup>' : '')+
         (lu.length ? '<optgroup label="Lumber">'+lu.map(function(i){ return '<option value="lu:'+i.id+'">'+esc(dims(i))+'</option>'; }).join('')+'</optgroup>' : '')+
       '</select></div>';
@@ -4108,7 +4122,8 @@
     mapHits = {};
     if(!q){ el.innerHTML = ''; return; }
     var qs = q.replace(/\s+/g,'');
-    var hits = stock.filter(function(i){ return sizeHay(i).indexOf(q)>-1 || sizeHay(i).indexOf(qs)>-1; }).sort(bySize).map(function(i){ return { label:dims(i), mono:true, item:i, qty:qtyText(i.bunkSize, i.quantity) }; })
+    var lumberMaps = maps.some(function(m){ return !hwOnlyMap(m); });
+    var hits = stock.filter(function(i){ return lumberMaps && (sizeHay(i).indexOf(q)>-1 || sizeHay(i).indexOf(qs)>-1); }).sort(bySize).map(function(i){ return { label:dims(i), mono:true, item:i, qty:qtyText(i.bunkSize, i.quantity) }; })
       .concat(hardware.filter(function(h){ return hwHay(h).indexOf(q)>-1; }).sort(hwSort).map(function(h){ return { label:hwLabel(h), item:h, qty:unitText(h.unit, h.quantity) }; }));
     hits.forEach(function(r){ (r.item.spots||[]).forEach(function(id){ mapHits[id] = true; }); });
     el.className = 'map-results';
