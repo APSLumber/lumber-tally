@@ -378,6 +378,48 @@
   .home-act svg{color:var(--green);}
   #home-jobs .job-row,#jobs-list .job-row{padding:12px 16px;}
 
+  /* Hardware */
+  .hw-row{grid-template-columns:minmax(0,2fr) minmax(0,1.3fr) minmax(0,1fr) 78px;}
+  .hw-cat{padding:9px 16px;background:#F7F5EC;border-bottom:1px solid var(--line);font-weight:700;font-size:13px;display:flex;justify-content:space-between;}
+  .hw-pick{display:grid;grid-template-columns:minmax(0,1fr) 72px 92px;gap:8px;align-items:center;padding:10px 16px;border-bottom:1px solid var(--line);}
+  .hw-pick:last-child{border-bottom:none;}
+  .hw-pick.dim{opacity:0.6;}
+  .hw-pick input{width:100%;padding:7px 8px;border-radius:6px;border:1px solid var(--line2);font-size:13px;font-family:'JetBrains Mono',monospace;background:#FCFBF8;}
+  .hw-pick .add{background:var(--green);color:#fff;border:none;padding:8px 0;border-radius:6px;font-size:12.5px;font-weight:600;cursor:pointer;}
+  .hw-pick .add.bo{background:var(--gold);}
+  .part{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--soft);font-weight:500;margin-left:6px;}
+  .cart-sec{margin-top:8px;padding-top:6px;border-top:1px dashed var(--line2);}
+  .cart-sec h4{margin:0;font-size:11px;text-transform:uppercase;letter-spacing:0.05em;color:var(--soft);}
+
+  /* Where things are stored */
+  .loc-chip{display:inline-flex;align-items:center;gap:3px;margin:2px 4px 0 0;padding:1px 7px;border:1px solid #C9D9C4;border-radius:10px;background:var(--green-pale);color:var(--green-dark);font:600 11px 'Inter',sans-serif;cursor:pointer;white-space:nowrap;}
+  .loc-chip::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--green);}
+  .loc-chip:hover{border-color:var(--green);}
+  .spot-pick{display:flex;flex-wrap:wrap;align-items:center;gap:6px;}
+  .spot-pick .loc-chip{margin:0;padding:4px 6px 4px 9px;font-size:12px;}
+  .spot-pick .loc-chip b{margin-left:4px;font-size:14px;line-height:1;color:var(--soft);}
+  .spot-pick select{flex:1;min-width:160px;padding:7px 9px;border-radius:7px;border:1px solid var(--line2);background:#FCFBF8;font:inherit;font-size:13px;color:var(--ink);}
+  .map-viewer{position:relative;overflow:auto;max-height:70vh;border:1px solid var(--line);border-radius:var(--radius);background:#fff;}
+  .map-stage{position:relative;width:100%;}
+  .map-stage img{display:block;width:100%;height:auto;user-select:none;-webkit-user-drag:none;}
+  .map-stage.editing{cursor:crosshair;}
+  .pin{position:absolute;transform:translate(-50%,-100%);display:flex;flex-direction:column;align-items:center;padding:0;border:none;background:none;cursor:pointer;touch-action:none;}
+  .pin span{padding:3px 8px;border-radius:12px;background:var(--green);color:#fff;font:700 12px 'Inter',sans-serif;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,0.3);}
+  .pin::after{content:'';width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:8px solid var(--green);}
+  .pin.empty span{background:#6E7A72;} .pin.empty::after{border-top-color:#6E7A72;}
+  .pin.hit{z-index:1;} .pin.sel{z-index:2;}
+  .pin.sel span{background:var(--ink);outline:3px solid var(--gold);} .pin.sel::after{border-top-color:var(--ink);}
+  .pin.hit span{background:var(--rust);animation:pinpulse 1.1s ease-in-out infinite;} .pin.hit::after{border-top-color:var(--rust);}
+  .editing .pin span{outline:2px dashed #fff;outline-offset:-4px;}
+  @keyframes pinpulse{0%,100%{transform:scale(1);}50%{transform:scale(1.18);}}
+  .map-zoom{display:flex;gap:6px;justify-content:flex-end;margin:8px 0 14px;}
+  .map-results{display:grid;gap:6px;margin:0 0 12px;}
+  .map-result{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;padding:9px 12px;border:1px solid var(--line);border-radius:8px;background:var(--card);font-size:13px;}
+  .spot-panel{padding:14px 16px;border:1px solid var(--line);border-radius:var(--radius);background:var(--card);}
+  .spot-panel h3{margin:0 0 2px;font-size:16px;}
+  .spot-item{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);font-size:13.5px;}
+  .spot-item:last-child{border-bottom:none;}
+
   /* Jobs list and job page */
   .seg-tabs{display:inline-flex;border:1px solid var(--line2);border-radius:8px;overflow:hidden;background:var(--card);}
   .seg-tabs button{padding:9px 14px;border:none;background:none;font:600 13.5px 'Inter',sans-serif;color:var(--soft);cursor:pointer;}
@@ -515,6 +557,10 @@
     .job-actions{width:100%;} .job-actions .btn{flex:1 1 40%;justify-content:center;}
     .subnav{margin:0 -16px 14px;padding:0 8px;}
     .subnav button{flex:1;justify-content:center;padding:10px 6px;font-size:13px;}
+    .hw-row{grid-template-columns:minmax(0,1fr) 92px;row-gap:4px;}
+    .hw-row .hide-sm{display:none;}
+    .hw-pick{grid-template-columns:minmax(0,1fr) 64px 92px;}
+    .map-viewer{max-height:62vh;}
   }
   @media screen and (max-width:360px){
     .tab-btn{font-size:9px;}
@@ -582,6 +628,7 @@
     </div>
     <div class="more-menu" id="more-menu" role="menu" hidden>
       <button role="menuitem" data-go="material"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h7l5 5v13H7z"/><path d="M14 3v5h5M10 12h6M10 16h6"/></svg>Material list</button>
+      <button role="menuitem" data-go="map"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2z"/><path d="M9 4v14M15 6v14"/></svg>Map</button>
       <button role="menuitem" data-go="customers"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M3 20c0-3.5 2.7-6 6-6s6 2.5 6 6"/><path d="M16 5a3.5 3.5 0 0 1 0 6.5M18 14.5c2 .8 3 2.8 3 5.5"/></svg>Customers</button>
       <button role="menuitem" data-go="accounts"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg>Accounts</button>
     </div>
@@ -605,6 +652,12 @@
     <button data-go="bill">New ticket</button>
     <button data-go="review">Approvals<span class="tab-count" id="rv-count" hidden></span></button>
     <button data-go="backorders">Back orders<span class="tab-count" id="bo-count" hidden></span></button>
+  </nav>
+  <!-- Inventory's three parts -->
+  <nav class="subnav" id="inv-subnav" hidden>
+    <button data-go="inventory">Lumber</button>
+    <button data-go="hardware">Hardware<span class="tab-count" id="hw-low-count" hidden></span></button>
+    <button data-go="map">Map</button>
   </nav>
 
   <!-- HOME -->
@@ -681,6 +734,53 @@
     <div id="inv-list"><div class="loading">Loading inventory…</div></div>
   </section>
 
+  <!-- HARDWARE (nails, hangers, fasteners) -->
+  <section class="view" id="view-hardware">
+    <div class="stats">
+      <div class="stat"><div class="label">Items</div><div class="value" id="hw-stat-items">—</div></div>
+      <div class="stat"><div class="label">Categories</div><div class="value" id="hw-stat-cats">—</div></div>
+      <div class="stat" id="hw-stat-low-box"><div class="label">Low stock</div><div class="value" id="hw-stat-low">—</div></div>
+      <div class="stat"><div class="label">Out of stock</div><div class="value" id="hw-stat-out">—</div></div>
+    </div>
+    <div class="controls">
+      <div class="search">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        <input type="text" id="hw-search" placeholder="Search name, part number or category">
+      </div>
+      <button class="btn toggle" id="hw-low-toggle">Low stock only</button>
+      <button class="btn primary" id="hw-add-btn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+        Add hardware
+      </button>
+    </div>
+    <div id="hw-list"></div>
+  </section>
+
+  <!-- MAP: where everything is stored -->
+  <section class="view" id="view-map">
+    <div class="controls">
+      <div class="search">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        <input type="text" id="map-search" placeholder="Find lumber or hardware, like 2x6x12 or LUS28">
+      </div>
+      <div class="seg-tabs" id="map-tabs"></div>
+      <button class="btn toggle" id="map-edit-toggle">Edit spots</button>
+      <button class="btn" id="map-manage">Map settings</button>
+    </div>
+    <div id="map-results"></div>
+    <div id="map-area">
+      <p class="acct-note" id="map-hint" style="margin:0 0 8px;"></p>
+      <div class="map-viewer" id="map-viewer"><div class="map-stage" id="map-stage"></div></div>
+      <div class="map-zoom">
+        <button class="btn sm" id="map-zout" aria-label="Zoom out">−</button>
+        <button class="btn sm" id="map-zfit">Fit</button>
+        <button class="btn sm" id="map-zin" aria-label="Zoom in">+</button>
+      </div>
+      <div id="map-spot"></div>
+    </div>
+    <div id="map-empty"></div>
+  </section>
+
   <!-- BILL OUT -->
   <section class="view" id="view-bill">
     <div class="bill-grid">
@@ -689,7 +789,7 @@
         <div class="controls" style="margin-bottom:12px;">
           <div class="search">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
-            <input type="text" id="pick-search" placeholder="Find a size, like 2x4">
+            <input type="text" id="pick-search" placeholder="Find a size or hardware, like 2x4 or LUS28">
           </div>
           <button class="btn" id="pick-expand-toggle">Expand all</button>
           <button class="btn" id="imp-bill-btn">
@@ -698,6 +798,8 @@
           </button>
         </div>
         <div class="card" id="picker"></div>
+        <h2 class="section" style="margin-top:20px;">Hardware</h2>
+        <div class="card" id="hw-picker"></div>
       </div>
       <div class="ticket">
         <h3>Ticket</h3>
@@ -714,6 +816,7 @@
           <select id="job-select"></select>
         </div>
         <div id="cart"></div>
+        <div id="hw-cart"></div>
         <div id="bo-cart"></div>
         <div class="totals">
           <div class="t-row"><span>Board feet</span><span class="mono" id="t-bf">0</span></div>
@@ -737,7 +840,7 @@
   <section class="view" id="view-backorders">
     <div class="stats">
       <div class="stat"><div class="label">Open back orders</div><div class="value" id="bo-stat-lines">—</div></div>
-      <div class="stat"><div class="label">Pieces owed</div><div class="value" id="bo-stat-pcs">—</div></div>
+      <div class="stat"><div class="label">Pcs &amp; units owed</div><div class="value" id="bo-stat-pcs">—</div></div>
       <div class="stat"><div class="label">Customers waiting</div><div class="value" id="bo-stat-cust">—</div></div>
       <div class="stat"><div class="label">Ready to fill</div><div class="value" id="bo-stat-ready">—</div></div>
     </div>
@@ -819,11 +922,82 @@
         <span><span class="big" id="f-total">0</span><span class="math" id="f-math"></span></span>
       </div>
       <div class="field"><label for="f-low">Low stock alert at or below (pieces) — optional</label><input type="number" id="f-low" min="0" step="1" placeholder="Leave blank for no alert"></div>
+      <div class="field"><label>Stored at</label><div class="spot-pick" id="f-spots"></div></div>
       <div class="form-err" id="stock-err"></div>
     </div>
     <div class="modal-foot">
       <button class="btn" id="stock-cancel">Cancel</button>
       <button class="btn primary" id="stock-save">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Hardware item -->
+<div class="overlay" id="hw-overlay">
+  <div class="modal">
+    <div class="modal-head"><h2 id="hw-title">Add hardware</h2><button id="hw-close" aria-label="Close"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+    <div class="modal-body">
+      <div class="field"><label for="h-name">Name</label><input type="text" id="h-name" placeholder="Joist hanger 2x8"></div>
+      <div class="grid2">
+        <div class="field"><label for="h-part">Part number (optional)</label><input type="text" id="h-part" autocapitalize="characters" spellcheck="false" placeholder="LUS28"></div>
+        <div class="field"><label for="h-cat">Category</label><input type="text" id="h-cat" list="hw-cat-list" placeholder="Hangers"><datalist id="hw-cat-list"></datalist></div>
+      </div>
+      <div class="grid2">
+        <div class="field"><label for="h-unit">Counted in</label>
+          <select id="h-unit"><option value="each">each</option><option value="box">boxes</option><option value="case">cases</option><option value="pail">pails</option><option value="bucket">buckets</option><option value="bag">bags</option><option value="roll">rolls</option><option value="pack">packs</option></select>
+        </div>
+        <div class="field"><label for="h-per">Each one holds (optional)</label><input type="text" id="h-per" placeholder="50 lb, 100 pcs…"></div>
+      </div>
+      <div class="grid2">
+        <div class="field"><label for="h-qty">In stock</label><input type="number" id="h-qty" min="0" step="1" placeholder="0"></div>
+        <div class="field"><label for="h-low">Low stock alert at or below (optional)</label><input type="number" id="h-low" min="0" step="1" placeholder="No alert"></div>
+      </div>
+      <div class="field"><label>Stored at</label><div class="spot-pick" id="h-spots"></div></div>
+      <div class="form-err" id="hw-err"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn danger" id="hw-delete" style="margin-right:auto;">Delete</button>
+      <button class="btn" id="hw-cancel">Cancel</button>
+      <button class="btn primary" id="hw-save">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add / change a map -->
+<div class="overlay" id="mapedit-overlay">
+  <div class="modal">
+    <div class="modal-head"><h2 id="mapedit-title">Add a map</h2><button id="mapedit-close" aria-label="Close"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+    <div class="modal-body">
+      <div class="field"><label for="me-name">Map name</label><input type="text" id="me-name" placeholder="Yard, Hardware room…"></div>
+      <div class="field"><label>Picture of the layout</label>
+        <label class="drop" id="me-drop" style="padding:16px;">
+          <input type="file" id="me-file" accept="image/*,.pdf,application/pdf" hidden>
+          <span class="drop-main" id="me-file-name">Choose a picture or PDF</span>
+          <span class="drop-sub">A drawing, a phone photo of a sketch, or an aerial view</span>
+        </label>
+      </div>
+      <div class="form-err" id="me-err"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn danger" id="me-delete" style="margin-right:auto;">Delete map</button>
+      <button class="btn" id="me-cancel">Cancel</button>
+      <button class="btn primary" id="me-save">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Name a spot on the map -->
+<div class="overlay" id="spotedit-overlay">
+  <div class="modal" style="max-width:380px;">
+    <div class="modal-head"><h2 id="spotedit-title">New spot</h2><button id="spotedit-close" aria-label="Close"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+    <div class="modal-body">
+      <div class="field"><label for="se-name">Spot name</label><input type="text" id="se-name" placeholder="Bay 3, Rack A, Shelf 2…"></div>
+      <div class="form-err" id="se-err"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn danger" id="se-delete" style="margin-right:auto;">Delete spot</button>
+      <button class="btn" id="se-cancel">Cancel</button>
+      <button class="btn primary" id="se-save">Save</button>
     </div>
   </div>
 </div>
@@ -1079,7 +1253,12 @@
 <script>
 (function(){
   'use strict';
-  var KEYS = { stock:'tally:stock', sales:'tally:sales', cust:'tally:customers', seq:'tally:nextno', acct:'tally:accounts', bo:'tally:backorders', review:'tally:reviews', jobs:'tally:jobs' };
+  var KEYS = { stock:'tally:stock', sales:'tally:sales', cust:'tally:customers', seq:'tally:nextno', acct:'tally:accounts', bo:'tally:backorders', review:'tally:reviews', jobs:'tally:jobs', hw:'tally:hardware', maps:'tally:maps' };
+  // Hardware (nails, hangers, fasteners): { id, name, part, cat, unit, per, quantity, lowAt, spots:[spot ids] }.
+  // Lumber items carry spots too. Maps: { id, name, w, h, spots:[{ id, name, x, y }] } with x, y as fractions of the picture;
+  // the picture itself is in IndexedDB under 'map_'+id.
+  var hardware = [], maps = [];
+  var hwCart = [];   // hardware on the Bill out ticket: { hwId, qty, fills }
   // Back orders: lumber owed to a customer. { id, date, customerId, customer, by, ticket, thickness, width, length, kind,
   // bunkSize, pieces, filled, fills:[{ticket,date,pieces}], status:'open'|'filled', filledDate }
   var backorders = [];
@@ -1261,8 +1440,8 @@
   var MAX_USERS = 10;
   var USERNAME_RULE = 'Username must be 3 to 30 characters: letters, numbers, dot, dash, or underscore.';
   var PASS_RULE = 'Password must be at least 6 characters.';
-  var ROLE_VIEWS = { admin:['home','jobs','job','inventory','bill','review','backorders','material','customers','sales','accounts'],
-    user:['home','jobs','job','bill','review','backorders','material','customers'] };
+  var ROLE_VIEWS = { admin:['home','jobs','job','inventory','hardware','map','bill','review','backorders','material','customers','sales','accounts'],
+    user:['home','jobs','job','bill','review','backorders','material','map','customers'] };
   function can(view){ return !!session && ROLE_VIEWS[session.role].indexOf(view)>-1; }
   function saveAccounts(){ save(KEYS.acct, accounts); }
   function adminRec(id){ return id==='admin' ? accounts.admin : (id==='admin2' && accounts.admin2) ? accounts.admin2 : null; }
@@ -1327,23 +1506,30 @@
   }
   // Which main tab lights up for each page
   var TAB_OF = { home:'home', jobs:'jobs', job:'jobs', bill:'bill', review:'bill', backorders:'bill',
-    inventory:'inventory', sales:'sales', material:'more', customers:'more', accounts:'more' };
+    inventory:'inventory', hardware:'inventory', map:'inventory', sales:'sales', material:'more', customers:'more', accounts:'more' };
+  // User accounts have no Inventory tab, so their Map sits under More
+  function tabOf(view){ return view==='map' && !can('inventory') ? 'more' : TAB_OF[view]; }
   var currentView = 'home';
   function go(view){
     if(!can(view)) return;
     closeMore();
     if(currentView==='job' && view!=='job') closeJob();
     currentView = view;
-    document.querySelectorAll('.tab-btn').forEach(function(b){ b.classList.toggle('active', b.dataset.view===TAB_OF[view]); });
+    document.querySelectorAll('.tab-btn').forEach(function(b){ b.classList.toggle('active', b.dataset.view===tabOf(view)); });
     document.querySelectorAll('.view').forEach(function(v){ v.classList.toggle('active', v.id==='view-'+view); });
-    $('bill-subnav').hidden = TAB_OF[view]!=='bill';
-    document.querySelectorAll('#bill-subnav [data-go]').forEach(function(b){ b.classList.toggle('active', b.dataset.go===view); });
+    ['bill','inv'].forEach(function(k){
+      var nav = $(k+'-subnav');
+      nav.hidden = tabOf(view)!==(k==='inv' ? 'inventory' : 'bill');
+      nav.querySelectorAll('[data-go]').forEach(function(b){ b.classList.toggle('active', b.dataset.go===view); });
+    });
+    if(view==='hardware') renderHardware();
+    if(view==='map') renderMap();
     window.scrollTo(0, 0);
     if(view==='home') renderHome();
     if(view==='jobs') renderJobs();
     if(view==='job') renderJob();
     if(view==='inventory') renderInventory();
-    if(view==='bill'){ renderPicker(); renderCustSelect(); }
+    if(view==='bill'){ renderPicker(); renderHwPicker(); renderCustSelect(); }
     if(view==='customers') renderCustomers();
     if(view==='sales') renderSales();
     if(view==='accounts') renderAccounts();
@@ -1442,8 +1628,8 @@
   function saveDraft(){
     if(!session || !draftReady) return;
     try{
-      if(!cart.length && !boCart.length) return localStorage.removeItem(draftKey());
-      localStorage.setItem(draftKey(), JSON.stringify({ cart:cart, boCart:boCart,
+      if(!cart.length && !boCart.length && !hwCart.length) return localStorage.removeItem(draftKey());
+      localStorage.setItem(draftKey(), JSON.stringify({ cart:cart, boCart:boCart, hwCart:hwCart,
         custId:$('cust-select').value, custName:$('customer').value, jobId:$('job-select').value }));
     }catch(e){}
   }
@@ -1454,6 +1640,7 @@
     if(d){
       cart = (d.cart||[]).filter(function(c){ return stock.some(function(i){ return i.id===c.stockId; }); });
       boCart = d.boCart || [];
+      hwCart = (d.hwCart||[]).filter(function(c){ return hwById(c.hwId); });
       syncCart();
       $('cust-select').value = customers.some(function(c){ return c.id===d.custId; }) ? d.custId : '';
       $('customer').value = d.custName || '';
@@ -1471,12 +1658,12 @@
     saveDraft();   // an unfinished ticket waits for this person's next sign-in
     draftReady = false;
     session = null; keepSignedIn = false; storeSession();
-    cart = []; boCart = [];
+    cart = []; boCart = []; hwCart = [];
     $('customer').value = ''; $('cust-select').value = '';
     closeMore();
     closeStock(); closeDelete(); closeTicket(); closeCust(); closeCustDetail(); closeCdel(); closeSdel();
     closeAcct(); closePw(); closeCf(); closeImp(); closeBoAdd(); closeReturn(); closeReject();
-    closePhoto(); closeMlist(); closeJobEdit(); closeJob();
+    closePhoto(); closeMlist(); closeJobEdit(); closeJob(); closeHw(); closeMapEdit(); closeSpotEdit();
     unloadMaterial();
     document.body.classList.remove('authed');
     showGate('login');
@@ -1757,7 +1944,8 @@
           '<div class="c-title"><div class="name">'+fmtLen(i.length)+(out?'<span class="badge out">Out</span>':(isLow(i)?'<span class="badge low">Low</span>':''))+'</div>'+
             '<div class="meta">'+(i.bunkSize>0 ? i.bunkSize+' per bunk' : 'loose only')+
               (owed[specKey(i)] ? ' · <span class="bo-note">'+owed[specKey(i)].toLocaleString()+' back ordered</span>' : '')+
-              (held[specKey(i)] ? ' · <span class="bo-note">'+held[specKey(i)].toLocaleString()+' held for approval</span>' : '')+'</div></div>'+
+              (held[specKey(i)] ? ' · <span class="bo-note">'+held[specKey(i)].toLocaleString()+' held for approval</span>' : '')+'</div>'+
+            spotChips(i)+'</div>'+
           '<div class="num c-num'+(b?'':' zero')+'">'+b+'</div>'+
           '<div class="num c-num'+(l?'':' zero')+'">'+l+'</div>'+
           '<div class="num c-num strong">'+Number(i.quantity).toLocaleString()+'</div>'+
@@ -1836,6 +2024,7 @@
     $('f-bunks').value = item ? bunksOf(item) : '';
     $('f-loose').value = item ? looseOf(item) : '';
     $('f-low').value = (item && item.lowAt!==null && item.lowAt!==undefined) ? item.lowAt : '';
+    renderSpotPick('f-spots', item ? item.spots : []);
     updateTotal();
     $('stock-overlay').classList.add('open');
     $('f-t').focus();
@@ -1859,9 +2048,9 @@
 
     if(editingId){
       var idx = stock.findIndex(function(i){ return i.id===editingId; });
-      if(idx>-1) stock[idx] = Object.assign({}, stock[idx], {thickness:t, width:w, length:l, kind:kind, bunkSize:c.bs, quantity:c.total, lowAt:lowAt});
+      if(idx>-1) stock[idx] = Object.assign({}, stock[idx], {thickness:t, width:w, length:l, kind:kind, bunkSize:c.bs, quantity:c.total, lowAt:lowAt, spots:pickedSpots('f-spots')});
     } else {
-      stock.push({id:uid('lu'), thickness:t, width:w, length:l, kind:kind, bunkSize:c.bs, quantity:c.total, lowAt:lowAt});
+      stock.push({id:uid('lu'), thickness:t, width:w, length:l, kind:kind, bunkSize:c.bs, quantity:c.total, lowAt:lowAt, spots:pickedSpots('f-spots')});
     }
     var savedItem = editingId ? stock.find(function(i){ return i.id===editingId; }) : stock[stock.length-1];
     if(savedItem) openTypes[typeKey(savedItem)] = true;
@@ -1953,7 +2142,7 @@
         var off = avail<=0;
         return '<div class="pick-row'+(off?' dim':'')+'" data-id="'+i.id+'">'+
           '<div class="c-title"><div class="name len">'+fmtLen(i.length)+'</div>'+
-            '<div class="meta">'+(off ? 'none left' : qtyText(i.bunkSize, avail)+' avail')+'</div></div>'+
+            '<div class="meta">'+(off ? 'none left' : qtyText(i.bunkSize, avail)+' avail')+'</div>'+spotChips(i)+'</div>'+
           '<div><div class="lbl">Bunks</div><input type="number" class="pk-bunks" min="0" step="1" placeholder="0" '+(hasBunk?'':'disabled')+'></div>'+
           '<div><div class="lbl">Pieces</div><input type="number" class="pk-pcs" min="0" step="1" placeholder="0"></div>'+
           (off ? '<button class="add bo" title="None in stock: add to the ticket as a back order">Back order</button>' : '<button class="add">Add</button>')+
@@ -2009,7 +2198,73 @@
     if(!allOpen) keys.forEach(function(k){ pickOpen[k] = true; });
     renderPicker();
   });
-  $('pick-search').addEventListener('input', function(e){ pickSearch = e.target.value.trim().toLowerCase(); renderPicker(); });
+  $('pick-search').addEventListener('input', function(e){ pickSearch = e.target.value.trim().toLowerCase(); renderPicker(); renderHwPicker(); });
+
+  /* ---------- hardware on the ticket ---------- */
+  function hwInCart(id){ var c = hwCart.find(function(x){ return x.hwId===id; }); return c ? c.qty : 0; }
+  function addHwCart(id, qty, boId){
+    if(!(qty>0)) return;
+    var line = hwCart.find(function(c){ return c.hwId===id; });
+    if(!line){ line = { hwId:id, qty:0 }; hwCart.push(line); }
+    line.qty += qty;
+    if(boId){ line.fills = line.fills || {}; line.fills[boId] = (line.fills[boId]||0) + qty; }
+  }
+  function addHwToBoCart(h, qty){
+    if(!(qty>0)) return;
+    var line = boCart.find(function(b){ return b.hw && b.hwId===h.id; });
+    if(line){ line.pieces += qty; return; }
+    boCart.push({ hw:true, hwId:h.id, name:h.name, part:h.part||'', unit:h.unit, pieces:qty });
+  }
+  function syncHwCart(){
+    hwCart = hwCart.filter(function(c){
+      var h = hwById(c.hwId);
+      if(!h) return false;
+      if(c.qty > h.quantity) c.qty = h.quantity;
+      return c.qty > 0;
+    });
+  }
+  function renderHwPicker(){
+    var el = $('hw-picker');
+    if(!hardware.length){
+      el.innerHTML = '<div class="empty" style="padding:24px 16px;"><div class="big">No hardware yet</div><div>'+(can('hardware') ? 'Add nails, hangers and fasteners under Inventory › Hardware.' : 'An admin adds hardware under Inventory.')+'</div></div>';
+      return;
+    }
+    var q = pickSearch;
+    var list = hardware.filter(function(h){ return !q || hwHay(h).indexOf(q)>-1; });
+    if(!list.length){ el.innerHTML = '<div class="empty" style="padding:20px 16px;"><div class="big">No hardware matches</div></div>'; return; }
+    var cats = hwCategories(list);
+    el.innerHTML = cats.map(function(cat){
+      return '<div class="hw-cat"><span>'+esc(cat)+'</span></div>'+list.filter(function(h){ return hwCat(h)===cat; }).sort(hwSort).map(function(h){
+        var avail = Math.max(0, h.quantity - hwInCart(h.id)), off = avail<=0;
+        return '<div class="hw-pick'+(off?' dim':'')+'" data-hw="'+h.id+'">'+
+          '<div><div class="name">'+esc(h.name)+(h.part ? '<span class="part">'+esc(h.part)+'</span>' : '')+'</div>'+
+            '<div class="meta">'+(off ? 'none left' : unitText(h.unit, avail)+' avail')+(h.per ? ' · '+hwPerText(h) : '')+'</div>'+spotChips(h)+'</div>'+
+          '<input type="number" class="hp-qty" min="0" step="1" placeholder="0" aria-label="How many '+esc(unitText(h.unit, 2).replace(/^2 /,''))+'">'+
+          (off ? '<button class="add bo">Back order</button>' : '<button class="add">Add</button>')+
+        '</div>';
+      }).join('');
+    }).join('');
+    el.querySelectorAll('.hw-pick').forEach(function(row){
+      var doAdd = function(){
+        var h = hwById(row.dataset.hw); if(!h) return;
+        var n = Number(row.querySelector('.hp-qty').value)||0;
+        if(n<=0 || Math.floor(n)!==n) return;
+        var avail = Math.max(0, h.quantity - hwInCart(h.id));
+        if(avail<=0){ addHwToBoCart(h, n); renderHwPicker(); renderCart(); return; }
+        if(n>avail){
+          var short = n - avail, meta = row.querySelector('.meta');
+          meta.innerHTML = '<span style="color:var(--rust)">only '+unitText(h.unit, avail)+' available</span> '+
+            '<button type="button" class="link-btn" style="padding:2px 0;font-size:12px;">Sell '+avail+', back order '+short+'</button>';
+          meta.querySelector('button').addEventListener('click', function(){ addHwCart(h.id, avail); addHwToBoCart(h, short); renderHwPicker(); renderCart(); });
+          return;
+        }
+        addHwCart(h.id, n);
+        renderHwPicker(); renderCart();
+      };
+      row.querySelector('.add').addEventListener('click', doAdd);
+      row.querySelector('.hp-qty').addEventListener('keydown', function(e){ if(e.key==='Enter'){ e.preventDefault(); doAdd(); } });
+    });
+  }
 
   function addCartPieces(stockId, pieces, boId){
     if(!(pieces>0)) return;
@@ -2028,8 +2283,8 @@
     var el = $('bo-cart');
     if(!boCart.length){ el.innerHTML = ''; return; }
     el.innerHTML = '<div class="bo-cart"><h4>Back order · not in stock</h4>'+boCart.map(function(b, i){
-      return '<div class="cart-line bo"><div class="cart-top"><div><div class="cart-name mono">'+esc(dims(b))+'</div>'+
-        '<div class="cart-qty">'+qtyText(b.bunkSize, b.pieces)+' owed to the customer</div></div>'+
+      return '<div class="cart-line bo"><div class="cart-top"><div><div class="cart-name'+(b.hw?'':' mono')+'">'+esc(boLabel(b))+'</div>'+
+        '<div class="cart-qty">'+boQty(b, b.pieces)+' owed to the customer</div></div>'+
         '<button class="cart-remove" data-bi="'+i+'" aria-label="Remove back order">&times;</button></div></div>';
     }).join('')+'</div>';
     el.querySelectorAll('[data-bi]').forEach(function(btn){
@@ -2040,8 +2295,9 @@
   function renderCart(){
     var el = $('cart');
     renderBoCart();
+    renderHwCart();
     if(cart.length===0){
-      el.innerHTML = '<div class="cart-empty">'+(boCart.length ? 'Nothing from stock on this ticket' : 'Nothing on the ticket yet')+'</div>';
+      el.innerHTML = (hwCart.length ? '' : '<div class="cart-empty">'+(boCart.length ? 'Nothing from stock on this ticket' : 'Nothing on the ticket yet')+'</div>');
       updateTotals();
       return;
     }
@@ -2067,6 +2323,20 @@
     updateTotals();
   }
 
+  function renderHwCart(){
+    var el = $('hw-cart');
+    if(!hwCart.length){ el.innerHTML = ''; return; }
+    el.innerHTML = '<div class="cart-sec"><h4>Hardware</h4>'+hwCart.map(function(c){
+      var h = hwById(c.hwId); if(!h) return '';
+      return '<div class="cart-line"><div class="cart-top"><div><div class="cart-name">'+esc(hwLabel(h))+'</div>'+
+        '<div class="cart-qty">'+unitText(h.unit, c.qty)+'</div>'+(c.fills ? '<div class="fills">Fills a back order</div>' : '')+'</div>'+
+        '<button class="cart-remove" data-hwc="'+c.hwId+'" aria-label="Remove">&times;</button></div></div>';
+    }).join('')+'</div>';
+    el.querySelectorAll('[data-hwc]').forEach(function(b){
+      b.addEventListener('click', function(){ hwCart = hwCart.filter(function(c){ return c.hwId!==b.dataset.hwc; }); renderHwPicker(); renderCart(); });
+    });
+  }
+
   function updateTotals(){
     var pieces=0, bf=0;
     cart.forEach(function(c){
@@ -2077,9 +2347,13 @@
     $('t-pieces').textContent = pieces.toLocaleString();
     $('t-bf').textContent = fmt(bf);
     // Phone: the ticket sits below the lumber list, so a bar keeps it in view while picking
-    var lines = cart.length + boCart.length;
+    var lines = cart.length + boCart.length + hwCart.length;
     $('ticket-bar').hidden = !lines;
-    $('ticket-bar-text').textContent = lines+(lines===1?' line':' lines')+' · '+pieces.toLocaleString()+' pcs'+(boCart.length ? ' + back order' : '');
+    var parts = [];
+    if(cart.length || !hwCart.length) parts.push(pieces.toLocaleString()+' pcs');
+    if(hwCart.length) parts.push('hardware');
+    if(boCart.length) parts.push('back order');
+    $('ticket-bar-text').textContent = lines+(lines===1?' line':' lines')+' · '+parts.join(' + ');
     saveDraft();
   }
   $('ticket-bar').addEventListener('click', function(){ document.querySelector('.ticket').scrollIntoView({behavior:'smooth', block:'start'}); });
@@ -2087,7 +2361,7 @@
   $('complete-btn').addEventListener('click', function(){
     var err = $('cart-err');
     err.classList.remove('show');
-    if(cart.length===0 && boCart.length===0){ err.textContent = 'Add at least one item to the ticket.'; err.classList.add('show'); return; }
+    if(cart.length===0 && boCart.length===0 && hwCart.length===0){ err.textContent = 'Add at least one item to the ticket.'; err.classList.add('show'); return; }
     var custId = $('cust-select').value || null;
     var chosen = custId ? customers.find(function(x){ return x.id===custId; }) : null;
     if(!chosen) custId = null;
@@ -2107,15 +2381,21 @@
           fills: c.fills ? Object.assign({}, c.fills) : null
         };
       }),
+      hw:hwCart.map(function(c){
+        var h = hwById(c.hwId);
+        return { hwId:h.id, name:h.name, part:h.part||'', unit:h.unit, pieces:c.qty, fills: c.fills ? Object.assign({}, c.fills) : null };
+      }),
       backorders:boCart.map(function(b){ return Object.assign({}, b); })
     };
-    // Lumber comes off stock now, even while waiting for review, so nobody else can bill out the same boards
+    // Lumber and hardware come off stock now, even while waiting for approval, so nobody else can bill out the same items
     cart.forEach(function(c){
       var item = stock.find(function(i){ return i.id===c.stockId; });
       if(item) item.quantity = Math.max(0, item.quantity - c.pieces);
     });
+    hwCart.forEach(function(c){ var h = hwById(c.hwId); if(h) h.quantity = Math.max(0, h.quantity - c.qty); });
     save(KEYS.stock, stock);
-    cart = []; boCart = [];
+    save(KEYS.hw, hardware);
+    cart = []; boCart = []; hwCart = [];
     $('customer').value = '';
     $('cust-select').value = '';
     toggleWalkin();
@@ -2153,6 +2433,23 @@
       if(l.fills) line.fillsBackorder = from.length ? from : true;
       return line;
     });
+    // Hardware lines fill back orders the same way
+    var hwLines = (d.hw||[]).map(function(l){
+      var line = { hwId:l.hwId, name:l.name, part:l.part, unit:l.unit, pieces:l.pieces };
+      var left = l.pieces, from = [];
+      Object.keys(l.fills||{}).forEach(function(id){
+        var b = backorders.find(function(x){ return x.id===id && x.status==='open'; });
+        var n = b ? Math.min(l.fills[id], boRemaining(b), left) : 0;
+        if(n<=0) return;
+        left -= n;
+        b.filled = (Number(b.filled)||0) + n;
+        b.fills = (b.fills||[]).concat({ ticket:number, date:date, pieces:n });
+        if(boRemaining(b)<=0){ b.status = 'filled'; b.filledDate = date; }
+        if(b.ticket && from.indexOf(b.ticket)<0) from.push(b.ticket);
+      });
+      if(l.fills) line.fillsBackorder = from.length ? from : true;
+      return line;
+    });
     var sale = {
       id:uid('sale'), number:number, date:date,
       by:d.by,
@@ -2161,13 +2458,14 @@
       pieces:lines.reduce(function(s,l){ return s+l.pieces; },0),
       bf:round2(lines.reduce(function(s,l){ return s+l.bf; },0))
     };
+    if(hwLines.length) sale.hw = hwLines;
     if(approvedBy) sale.approvedBy = approvedBy;
     if(d.jobId){ sale.jobId = d.jobId; sale.job = d.job; }
     if(d.backorders.length){
       sale.backorders = d.backorders.map(function(b){ return Object.assign({}, b); });
       d.backorders.forEach(function(b){
-        backorders.push({ id:uid('bo'), date:date, customerId:custId, customer:d.customer, by:d.by, ticket:number,
-          thickness:b.thickness, width:b.width, length:b.length, kind:b.kind, bunkSize:b.bunkSize, pieces:b.pieces, filled:0, status:'open' });
+        // a lumber back order carries its size; a hardware one carries hw, hwId, name, part and unit
+        backorders.push(Object.assign({}, b, { id:uid('bo'), date:date, customerId:custId, customer:d.customer, by:d.by, ticket:number, filled:0, status:'open' }));
       });
     }
     sales.unshift(sale);
@@ -2268,15 +2566,22 @@
     return { pieces:pieces, bf:round2(bf) };
   }
   function putBack(spec, pieces){
+    if(spec.hwId){
+      var h = hwById(spec.hwId);
+      if(h) h.quantity = Number(h.quantity) + pieces;
+      else hardware.push({ id:spec.hwId, name:spec.name, part:spec.part||'', cat:'Other', unit:spec.unit||'each', per:'', quantity:pieces, lowAt:null, spots:[] });
+      return;
+    }
     var item = stock.find(function(i){ return sameSpec(i, spec); });
     if(item) item.quantity = Number(item.quantity) + pieces;
     else stock.push({id:uid('lu'), thickness:spec.thickness, width:spec.width, length:spec.length, kind:kindOf(spec), bunkSize:Number(spec.bunkSize)||0, quantity:pieces, lowAt:null});
   }
   function restockFrom(list){
     list.forEach(function(s){
-      s.lines.forEach(function(l){ if(lineNet(l)) putBack(l, lineNet(l)); });
+      s.lines.concat(s.hw||[]).forEach(function(l){ if(lineNet(l)) putBack(l, lineNet(l)); });
     });
     save(KEYS.stock, stock);
+    save(KEYS.hw, hardware);
   }
   function closeSdel(){ $('sdel-overlay').classList.remove('open'); }
   $('sdel-cancel').addEventListener('click', closeSdel);
@@ -2305,26 +2610,35 @@
         '<td>'+qtyText(l.bunkSize, n)+(l.bunkSize>0 && n>=l.bunkSize ? '<div class="sub">'+n+' pcs</div>' : '')+'</td>'+
         '<td class="r">'+fmt(round2(bfPer(l)*n))+'</td>'+
       '</tr>';
-    }).join('') || '<tr><td colspan="3" class="sub">'+(s.lines.length ? 'Everything on this ticket was returned' : 'Nothing pulled from stock on this ticket')+'</td></tr>';
+    }).join('') || (s.hw && s.hw.length ? '' : '<tr><td colspan="3" class="sub">'+(s.lines.length ? 'Everything on this ticket was returned' : 'Nothing pulled from stock on this ticket')+'</td></tr>');
+    var hwRows = (s.hw||[]).map(function(l){
+      var n = lineNet(l);
+      if(!n) return '';
+      var fills = l.fillsBackorder ? '<div class="sub">Fills back order'+(Array.isArray(l.fillsBackorder) ? ' from '+esc(l.fillsBackorder.join(', ')) : '')+'</div>' : '';
+      return '<tr><td>'+esc(hwLabel(l))+fills+'</td><td colspan="2">'+unitText(l.unit, n)+'</td></tr>';
+    }).join('');
+    var hwNet = (s.hw||[]).reduce(function(t, l){ return t + lineNet(l); }, 0);
     var boRows = (s.backorders||[]).map(function(b){
-      return '<tr><td>'+esc(dims(b))+'</td><td>'+qtyText(b.bunkSize, b.pieces)+'</td><td class="r">'+fmt(round2(bfPer(b)*b.pieces))+'</td></tr>';
+      return '<tr><td>'+esc(boLabel(b))+'</td><td>'+boQty(b, b.pieces)+'</td><td class="r">'+(b.hw ? '' : fmt(round2(bfPer(b)*b.pieces)))+'</td></tr>';
     }).join('');
     $('paper').innerHTML =
       '<div class="p-head"><div><div class="shop">Advanced Precut Systems Lumber Tally</div><div class="sub">'+esc(s.number)+' · '+fmtDate(s.date)+'</div>'+(s.by ? '<div class="sub">Served by '+esc(s.by)+'</div>' : '')+(s.approvedBy ? '<div class="sub">Approved by '+esc(s.approvedBy)+'</div>' : '')+'</div>'+
         '<div style="text-align:right;"><div class="sub">Sold to</div><div style="font-weight:700;">'+esc(s.customer)+'</div>'+
           (s.job ? '<div class="sub">Job: '+esc((jobById(s.jobId)||{}).name || s.job)+'</div>' : '')+'</div></div>'+
-      '<table><thead><tr><th>Item</th><th>Qty</th><th class="r">Bd ft</th></tr></thead><tbody>'+rows+'</tbody></table>'+
-      '<div class="p-total"><span>'+net.pieces.toLocaleString()+' pieces</span><span>'+fmt(net.bf)+' bd ft</span></div>'+
+      (rows ? '<table><thead><tr><th>Item</th><th>Qty</th><th class="r">Bd ft</th></tr></thead><tbody>'+rows+'</tbody></table>'+
+      '<div class="p-total"><span>'+net.pieces.toLocaleString()+' pieces</span><span>'+fmt(net.bf)+' bd ft</span></div>' : '')+
+      (hwRows ? '<div class="p-bo" style="border-top-color:var(--line2);"><div class="p-bo-title" style="color:var(--ink);">Hardware</div>'+
+        '<table><thead><tr><th>Item</th><th colspan="2">Qty</th></tr></thead><tbody>'+hwRows+'</tbody></table></div>' : '')+
       (boRows ? '<div class="p-bo"><div class="p-bo-title">Back ordered (not included above, to follow)</div>'+
         '<table><thead><tr><th>Item</th><th>Qty</th><th class="r">Bd ft</th></tr></thead><tbody>'+boRows+'</tbody></table></div>' : '');
-    $('ticket-return').disabled = !net.pieces;
+    $('ticket-return').disabled = !net.pieces && !hwNet;
     $('ticket-overlay').classList.add('open');
   }
 
   /* ---------- return part of a ticket ---------- */
   function openReturn(){
     var s = sales.find(function(x){ return x.id===ticketSaleId; });
-    if(!s || !saleNet(s).pieces) return;
+    if(!s || (!saleNet(s).pieces && !(s.hw||[]).some(lineNet))) return;
     $('ret-lead').textContent = 'Ticket '+s.number+' for '+s.customer+'. Enter what came back. It goes back into inventory, and the ticket keeps a record of the return.';
     $('ret-lines').innerHTML = s.lines.map(function(l, i){
       var n = lineNet(l), bs = Number(l.bunkSize)||0;
@@ -2336,10 +2650,22 @@
         '<div><div class="lbl">Pieces</div><input type="number" class="rt-pcs" min="0" step="1" placeholder="0"></div>'+
         '<button type="button" class="btn sm rt-all">All</button>'+
       '</div>';
+    }).join('') + (s.hw||[]).map(function(l, i){
+      var n = lineNet(l);
+      if(!n) return '';
+      return '<div class="ret-row" data-hi="'+i+'">'+
+        '<div><div class="name">'+esc(hwLabel(l))+'</div>'+
+          '<div class="meta">Sold '+unitText(l.unit, Number(l.pieces))+(Number(l.returned) ? ' · '+Number(l.returned)+' already returned' : '')+' · up to '+unitText(l.unit, n)+'</div></div>'+
+        '<div></div>'+
+        '<div><div class="lbl">Qty</div><input type="number" class="rt-pcs" min="0" step="1" placeholder="0"></div>'+
+        '<button type="button" class="btn sm rt-all">All</button>'+
+      '</div>';
     }).join('');
     $('ret-lines').querySelectorAll('.rt-all').forEach(function(btn){
       btn.addEventListener('click', function(){
-        var row = btn.closest('.ret-row'), l = s.lines[Number(row.dataset.li)], n = lineNet(l), bs = Number(l.bunkSize)||0;
+        var row = btn.closest('.ret-row');
+        if(row.dataset.hi!==undefined){ row.querySelector('.rt-pcs').value = lineNet(s.hw[Number(row.dataset.hi)]) || ''; return; }
+        var l = s.lines[Number(row.dataset.li)], n = lineNet(l), bs = Number(l.bunkSize)||0;
         row.querySelector('.rt-bunks').value = bs ? Math.floor(n/bs) || '' : '';
         row.querySelector('.rt-pcs').value = (bs ? n%bs : n) || '';
       });
@@ -2355,6 +2681,13 @@
     fclear('ret-err');
     var picks = [], msg = '';
     $('ret-lines').querySelectorAll('.ret-row').forEach(function(row){
+      if(row.dataset.hi!==undefined){
+        var hl = s.hw[Number(row.dataset.hi)], hn = Number(row.querySelector('.rt-pcs').value)||0;
+        if(hn<0 || Math.floor(hn)!==hn){ msg = msg || 'Use whole numbers.'; return; }
+        if(hn > lineNet(hl)) msg = msg || hwLabel(hl)+': only '+unitText(hl.unit, lineNet(hl))+' can be returned.';
+        else if(hn>0) picks.push({ line:hl, pieces:hn });
+        return;
+      }
       var l = s.lines[Number(row.dataset.li)], bs = Number(l.bunkSize)||0;
       var bunks = Number(row.querySelector('.rt-bunks').value)||0, pcs = Number(row.querySelector('.rt-pcs').value)||0;
       if(bunks<0 || pcs<0 || Math.floor(bunks)!==bunks || Math.floor(pcs)!==pcs){ msg = msg || 'Use whole numbers for bunks and pieces.'; return; }
@@ -2371,18 +2704,19 @@
       putBack(l, p.pieces);
       l.returned = (Number(l.returned)||0) + p.pieces;
       total += p.pieces;
-      ret.lines.push({ thickness:l.thickness, width:l.width, length:l.length, kind:kindOf(l), bunkSize:Number(l.bunkSize)||0,
-        pieces:p.pieces, bf:round2(bfPer(l)*p.pieces) });
+      ret.lines.push(l.hwId ? { hwId:l.hwId, name:l.name, part:l.part, unit:l.unit, pieces:p.pieces }
+        : { thickness:l.thickness, width:l.width, length:l.length, kind:kindOf(l), bunkSize:Number(l.bunkSize)||0, pieces:p.pieces, bf:round2(bfPer(l)*p.pieces) });
     });
     s.returns = (s.returns||[]).concat(ret);
     save(KEYS.stock, stock);
+    save(KEYS.hw, hardware);
     save(KEYS.sales, sales);
     closeReturn();
     syncCart();
     renderAll();
     showTicket(s);
     var ready = boReadyCount();
-    toast('Returned '+total.toLocaleString()+' pcs to inventory.'+(ready ? ' '+ready+(ready===1?' back order':' back orders')+' can be filled now.' : ''));
+    toast('Returned '+total.toLocaleString()+(total===1?' item':' items')+' to inventory.'+(ready ? ' '+ready+(ready===1?' back order':' back orders')+' can be filled now.' : ''));
   });
   $('ticket-return').addEventListener('click', openReturn);
   $('ret-cancel').addEventListener('click', closeReturn);
@@ -3007,9 +3341,13 @@
       return '<div class="row rv-line"><div><div class="name mono">'+esc(dims(l))+'</div>'+(l.fills ? '<div class="fills">Fills a back order</div>' : '')+'</div>'+
         '<div class="num">'+qtyText(l.bunkSize, l.pieces)+'</div><div class="num strong">'+fmt(l.bf)+' bd ft</div></div>';
     }).join('');
+    rows += (d.hw||[]).map(function(l){
+      return '<div class="row rv-line"><div><div class="name">'+esc(hwLabel(l))+'</div>'+(l.fills ? '<div class="fills">Fills a back order</div>' : '')+'</div>'+
+        '<div class="num">'+unitText(l.unit, l.pieces)+'</div><div></div></div>';
+    }).join('');
     var boRows = d.backorders.map(function(b){
-      return '<div class="row rv-line"><div><div class="name mono">'+esc(dims(b))+'</div><div class="fills">To back order</div></div>'+
-        '<div class="num">'+qtyText(b.bunkSize, b.pieces)+'</div><div class="num">'+fmt(round2(bfPer(b)*b.pieces))+' bd ft</div></div>';
+      return '<div class="row rv-line"><div><div class="name'+(b.hw?'':' mono')+'">'+esc(boLabel(b))+'</div><div class="fills">To back order</div></div>'+
+        '<div class="num">'+boQty(b, b.pieces)+'</div><div class="num">'+(b.hw ? '' : fmt(round2(bfPer(b)*b.pieces))+' bd ft')+'</div></div>';
     }).join('');
     return '<div class="card bo-group" data-id="'+d.id+'">'+
       '<div class="bo-head"><div><div class="name">'+esc(d.customer || 'Walk-in')+'</div>'+
@@ -3091,20 +3429,21 @@
   $('rej-confirm').addEventListener('click', function(){
     var d = reviews.find(function(x){ return x.id===rejectingId; });
     if(!d || d.status!=='pending' || !session || session.role!=='admin') return closeReject();
-    d.lines.forEach(function(l){ putBack(l, l.pieces); });
+    d.lines.concat(d.hw||[]).forEach(function(l){ putBack(l, l.pieces); });
     d.status = 'rejected';
     d.reason = $('rej-reason').value.trim();
     d.reviewedBy = session.name; d.reviewedDate = new Date().toISOString();
     save(KEYS.stock, stock);
+    save(KEYS.hw, hardware);
     save(KEYS.review, reviews);
     closeReject();
     renderAll();
-    toast('Sent back. The lumber is back in inventory.');
+    toast('Sent back. Its items are back in inventory.');
   });
 
   // A sent-back bill out goes on the Bill out ticket to fix and submit again; whatever is gone by now becomes a back order
   function reopenReview(d){
-    if(cart.length || boCart.length){ toast('Your Bill out ticket has items on it. Submit or clear it first.'); return; }
+    if(cart.length || boCart.length || hwCart.length){ toast('Your Bill out ticket has items on it. Submit or clear it first.'); return; }
     reviews = reviews.filter(function(x){ return x.id!==d.id; });
     save(KEYS.review, reviews);
     d.lines.forEach(function(l){
@@ -3119,7 +3458,18 @@
       });
       if(left>0) addCartPieces(item.id, left);
     });
-    d.backorders.forEach(function(b){ addToBoCart(b, b.pieces); });
+    (d.hw||[]).forEach(function(l){
+      var h = hwById(l.hwId);
+      var left = h ? Math.min(l.pieces, Math.max(0, h.quantity - hwInCart(h.id))) : 0;
+      if(left<l.pieces) boCart.push({ hw:true, hwId:l.hwId, name:l.name, part:l.part, unit:l.unit, pieces:l.pieces - left });
+      Object.keys(l.fills||{}).forEach(function(id){
+        var b = backorders.find(function(x){ return x.id===id && x.status==='open'; });
+        var n = b ? Math.min(l.fills[id], left, boRemaining(b) - boQueued(b)) : 0;
+        if(n>0){ addHwCart(h.id, n, id); left -= n; }
+      });
+      if(left>0) addHwCart(h.id, left);
+    });
+    d.backorders.forEach(function(b){ if(b.hw) boCart.push(Object.assign({}, b)); else addToBoCart(b, b.pieces); });
     if(d.customerId && customers.some(function(c){ return c.id===d.customerId; })) $('cust-select').value = d.customerId;
     else { $('cust-select').value = ''; $('customer').value = d.customer || ''; }
     toggleWalkin();
@@ -3136,25 +3486,31 @@
   function specKey(i){ return Number(i.thickness)+'x'+Number(i.width)+'x'+Number(i.length)+'|'+kindOf(i); }
   function boRemaining(b){ return Math.max(0, Number(b.pieces) - (Number(b.filled)||0)); }
   function openBackorders(){ return backorders.filter(function(b){ return b.status==='open'; }); }
-  function boItem(b){ return stock.find(function(i){ return sameSpec(i, b); }) || null; }
+  // A back order is for lumber (by size) or for a hardware item (b.hw, by item id)
+  function boItem(b){ return b.hw ? hwById(b.hwId) : stock.find(function(i){ return sameSpec(i, b); }) || null; }
+  function boLabel(b){ return b.hw ? hwLabel(b) : dims(b); }
+  function boQty(b, n){ return b.hw ? unitText(b.unit, n) : qtyText(b.bunkSize, n); }
   // Pieces already on the Bill out ticket for this back order
   function boQueued(b){
-    var n = cart.reduce(function(s, c){ return s + ((c.fills && c.fills[b.id]) || 0); }, 0);
-    pendingReviews().forEach(function(d){
-      d.lines.forEach(function(l){ n += (l.fills && l.fills[b.id]) || 0; });
-    });
+    var fromLines = function(list, key){ return list.reduce(function(s, c){ return s + ((c.fills && c.fills[b.id]) || 0); }, 0); };
+    var n = fromLines(cart) + fromLines(hwCart);
+    pendingReviews().forEach(function(d){ n += fromLines(d.lines) + fromLines(d.hw||[]); });
     return n;
   }
   // How much of a back order could be pulled from stock right now
   function boFillable(b){
     var item = boItem(b);
     if(!item) return 0;
-    return Math.max(0, Math.min(boRemaining(b) - boQueued(b), Number(item.quantity) - inCart(item.id)));
+    var free = Number(item.quantity) - (b.hw ? hwInCart(item.id) : inCart(item.id));
+    return Math.max(0, Math.min(boRemaining(b) - boQueued(b), free));
   }
   function boReadyCount(){ return openBackorders().filter(function(b){ return boFillable(b)>0; }).length; }
   function boOwedBySpec(){
     var out = {};
-    openBackorders().forEach(function(b){ var k = specKey(b); out[k] = (out[k]||0) + boRemaining(b); });
+    openBackorders().forEach(function(b){
+      var k = b.hw ? 'hw:'+b.hwId : specKey(b);
+      out[k] = (out[k]||0) + boRemaining(b);
+    });
     return out;
   }
   function boCustKey(b){ return b.customerId ? 'id:'+b.customerId : 'name:'+String(b.customer||'').trim().toLowerCase(); }
@@ -3174,7 +3530,7 @@
 
     var el = $('bo-list'), q = boSearch;
     var list = (boShowFilled ? backorders.filter(function(b){ return b.status==='filled'; }) : open).filter(function(b){
-      return !q || ((b.customer||'')+' '+(b.ticket||'')+' '+sizeHay(b)).toLowerCase().indexOf(q)>-1;
+      return !q || ((b.customer||'')+' '+(b.ticket||'')+' '+(b.hw ? hwHay(b) : sizeHay(b))).toLowerCase().indexOf(q)>-1;
     });
     if(!list.length){
       el.innerHTML = '<div class="card"><div class="empty"><div class="big">'+
@@ -3191,8 +3547,8 @@
       el.innerHTML = '<div class="card">'+list.map(function(b){
         var tickets = (b.fills||[]).map(function(f){ return f.ticket; }).filter(Boolean).join(', ');
         return '<div class="row bo-row" data-id="'+b.id+'">'+
-          '<div><div class="name mono">'+esc(dims(b))+'</div><div class="meta">'+esc(b.customer)+'</div></div>'+
-          '<div class="num strong">'+qtyText(b.bunkSize, Number(b.pieces))+'</div>'+
+          '<div><div class="name'+(b.hw?'':' mono')+'">'+esc(boLabel(b))+'</div><div class="meta">'+esc(b.customer)+'</div></div>'+
+          '<div class="num strong">'+boQty(b, Number(b.pieces))+'</div>'+
           '<div class="bo-status"><span class="badge on">Filled '+day(b.filledDate)+'</span>'+
             '<div class="meta">Ordered '+day(b.date)+(b.ticket ? ' on '+esc(b.ticket) : '')+(tickets ? ' · filled on '+esc(tickets) : '')+'</div></div>'+
           '<div class="actions"><button class="icon-btn danger" data-act="remove" aria-label="Remove from list">'+delSvg+'</button></div>'+
@@ -3213,21 +3569,21 @@
       g.items.forEach(function(b){ owed += boRemaining(b); if(boFillable(b)>0) readyN++; });
       return '<div class="card bo-group">'+
         '<div class="bo-head"><div><div class="name">'+esc(g.name)+'</div>'+
-          '<div class="meta">'+g.items.length+(g.items.length===1?' back order':' back orders')+' · '+owed.toLocaleString()+' pcs owed</div></div>'+
+          '<div class="meta">'+g.items.length+(g.items.length===1?' back order':' back orders')+' owed</div></div>'+
           (readyN ? '<button class="btn sm primary" data-act="fill-all" data-key="'+esc(k)+'">Fill what\'s in stock ('+readyN+')</button>' : '')+
         '</div>'+
         g.items.map(function(b){
           var rem = boRemaining(b), item = boItem(b), fillN = boFillable(b);
           var status = !item ? '<span class="badge off">Not stocked</span>'
             : fillN>=rem ? '<span class="badge on">In stock</span>'
-            : fillN>0 ? '<span class="badge low">'+fillN.toLocaleString()+' pcs in stock</span>'
+            : fillN>0 ? '<span class="badge low">'+boQty(b, fillN)+' in stock</span>'
             : boQueued(b) ? '<span class="badge low">On a ticket</span>'
             : '<span class="badge off">Out of stock</span>';
           return '<div class="row bo-row" data-id="'+b.id+'">'+
-            '<div><div class="name mono">'+esc(dims(b))+'</div>'+
+            '<div><div class="name'+(b.hw?'':' mono')+'">'+esc(boLabel(b))+'</div>'+
               '<div class="meta">'+day(b.date)+(b.ticket ? ' · '+esc(b.ticket) : '')+
                 (Number(b.filled) ? ' · '+Number(b.filled).toLocaleString()+' of '+Number(b.pieces).toLocaleString()+' filled' : '')+'</div></div>'+
-            '<div class="num strong">'+qtyText(b.bunkSize, rem)+'</div>'+
+            '<div class="num strong">'+boQty(b, rem)+'</div>'+
             '<div class="bo-status">'+status+'</div>'+
             '<div class="actions">'+
               '<button class="btn sm" data-act="fill"'+(fillN>0?'':' disabled')+'>Fill</button>'+
@@ -3246,14 +3602,14 @@
     var b0 = list[0];
     var tCust = $('cust-select').value, tName = $('customer').value.trim().toLowerCase();
     var same = b0.customerId ? tCust===b0.customerId : (!tCust && tName===String(b0.customer||'').trim().toLowerCase());
-    if((cart.length || boCart.length) && !same){
+    if((cart.length || boCart.length || hwCart.length) && !same){
       toast('The Bill out ticket has items for someone else. Complete or clear it first.');
       return;
     }
     var pcs = 0;
     list.forEach(function(b){
       var item = boItem(b), n = boFillable(b);
-      addCartPieces(item.id, n, b.id);
+      if(b.hw) addHwCart(item.id, n, b.id); else addCartPieces(item.id, n, b.id);
       pcs += n;
     });
     if(b0.customerId && customers.some(function(c){ return c.id===b0.customerId; })){ $('cust-select').value = b0.customerId; }
@@ -3261,7 +3617,7 @@
     toggleWalkin();
     go('bill');
     renderCart();
-    toast('Put '+pcs.toLocaleString()+' pcs on the ticket for '+b0.customer+'. '+(session.role==='admin' ? 'Complete the sale to mark ' : 'Once your submission is approved, that marks ')+(list.length===1?'it':'them')+' filled.');
+    toast('Put '+(list.length===1 ? boQty(b0, pcs) : list.length+' back orders')+' on the ticket for '+b0.customer+'. '+(session.role==='admin' ? 'Complete the sale to mark ' : 'Once your submission is approved, that marks ')+(list.length===1?'it':'them')+' filled.');
   }
 
   $('bo-list').addEventListener('click', function(e){
@@ -3277,12 +3633,12 @@
     if(!b) return;
     if(act==='fill') fillBackorders([b]);
     else if(act==='cancel' || act==='remove'){
-      var what = qtyText(b.bunkSize, act==='cancel' ? boRemaining(b) : Number(b.pieces))+' of '+dims(b)+' for '+b.customer;
+      var what = boQty(b, act==='cancel' ? boRemaining(b) : Number(b.pieces))+' of '+boLabel(b)+' for '+b.customer;
       askConfirm(act==='cancel' ? 'Cancel back order' : 'Remove from list',
         act==='cancel' ? 'Cancel the back order for '+what+'? It will no longer be owed.' : 'Remove the filled back order for '+what+' from this list?',
         act==='cancel' ? 'Cancel back order' : 'Remove', function(){
           backorders = backorders.filter(function(x){ return x.id!==b.id; });
-          cart.forEach(function(c){ if(c.fills) delete c.fills[b.id]; });
+          cart.concat(hwCart).forEach(function(c){ if(c.fills) delete c.fills[b.id]; });
           save(KEYS.bo, backorders);
           renderAll();
         });
@@ -3334,6 +3690,519 @@
   $('boadd-cancel').addEventListener('click', closeBoAdd);
   $('boadd-close').addEventListener('click', closeBoAdd);
   $('boadd-overlay').addEventListener('click', function(e){ if(e.target.id==='boadd-overlay') closeBoAdd(); });
+
+  /* =====================================================
+     HARDWARE (nails, hangers, fasteners)
+  ===================================================== */
+  var hwSearch = '', hwLowOnly = false, editingHwId = null;
+  function hwById(id){ return id ? hardware.find(function(h){ return h.id===id; }) || null : null; }
+  function hwLabel(h){ return h.name+(h.part ? ' ('+h.part+')' : ''); }
+  function hwCat(h){ return (h.cat||'').trim() || 'Other'; }
+  function hwHay(h){ return (h.name+' '+(h.part||'')+' '+hwCat(h)).toLowerCase(); }
+  function hwSort(a, b){ return a.name.localeCompare(b.name) || (a.part||'').localeCompare(b.part||''); }
+  function hwCategories(list){
+    var seen = {};
+    list.forEach(function(h){ seen[hwCat(h)] = true; });
+    return Object.keys(seen).sort(function(a,b){ return a==='Other' ? 1 : b==='Other' ? -1 : a.localeCompare(b); });
+  }
+  function hwPerText(h){ return h.per ? esc(h.per)+' per '+(h.unit||'each').replace('each','piece') : h.unit==='each' || !h.unit ? 'Sold by the piece' : 'Sold by the '+h.unit; }
+  var UNIT_PLURAL = { each:'each', box:'boxes', case:'cases', pail:'pails', bucket:'buckets', bag:'bags', roll:'rolls', pack:'packs' };
+  function unitText(unit, n){
+    unit = unit || 'each';
+    return Number(n).toLocaleString()+' '+(Number(n)===1 || unit==='each' ? unit : (UNIT_PLURAL[unit] || unit+'s'));
+  }
+
+  function renderHardware(){
+    if(!session || !can('hardware')) return;
+    var low = hardware.filter(isLow).length, out = hardware.filter(function(h){ return h.quantity<=0; }).length;
+    $('hw-stat-items').textContent = hardware.length;
+    $('hw-stat-cats').textContent = hwCategories(hardware).length;
+    $('hw-stat-low').textContent = low;
+    $('hw-stat-out').textContent = out;
+    $('hw-stat-low-box').classList.toggle('warn', low>0);
+    var el = $('hw-list');
+    if(!hardware.length){
+      el.innerHTML = '<div class="card"><div class="empty"><div class="big">No hardware yet</div><div>Add the nails, hangers and fasteners you stock.</div><button class="btn primary" id="hw-empty-add">Add hardware</button></div></div>';
+      $('hw-empty-add').addEventListener('click', function(){ openHw(null); });
+      return;
+    }
+    var q = hwSearch;
+    var list = hardware.filter(function(h){ return (!q || hwHay(h).indexOf(q)>-1) && (!hwLowOnly || isLow(h)); });
+    if(!list.length){
+      el.innerHTML = '<div class="card"><div class="empty"><div class="big">Nothing matches</div><div>'+(hwLowOnly && !q ? 'No hardware is at or below its low stock alert.' : 'Try a different search.')+'</div></div></div>';
+      return;
+    }
+    var owed = boOwedBySpec();
+    var editSvg = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
+    el.innerHTML = '<div class="card"><div class="row hw-row head"><div>Item</div><div class="hide-sm">Stored at</div><div>In stock</div><div></div></div>'+
+      hwCategories(list).map(function(cat){
+        var items = list.filter(function(h){ return hwCat(h)===cat; }).sort(hwSort);
+        return '<div class="hw-cat"><span>'+esc(cat)+'</span><span class="meta" style="margin:0;">'+items.length+(items.length===1?' item':' items')+'</span></div>'+
+          items.map(function(h){
+            var out = h.quantity<=0;
+            return '<div class="row hw-row" data-hw="'+h.id+'">'+
+              '<div><div class="name">'+esc(h.name)+(h.part ? '<span class="part">'+esc(h.part)+'</span>' : '')+
+                (out ? '<span class="badge out">Out</span>' : isLow(h) ? '<span class="badge low">Low</span>' : '')+'</div>'+
+                '<div class="meta">'+hwPerText(h)+
+                  (owed['hw:'+h.id] ? ' · <span class="bo-note">'+owed['hw:'+h.id]+' back ordered</span>' : '')+'</div>'+
+                '<div class="show-sm">'+spotChips(h)+'</div></div>'+
+              '<div class="hide-sm">'+(spotChips(h) || '<span class="meta">Not placed</span>')+'</div>'+
+              '<div class="num strong">'+unitText(h.unit, h.quantity)+'</div>'+
+              '<div class="actions"><button class="icon-btn" data-act="edit" aria-label="Edit">'+editSvg+'</button></div>'+
+            '</div>';
+          }).join('');
+      }).join('')+'</div>';
+    el.querySelectorAll('[data-act=edit]').forEach(function(b){
+      b.addEventListener('click', function(){ openHw(hwById(b.closest('[data-hw]').dataset.hw)); });
+    });
+  }
+  $('hw-search').addEventListener('input', function(e){ hwSearch = e.target.value.trim().toLowerCase(); renderHardware(); });
+  $('hw-low-toggle').addEventListener('click', function(){ hwLowOnly = !hwLowOnly; this.classList.toggle('active', hwLowOnly); renderHardware(); });
+  $('hw-add-btn').addEventListener('click', function(){ openHw(null); });
+
+  function openHw(h){
+    editingHwId = h ? h.id : null;
+    $('hw-title').textContent = h ? 'Edit hardware' : 'Add hardware';
+    $('h-name').value = h ? h.name : '';
+    $('h-part').value = h ? (h.part||'') : '';
+    $('h-cat').value = h ? (h.cat||'') : '';
+    $('h-unit').value = h ? (h.unit||'each') : 'box';
+    $('h-per').value = h ? (h.per||'') : '';
+    $('h-qty').value = h ? h.quantity : '';
+    $('h-low').value = h && h.lowAt!=null && h.lowAt!=='' ? h.lowAt : '';
+    var cats = ['Nails','Hangers','Fasteners'];
+    hardware.forEach(function(x){ var c = hwCat(x); if(c!=='Other' && cats.indexOf(c)<0) cats.push(c); });
+    $('hw-cat-list').innerHTML = cats.map(function(c){ return '<option value="'+esc(c)+'">'; }).join('');
+    renderSpotPick('h-spots', h ? h.spots : []);
+    $('hw-delete').hidden = !h;
+    fclear('hw-err');
+    $('hw-overlay').classList.add('open');
+    $('h-name').focus();
+  }
+  function closeHw(){ $('hw-overlay').classList.remove('open'); }
+  $('hw-save').addEventListener('click', function(){
+    fclear('hw-err');
+    var name = $('h-name').value.trim(), part = $('h-part').value.trim().toUpperCase();
+    var qty = Number($('h-qty').value || 0), lowRaw = $('h-low').value.trim(), lowAt = lowRaw==='' ? null : Number(lowRaw);
+    var msg = !name ? 'Enter a name.' :
+      !(qty>=0 && Math.floor(qty)===qty) ? 'In stock must be a whole number.' :
+      lowAt!==null && !(lowAt>=0 && Math.floor(lowAt)===lowAt) ? 'Low stock alert must be a whole number, or leave it blank.' :
+      part && hardware.some(function(x){ return x.id!==editingHwId && (x.part||'').toUpperCase()===part; }) ? 'Another item already has part number '+part+'.' : '';
+    if(msg){ ferr('hw-err', msg); return; }
+    var data = { name:name, part:part, cat:$('h-cat').value.trim(), unit:$('h-unit').value, per:$('h-per').value.trim(),
+      quantity:qty, lowAt:lowAt, spots:pickedSpots('h-spots') };
+    var h = hwById(editingHwId);
+    if(h) Object.assign(h, data);
+    else hardware.push(Object.assign({ id:uid('hw') }, data));
+    save(KEYS.hw, hardware);
+    closeHw();
+    syncHwCart();
+    renderAll();
+    toast('Saved '+name+'.');
+    var ready = boReadyCount();
+    if(ready) toast(ready+(ready===1?' back order':' back orders')+' can be filled now. See Bill out › Back orders.');
+  });
+  $('hw-delete').addEventListener('click', function(){
+    var h = hwById(editingHwId); if(!h) return;
+    askConfirm('Delete hardware', 'Delete '+hwLabel(h)+' from inventory? Past tickets keep it.', 'Delete', function(){
+      hardware = hardware.filter(function(x){ return x.id!==h.id; });
+      hwCart = hwCart.filter(function(c){ return c.hwId!==h.id; });
+      save(KEYS.hw, hardware);
+      closeHw();
+      renderAll();
+    });
+  });
+  $('hw-cancel').addEventListener('click', closeHw);
+  $('hw-close').addEventListener('click', closeHw);
+  $('hw-overlay').addEventListener('click', function(e){ if(e.target.id==='hw-overlay') closeHw(); });
+
+  /* =====================================================
+     MAP (where lumber and hardware are stored)
+  ===================================================== */
+  function allSpots(){
+    var out = [];
+    maps.forEach(function(m){ m.spots.forEach(function(s){ out.push({ id:s.id, name:s.name, map:m }); }); });
+    return out;
+  }
+  function spotById(id){ return allSpots().find(function(s){ return s.id===id; }) || null; }
+  function spotName(s){ return maps.length>1 ? s.name+' · '+s.map.name : s.name; }
+  // Location tags on an item; tapping one opens the map at that spot
+  function spotChips(item){
+    return (item.spots||[]).map(spotById).filter(Boolean).map(function(s){
+      return '<button type="button" class="loc-chip" data-spot="'+s.id+'">'+esc(spotName(s))+'</button>';
+    }).join('');
+  }
+  document.addEventListener('click', function(e){
+    var c = e.target.closest && e.target.closest('.loc-chip[data-spot]');
+    if(!c || !session) return;
+    e.stopPropagation();
+    showSpot(c.dataset.spot);
+  }, true);
+  function itemsAt(spotId){
+    return stock.filter(function(i){ return (i.spots||[]).indexOf(spotId)>-1; }).sort(bySize).map(function(i){ return { kind:'lu', item:i }; })
+      .concat(hardware.filter(function(h){ return (h.spots||[]).indexOf(spotId)>-1; }).sort(hwSort).map(function(h){ return { kind:'hw', item:h }; }));
+  }
+
+  /* ---------- "Stored at" picker on an item ---------- */
+  var spotPicks = {};
+  function renderSpotPick(cid, ids){
+    spotPicks[cid] = (ids||[]).filter(function(id){ return spotById(id); });
+    drawSpotPick(cid);
+  }
+  function pickedSpots(cid){ return (spotPicks[cid]||[]).slice(); }
+  function drawSpotPick(cid){
+    var el = $(cid), sel = spotPicks[cid];
+    var chips = sel.map(function(id){ var s = spotById(id); return '<span class="loc-chip">'+esc(spotName(s))+'<b data-rm="'+id+'" role="button" aria-label="Remove">×</b></span>'; }).join('');
+    var opts = maps.map(function(m){
+      var left = m.spots.filter(function(s){ return sel.indexOf(s.id)<0; });
+      return left.length ? '<optgroup label="'+esc(m.name)+'">'+left.map(function(s){ return '<option value="'+s.id+'">'+esc(s.name)+'</option>'; }).join('')+'</optgroup>' : '';
+    }).join('');
+    el.innerHTML = chips + (maps.length
+      ? '<select aria-label="Add a location"><option value="">'+(sel.length ? 'Add another spot…' : 'Pick a spot on the map…')+'</option>'+opts+'</select>'
+      : '<span class="meta">Set up a map under Inventory › Map to mark where things are kept.</span>');
+    el.querySelectorAll('[data-rm]').forEach(function(b){ b.addEventListener('click', function(){ spotPicks[cid] = sel.filter(function(x){ return x!==b.dataset.rm; }); drawSpotPick(cid); }); });
+    var s = el.querySelector('select');
+    if(s) s.addEventListener('change', function(){ if(s.value){ sel.push(s.value); drawSpotPick(cid); } });
+  }
+
+  /* ---------- the map page ---------- */
+  var mapId = null, mapEditing = false, mapZoom = 0, mapSel = null, mapHits = {}, mapSearch = '';
+  var MAP_ZOOMS = [1, 1.5, 2, 3, 4];
+  // On a phone the map is never drawn narrower than 760px, so spot labels stay readable; swipe to see the rest
+  function mapWidth(){ var z = MAP_ZOOMS[mapZoom]; return 'max('+z*100+'%, '+z*760+'px)'; }
+  var mapUrls = {};
+  function mapImgUrl(m){
+    if(mapUrls[m.id]) return Promise.resolve(mapUrls[m.id]);
+    return photoGet('map_'+m.id).then(function(blob){ return blob ? (mapUrls[m.id] = URL.createObjectURL(blob)) : null; });
+  }
+  function curMap(){ return maps.find(function(m){ return m.id===mapId; }) || maps[0] || null; }
+  function saveMaps(){ save(KEYS.maps, maps); }
+
+  function renderMap(){
+    if(!session || !can('map')) return;
+    var admin = session.role==='admin';
+    var m = curMap();
+    mapId = m ? m.id : null;
+    $('map-edit-toggle').hidden = !admin || !m;
+    $('map-manage').hidden = !admin;
+    $('map-manage').textContent = m ? 'Map settings' : 'Add a map';
+    $('map-tabs').hidden = maps.length<2;
+    $('map-tabs').innerHTML = maps.map(function(x){ return '<button data-map="'+x.id+'"'+(x.id===mapId ? ' class="active"' : '')+'>'+esc(x.name)+'</button>'; }).join('');
+    $('map-area').hidden = !m;
+    $('map-empty').innerHTML = m ? '' : '<div class="card"><div class="empty"><div class="big">No map yet</div><div>'+
+      (admin ? 'Draw your hardware room from its measurements, or upload a picture of any layout, like the yard.' : 'An admin sets up the map.')+'</div>'+
+      (admin ? '<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:16px;"><button class="btn primary" id="map-room-btn">Draw the hardware room</button><button class="btn" id="map-add-btn">Upload a picture</button></div>' : '')+'</div></div>';
+    if(!m){
+      if($('map-room-btn')) $('map-room-btn').addEventListener('click', function(){ addRoomMap(HW_ROOM); });
+      if($('map-add-btn')) $('map-add-btn').addEventListener('click', function(){ openMapEdit(null); });
+      renderMapResults();
+      return;
+    }
+    $('map-edit-toggle').classList.toggle('active', mapEditing);
+    $('map-edit-toggle').textContent = mapEditing ? 'Done editing' : 'Edit spots';
+    $('map-hint').textContent = mapEditing ? 'Tap an empty place on the map to add a spot. Drag a spot to move it, or tap it to rename or delete it.'
+      : 'Tap a spot to see what is stored there. Search above to find an item.';
+    var stage = $('map-stage');
+    stage.classList.toggle('editing', mapEditing);
+    stage.style.width = mapWidth();
+    var token = m.id;
+    mapImgUrl(m).then(function(url){
+      if(curMap()!==m || stage.dataset.map===token+'|'+url+'|'+mapEditing+'|'+JSON.stringify(m.spots)+'|'+JSON.stringify(mapHits)+'|'+mapSel+'|'+stock.length+'|'+hardware.length) return drawSpotPanel();
+      stage.dataset.map = token+'|'+url+'|'+mapEditing+'|'+JSON.stringify(m.spots)+'|'+JSON.stringify(mapHits)+'|'+mapSel+'|'+stock.length+'|'+hardware.length;
+      stage.innerHTML = (url ? '<img src="'+url+'" alt="'+esc(m.name)+' map" draggable="false">' : '<div class="empty">The map picture is not on this device.</div>')+
+        m.spots.map(function(s){
+          var n = itemsAt(s.id).length;
+          return '<button class="pin'+(n ? '' : ' empty')+(mapHits[s.id] ? ' hit' : '')+(mapSel===s.id ? ' sel' : '')+'" data-pin="'+s.id+'" style="left:'+(s.x*100)+'%;top:'+(s.y*100)+'%;">'+
+            '<span>'+esc(s.name)+(n ? ' ('+n+')' : '')+'</span></button>';
+        }).join('');
+      drawSpotPanel();
+    });
+    renderMapResults();
+  }
+  function drawSpotPanel(){
+    var m = curMap(), s = m && m.spots.find(function(x){ return x.id===mapSel; });
+    var el = $('map-spot');
+    if(!s){ el.innerHTML = ''; return; }
+    var admin = session.role==='admin', list = itemsAt(s.id);
+    var rows = list.map(function(e){
+      var i = e.item;
+      return '<div class="spot-item"><div><div class="name'+(e.kind==='lu' ? ' mono' : '')+'">'+esc(e.kind==='lu' ? dims(i) : hwLabel(i))+'</div>'+
+        '<div class="meta">'+(e.kind==='lu' ? qtyText(i.bunkSize, i.quantity) : unitText(i.unit, i.quantity))+' in stock</div></div>'+
+        (admin ? '<button class="btn sm" data-unplace="'+e.kind+':'+i.id+'">Remove from here</button>' : '')+'</div>';
+    }).join('') || '<div class="sec-empty">Nothing is marked as stored here yet.</div>';
+    var addOpts = '';
+    if(admin){
+      var lu = stock.filter(function(i){ return (i.spots||[]).indexOf(s.id)<0; }).sort(bySize);
+      var hw = hardware.filter(function(h){ return (h.spots||[]).indexOf(s.id)<0; }).sort(hwSort);
+      addOpts = '<div class="spot-pick" style="margin-top:10px;"><select id="spot-add"><option value="">Add an item stored here…</option>'+
+        (hw.length ? '<optgroup label="Hardware">'+hw.map(function(h){ return '<option value="hw:'+h.id+'">'+esc(hwLabel(h))+'</option>'; }).join('')+'</optgroup>' : '')+
+        (lu.length ? '<optgroup label="Lumber">'+lu.map(function(i){ return '<option value="lu:'+i.id+'">'+esc(dims(i))+'</option>'; }).join('')+'</optgroup>' : '')+
+      '</select></div>';
+    }
+    el.innerHTML = '<div class="spot-panel"><div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;">'+
+      '<div><h3>'+esc(s.name)+'</h3><div class="meta">'+esc(m.name)+' · '+list.length+(list.length===1?' item':' items')+'</div></div>'+
+      (admin ? '<button class="btn sm" id="spot-rename">Rename</button>' : '')+'</div>'+rows+addOpts+'</div>';
+    el.querySelectorAll('[data-unplace]').forEach(function(b){
+      b.addEventListener('click', function(){ placeItem(b.dataset.unplace, s.id, false); });
+    });
+    if($('spot-add')) $('spot-add').addEventListener('change', function(){ if(this.value) placeItem(this.value, s.id, true); });
+    if($('spot-rename')) $('spot-rename').addEventListener('click', function(){ openSpotEdit(s); });
+  }
+  function placeItem(ref, spotId, on){
+    var p = ref.split(':'), item = p[0]==='hw' ? hwById(p[1]) : stock.find(function(i){ return i.id===p[1]; });
+    if(!item) return;
+    item.spots = (item.spots||[]).filter(function(x){ return x!==spotId; });
+    if(on) item.spots.push(spotId);
+    save(p[0]==='hw' ? KEYS.hw : KEYS.stock, p[0]==='hw' ? hardware : stock);
+    renderMap();
+  }
+  // Search: every matching item, with buttons for the spots it is in; matching spots pulse on the map
+  function renderMapResults(){
+    var q = mapSearch, el = $('map-results');
+    mapHits = {};
+    if(!q){ el.innerHTML = ''; return; }
+    var qs = q.replace(/\s+/g,'');
+    var hits = stock.filter(function(i){ return sizeHay(i).indexOf(q)>-1 || sizeHay(i).indexOf(qs)>-1; }).sort(bySize).map(function(i){ return { label:dims(i), mono:true, item:i, qty:qtyText(i.bunkSize, i.quantity) }; })
+      .concat(hardware.filter(function(h){ return hwHay(h).indexOf(q)>-1; }).sort(hwSort).map(function(h){ return { label:hwLabel(h), item:h, qty:unitText(h.unit, h.quantity) }; }));
+    hits.forEach(function(r){ (r.item.spots||[]).forEach(function(id){ mapHits[id] = true; }); });
+    el.className = 'map-results';
+    el.innerHTML = hits.slice(0, 12).map(function(r){
+      return '<div class="map-result"><span class="name'+(r.mono?' mono':'')+'">'+esc(r.label)+'</span><span class="meta" style="margin:0;">'+r.qty+'</span>'+
+        (spotChips(r.item) || '<span class="meta" style="margin:0;">not placed on a map</span>')+'</div>';
+    }).join('') + (hits.length>12 ? '<div class="meta">and '+(hits.length-12)+' more. Search for something more exact.</div>' : '') +
+      (hits.length ? '' : '<div class="sec-empty">Nothing in stock matches.</div>');
+    // show the map that has the most hits
+    var m = curMap();
+    if(m && !m.spots.some(function(s){ return mapHits[s.id]; })){
+      var other = maps.find(function(x){ return x.spots.some(function(s){ return mapHits[s.id]; }); });
+      if(other){ mapId = other.id; renderMap(); }
+    }
+  }
+  $('map-search').addEventListener('input', function(e){ mapSearch = e.target.value.trim().toLowerCase(); mapSel = null; renderMap(); });
+  $('map-tabs').addEventListener('click', function(e){ var b = e.target.closest('[data-map]'); if(b){ mapId = b.dataset.map; mapSel = null; renderMap(); } });
+  $('map-edit-toggle').addEventListener('click', function(){ mapEditing = !mapEditing; renderMap(); });
+  $('map-manage').addEventListener('click', function(){ openMapEdit(curMap()); });
+  function setMapZoom(dir){
+    var v = $('map-viewer');
+    var cx = (v.scrollLeft + v.clientWidth/2) / v.scrollWidth, cy = (v.scrollTop + v.clientHeight/2) / v.scrollHeight;
+    mapZoom = dir===0 ? 0 : Math.max(0, Math.min(MAP_ZOOMS.length-1, mapZoom + dir));
+    $('map-stage').style.width = mapWidth();
+    v.scrollLeft = cx*v.scrollWidth - v.clientWidth/2; v.scrollTop = cy*v.scrollHeight - v.clientHeight/2;
+  }
+  $('map-zin').addEventListener('click', function(){ setMapZoom(1); });
+  $('map-zout').addEventListener('click', function(){ setMapZoom(-1); });
+  $('map-zfit').addEventListener('click', function(){ setMapZoom(0); });
+  // Open the map at one spot (from a location tag anywhere in the app)
+  function showSpot(id){
+    var s = spotById(id); if(!s) return;
+    mapId = s.map.id; mapSel = id; mapEditing = false;
+    go('map');
+    setTimeout(function(){
+      var pin = document.querySelector('.pin[data-pin="'+id+'"]');
+      if(pin) pin.scrollIntoView({ block:'center', inline:'center' });
+    }, 80);
+  }
+
+  // Tapping and dragging on the map
+  var drag = null;
+  $('map-stage').addEventListener('pointerdown', function(e){
+    var pin = e.target.closest('.pin');
+    if(pin && mapEditing){
+      drag = { id:pin.dataset.pin, pin:pin, x0:e.clientX, y0:e.clientY, moved:false };
+      pin.setPointerCapture(e.pointerId);
+      e.preventDefault();
+    }
+  });
+  $('map-stage').addEventListener('pointermove', function(e){
+    if(!drag) return;
+    if(Math.abs(e.clientX-drag.x0)+Math.abs(e.clientY-drag.y0) > 6) drag.moved = true;
+    if(!drag.moved) return;
+    var r = $('map-stage').getBoundingClientRect();
+    drag.pin.style.left = Math.max(0, Math.min(1, (e.clientX - r.left)/r.width))*100+'%';
+    drag.pin.style.top = Math.max(0, Math.min(1, (e.clientY - r.top)/r.height))*100+'%';
+  });
+  $('map-stage').addEventListener('pointerup', function(e){
+    if(!drag) return;
+    var d = drag; drag = null;
+    var m = curMap(), s = m && m.spots.find(function(x){ return x.id===d.id; });
+    if(!s) return;
+    if(d.moved){
+      var r = $('map-stage').getBoundingClientRect();
+      s.x = Math.max(0, Math.min(1, (e.clientX - r.left)/r.width));
+      s.y = Math.max(0, Math.min(1, (e.clientY - r.top)/r.height));
+      saveMaps(); renderMap();
+    } else openSpotEdit(s);
+  });
+  $('map-stage').addEventListener('click', function(e){
+    var pin = e.target.closest('.pin');
+    if(mapEditing){
+      if(pin) return;
+      var r = $('map-stage').getBoundingClientRect();
+      openSpotEdit(null, { x:(e.clientX - r.left)/r.width, y:(e.clientY - r.top)/r.height });
+      return;
+    }
+    if(pin){ mapSel = mapSel===pin.dataset.pin ? null : pin.dataset.pin; renderMap(); if(mapSel) $('map-spot').scrollIntoView({ block:'nearest', behavior:'smooth' }); }
+  });
+
+  /* ---------- add / rename / delete a spot ---------- */
+  var spotEdit = null;
+  function openSpotEdit(s, at){
+    spotEdit = { id: s ? s.id : null, at:at };
+    $('spotedit-title').textContent = s ? 'Spot' : 'New spot';
+    $('se-name').value = s ? s.name : '';
+    $('se-delete').hidden = !s;
+    fclear('se-err');
+    $('spotedit-overlay').classList.add('open');
+    $('se-name').focus();
+  }
+  function closeSpotEdit(){ $('spotedit-overlay').classList.remove('open'); spotEdit = null; }
+  $('se-save').addEventListener('click', function(){
+    var m = curMap(), name = $('se-name').value.trim();
+    if(!m || !spotEdit) return;
+    if(!name){ ferr('se-err', 'Enter a name for this spot.'); return; }
+    var s = m.spots.find(function(x){ return x.id===spotEdit.id; });
+    if(s) s.name = name;
+    else m.spots.push({ id:uid('sp'), name:name, x:Math.max(0, Math.min(1, spotEdit.at.x)), y:Math.max(0, Math.min(1, spotEdit.at.y)) });
+    saveMaps(); closeSpotEdit(); renderMap();
+  });
+  $('se-name').addEventListener('keydown', function(e){ if(e.key==='Enter') $('se-save').click(); });
+  $('se-delete').addEventListener('click', function(){
+    var m = curMap(), id = spotEdit && spotEdit.id;
+    var s = m && m.spots.find(function(x){ return x.id===id; });
+    if(!s) return;
+    var n = itemsAt(id).length;
+    closeSpotEdit();
+    askConfirm('Delete spot', 'Delete '+s.name+'?'+(n ? ' '+n+(n===1?' item is':' items are')+' marked as stored here and will lose this location.' : ''), 'Delete', function(){
+      removeSpots([id]);
+      m.spots = m.spots.filter(function(x){ return x.id!==id; });
+      if(mapSel===id) mapSel = null;
+      saveMaps(); renderMap();
+    });
+  });
+  $('se-cancel').addEventListener('click', closeSpotEdit);
+  $('spotedit-close').addEventListener('click', closeSpotEdit);
+  $('spotedit-overlay').addEventListener('click', function(e){ if(e.target.id==='spotedit-overlay') closeSpotEdit(); });
+  function removeSpots(ids){
+    var drop = function(list){ list.forEach(function(i){ if(i.spots) i.spots = i.spots.filter(function(x){ return ids.indexOf(x)<0; }); }); };
+    drop(stock); drop(hardware);
+    save(KEYS.stock, stock); save(KEYS.hw, hardware);
+  }
+
+  /* ---------- add / change / delete a map ---------- */
+  var mapEditId = null, mapFile = null;
+  function openMapEdit(m){
+    mapEditId = m ? m.id : null; mapFile = null;
+    $('mapedit-title').textContent = m ? 'Map settings' : 'Add a map';
+    $('me-name').value = m ? m.name : '';
+    $('me-file').value = '';
+    $('me-file-name').textContent = m ? 'Choose a new picture to replace it (optional)' : 'Choose a picture or PDF';
+    $('me-delete').hidden = !m;
+    fclear('me-err');
+    $('mapedit-overlay').classList.add('open');
+    $('me-name').focus();
+  }
+  function closeMapEdit(){ $('mapedit-overlay').classList.remove('open'); }
+  $('me-file').addEventListener('change', function(){ mapFile = this.files && this.files[0] || null; $('me-file-name').textContent = mapFile ? mapFile.name : 'Choose a picture or PDF'; });
+  // A layout picture or the first page of a PDF, kept big enough to read when zoomed
+  function mapPicture(file){
+    if(/\.pdf$/i.test(file.name||'') || file.type==='application/pdf'){
+      return loadLib(PDFJS_SRC, 'pdfjsLib').then(function(pdfjs){
+        return loadLib(PDFJS_WORKER, 'pdfjsWorker').then(function(){ return file.arrayBuffer(); }).then(function(buf){ return pdfjs.getDocument({data:buf}).promise; });
+      }).then(function(doc){ return doc.getPage(1); }).then(function(page){
+        var base = page.getViewport({ scale:1 }), scale = Math.min(4, 2800/Math.max(base.width, base.height)), vp = page.getViewport({ scale:scale });
+        var c = document.createElement('canvas'); c.width = Math.round(vp.width); c.height = Math.round(vp.height);
+        var g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height);
+        return page.render({ canvasContext:g, viewport:vp }).promise.then(function(){
+          return new Promise(function(res){ c.toBlob(function(b){ res({ blob:b, w:c.width, h:c.height }); }, 'image/jpeg', 0.85); });
+        });
+      });
+    }
+    return new Promise(function(res, rej){
+      var url = URL.createObjectURL(file), img = new Image();
+      img.onload = function(){
+        var s = Math.min(1, 2800/Math.max(img.naturalWidth, img.naturalHeight));
+        var c = document.createElement('canvas'); c.width = Math.round(img.naturalWidth*s); c.height = Math.round(img.naturalHeight*s);
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+        URL.revokeObjectURL(url);
+        c.toBlob(function(b){ b ? res({ blob:b, w:c.width, h:c.height }) : rej(new Error('map')); }, 'image/jpeg', 0.85);
+      };
+      img.onerror = function(){ URL.revokeObjectURL(url); rej(new Error('map')); };
+      img.src = url;
+    });
+  }
+  $('me-save').addEventListener('click', function(){
+    fclear('me-err');
+    var name = $('me-name').value.trim(), m = maps.find(function(x){ return x.id===mapEditId; });
+    if(!name){ ferr('me-err', 'Enter a name for this map.'); return; }
+    if(!m && !mapFile){ ferr('me-err', 'Choose a picture of the layout.'); return; }
+    var done = function(){ saveMaps(); closeMapEdit(); renderMap(); toast('Saved the '+name+' map.'); };
+    if(!mapFile){ m.name = name; return done(); }
+    $('me-save').disabled = true;
+    mapPicture(mapFile).then(function(p){
+      if(!m){ m = { id:uid('map'), name:name, spots:[] }; maps.push(m); }
+      m.name = name; m.w = p.w; m.h = p.h;
+      if(mapUrls[m.id]){ URL.revokeObjectURL(mapUrls[m.id]); delete mapUrls[m.id]; }
+      mapId = m.id;
+      return photoPut('map_'+m.id, p.blob).then(done);
+    }).catch(function(){ ferr('me-err', 'That picture could not be used. Try a JPG, PNG or PDF.'); })
+      .then(function(){ $('me-save').disabled = false; });
+  });
+  $('me-delete').addEventListener('click', function(){
+    var m = maps.find(function(x){ return x.id===mapEditId; }); if(!m) return;
+    closeMapEdit();
+    askConfirm('Delete map', 'Delete the '+m.name+' map and its '+m.spots.length+' spots? Items stored there lose those locations. Inventory counts are not changed.', 'Delete map', function(){
+      removeSpots(m.spots.map(function(s){ return s.id; }));
+      maps = maps.filter(function(x){ return x.id!==m.id; });
+      photoDel('map_'+m.id).catch(function(){});
+      if(mapId===m.id) mapId = null;
+      mapSel = null;
+      saveMaps(); renderMap();
+    });
+  });
+  $('me-cancel').addEventListener('click', closeMapEdit);
+  $('mapedit-close').addEventListener('click', closeMapEdit);
+  $('mapedit-overlay').addEventListener('click', function(e){ if(e.target.id==='mapedit-overlay') closeMapEdit(); });
+
+  /* ---------- a shelving room drawn to scale from its measurements ---------- */
+  // The hardware room: 18' deep x 7' wide, four 9' x 2' bays (two along each long wall, 3' aisle between), 2 shelves in each bay
+  var HW_ROOM = { name:'Hardware room', depth:18, width:7, bayLen:9, bayDepth:2, shelves:2 };
+  function roomDrawing(r){
+    var px = 60, pad = 70, W = r.depth*px, H = r.width*px, perWall = Math.floor(r.depth/r.bayLen);
+    var svg = [], spots = [], bay = 0;
+    var t = function(x, y, s, size, weight, fill, anchor){ return '<text x="'+x+'" y="'+y+'" font-family="Arial, sans-serif" font-size="'+size+'" font-weight="'+(weight||400)+'" fill="'+(fill||'#1F2420')+'" text-anchor="'+(anchor||'middle')+'">'+s+'</text>'; };
+    svg.push('<rect x="0" y="0" width="'+(W+pad*2)+'" height="'+(H+pad*2)+'" fill="#ffffff"/>');
+    svg.push('<rect x="'+pad+'" y="'+pad+'" width="'+W+'" height="'+H+'" fill="#F4F1E8" stroke="#1F2420" stroke-width="6"/>');
+    // walls: top (bays 1..n) and bottom (the next n)
+    [0, 1].forEach(function(side){
+      for(var k=0; k<perWall; k++){
+        bay++;
+        var x = pad + k*r.bayLen*px, y = side ? pad + H - r.bayDepth*px : pad, w = r.bayLen*px, h = r.bayDepth*px;
+        svg.push('<rect x="'+(x+4)+'" y="'+(y+4)+'" width="'+(w-8)+'" height="'+(h-8)+'" fill="#E3ECE0" stroke="#2F5D3A" stroke-width="3" rx="4"/>');
+        svg.push(t(x + w/2, y + (side ? h - 12 : 26), 'Bay '+bay, 22, 700, '#244A2E'));
+        // one spot per shelf, spread along the bay
+        for(var s=1; s<=r.shelves; s++){
+          spots.push({ id:uid('sp'), name:'Bay '+bay+' · Shelf '+s,
+            x:(x + w*(s-0.5)/r.shelves) / (W+pad*2), y:(y + h*0.72) / (H+pad*2) });
+        }
+      }
+    });
+    var aisle = r.width - 2*r.bayDepth;
+    svg.push(t(pad + W/2, pad + H/2 + 8, aisle+'′ aisle', 22, 400, '#5D6459'));
+    svg.push('<line x1="'+pad+'" y1="'+(pad-30)+'" x2="'+(pad+W)+'" y2="'+(pad-30)+'" stroke="#8E958A" stroke-width="2"/>');
+    svg.push(t(pad + W/2, pad - 40, r.depth+'′ deep', 20, 700, '#5D6459'));
+    svg.push('<line x1="'+(pad-30)+'" y1="'+pad+'" x2="'+(pad-30)+'" y2="'+(pad+H)+'" stroke="#8E958A" stroke-width="2"/>');
+    svg.push('<text x="'+(pad-40)+'" y="'+(pad+H/2)+'" font-family="Arial, sans-serif" font-size="20" font-weight="700" fill="#5D6459" text-anchor="middle" transform="rotate(-90 '+(pad-40)+' '+(pad+H/2)+')">'+r.width+'′ wide</text>');
+    svg.push(t(pad + W - 4, pad + H + 34, 'Bays '+r.bayLen+'′ × '+r.bayDepth+'′, '+r.shelves+' shelves each', 18, 400, '#8E958A', 'end'));
+    var w = W+pad*2, h = H+pad*2;
+    return { svg:'<svg xmlns="http://www.w3.org/2000/svg" width="'+w+'" height="'+h+'" viewBox="0 0 '+w+' '+h+'">'+svg.join('')+'</svg>', w:w, h:h, spots:spots };
+  }
+  function addRoomMap(r){
+    var d = roomDrawing(r), m = { id:uid('map'), name:r.name, w:d.w, h:d.h, spots:d.spots };
+    photoPut('map_'+m.id, new Blob([d.svg], { type:'image/svg+xml' })).then(function(){
+      maps.push(m); mapId = m.id; saveMaps(); renderMap();
+      toast('Drew the '+r.name+' with '+d.spots.length+' shelf spots. Tap a shelf to put items on it.');
+    }, function(){ toast('The map could not be saved on this device.'); });
+  }
 
   /* =====================================================
      FILE UPLOAD (Inventory: add stock · Bill out: fill the ticket)
@@ -3835,7 +4704,7 @@
   $('imp-overlay').addEventListener('click', function(e){ if(e.target.id==='imp-overlay') closeImp(); });
 
   document.addEventListener('keydown', function(e){
-    if(e.key==='Escape'){ closeStock(); closeDelete(); closeTicket(); closeCust(); closeCustDetail(); closeCdel(); closeSdel(); closeAcct(); closePw(); closeCf(); closeImp(); closeBoAdd(); closeReturn(); closeReject(); closePhoto(); closeMlist(); closeJobEdit(); closeMore(); }
+    if(e.key==='Escape'){ closeStock(); closeDelete(); closeTicket(); closeCust(); closeCustDetail(); closeCdel(); closeSdel(); closeAcct(); closePw(); closeCf(); closeImp(); closeBoAdd(); closeReturn(); closeReject(); closePhoto(); closeMlist(); closeJobEdit(); closeMore(); closeHw(); closeMapEdit(); closeSpotEdit(); }
   });
 
   /* =====================================================
@@ -3903,13 +4772,15 @@
       card(mine.filter(function(d){ return d.status==='pending'; }).length, 'Waiting for approval', 'Tickets you sent', 'review', 'info');
     }
     card(boReadyCount(), 'Back orders ready to fill', openBackorders().length+' open back order'+(openBackorders().length===1?'':'s'), 'backorders', 'good');
-    if(admin) card(stock.filter(isLow).length, 'Low stock', 'At or below their alert', 'low', 'warn');
-    if(cart.length || boCart.length) card(cart.length + boCart.length, 'Unfinished ticket', 'Lines on your Bill out ticket', 'bill', 'info');
+    var lowLu = stock.filter(isLow).length, lowHw = hardware.filter(isLow).length;
+    if(admin) card(lowLu + lowHw, 'Low stock', lowHw ? lowLu+' lumber, '+lowHw+' hardware' : 'At or below their alert', lowLu || !lowHw ? 'low' : 'hwlow', 'warn');
+    if(cart.length || hwCart.length || boCart.length) card(cart.length + hwCart.length + boCart.length, 'Unfinished ticket', 'Lines on your Bill out ticket', 'bill', 'info');
     $('home-cards').innerHTML = cards.join('');
     $('home-cards').querySelectorAll('[data-home]').forEach(function(b){
       b.addEventListener('click', function(){
         var v = b.dataset.home;
         if(v==='low'){ lowOnly = true; $('low-toggle').classList.add('active'); v = 'inventory'; }
+        if(v==='hwlow'){ hwLowOnly = true; $('hw-low-toggle').classList.add('active'); v = 'hardware'; }
         go(v);
       });
     });
@@ -3998,7 +4869,10 @@
   function renderAll(){
     if(!session) return;
     if(can('inventory')) renderInventory();
-    renderPicker(); renderCart(); renderCustomers(); renderCustSelect();
+    syncHwCart(); renderPicker(); renderHwPicker(); renderCart(); renderCustomers(); renderCustSelect();
+    if(currentView==='hardware') renderHardware();
+    if(currentView==='map') renderMap();
+    var hwLowN = hardware.filter(isLow).length; $('hw-low-count').textContent = hwLowN || ''; $('hw-low-count').hidden = !hwLowN;
     if(can('sales')) renderSales();
     if(can('accounts')) renderAccounts();
     renderBackorders();
@@ -4034,6 +4908,8 @@
     customers = await load(KEYS.cust);
     backorders = await load(KEYS.bo);
     jobs = await load(KEYS.jobs);
+    hardware = await load(KEYS.hw);
+    maps = await load(KEYS.maps);
     reviews = (await load(KEYS.review)).filter(function(d){   // approved ones drop off the list after 30 days
       return d.status!=='approved' || Date.now() - new Date(d.reviewedDate) < 30*864e5;
     });
