@@ -117,6 +117,17 @@ td.n { text-align: right; font-family: var(--font-data); font-variant-numeric: t
 .pl.pre { border: 1.5px solid var(--precut-line); background: var(--precut-fill); }
 /* shear walls */
 :root { --drawing: #ffffff; --mark: #0d7a45; --mark-fill: rgba(16, 150, 80, .42); --mark2-fill: rgba(9, 95, 52, .62); --sug: #d97a00; --sug-fill: rgba(255, 170, 0, .22); }
+.stair-form { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px 12px; }
+.stair-form input, .stair-form select { font: inherit; border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; background: var(--paper); color: var(--ink); width: 100%; }
+.st-card { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 360px); gap: 10px 18px; align-items: center; border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; }
+@media (max-width: 640px) { .st-card { grid-template-columns: 1fr; } }
+.st-card h4 { margin: 0 0 4px; font-family: var(--font-display); }
+.st-card .facts { font-size: 14px; line-height: 1.55; }
+.st-card .facts b { font-family: var(--font-data); }
+.st-card svg { width: 100%; height: auto; display: block; }
+.st-order { font-weight: 700; margin-top: 4px; }
+.st-warn { color: var(--bad); font-size: 13px; margin-top: 4px; }
+#stList { display: grid; gap: 10px; }
 .hw-add { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .hw-add select, .hw-add input { font: inherit; border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; background: var(--paper); color: var(--ink); }
 .hw-add select { flex: 1 1 240px; min-width: 0; }
@@ -205,6 +216,24 @@ td .rm { background: none; border: 0; color: var(--muted); text-decoration: unde
   <section class="sheet" id="sheet" aria-label="Material list"></section>
 
   <section class="sheet" id="siteSheet" aria-label="Ship to site list" hidden></section>
+
+  <section class="shear" id="stairs" aria-labelledby="stairsTitle">
+    <h2 id="stairsTitle">Stair stringers</h2>
+    <p class="note" style="margin:0">Enter a stair's floor-to-floor height and the stringers are worked out to code limits (risers no taller than the max riser, treads at least 10"). The stringer boards are added to the material list.</p>
+    <div class="stair-form">
+      <label class="field">Stair name<input type="text" id="stName" placeholder="Basement stair"></label>
+      <label class="field">Floor to floor<input type="text" id="stRise" placeholder="9' 1 1/8&quot; or 109 1/8"></label>
+      <label class="field">Tread depth (in)<input type="text" id="stTread" value="10"></label>
+      <label class="field">Max riser (in)<input type="text" id="stMax" value="7 3/4"></label>
+      <label class="field">Stair width (in)<input type="text" id="stWidth" value="36"></label>
+      <label class="field">Stringers per stair<input type="number" id="stPer" min="1" step="1" value="3"></label>
+      <label class="field">Lumber<select id="stLumber"></select></label>
+      <label class="field">How many of this stair<input type="number" id="stCount" min="1" step="1" value="1"></label>
+    </div>
+    <div id="stPreview"></div>
+    <div class="actions"><button class="btn" id="stAddBtn">Add stair</button></div>
+    <div id="stList"></div>
+  </section>
 
   <section class="shear" id="hwOrder" aria-labelledby="hwOrderTitle">
     <h2 id="hwOrderTitle">Glue and screws</h2>
@@ -869,7 +898,7 @@ function makeState(pkg) {
   return { pkg, files: [], sample: false, title: '', titleEdited: false, opt: loadOpt(pkg), result: null,
     shear: {}, suggest: {}, suggestNotes: '', layout: null, plan: null, view: 'layout', zoom: { layout: 0, plan: 0 },
     shearKey: null, layoutMsg: LAYOUT_MSG, planMsg: PLAN_MSG, clearShown: false,
-    precutSet: {}, mixKey: null, assignZoom: 2, jobId: '', hw: [] };
+    precutSet: {}, mixKey: null, assignZoom: 2, jobId: '', hw: [], stairs: [] };
 }
 const PKGS = {};
 for (const k of Object.keys(PKG_INFO)) PKGS[k] = makeState(k);
@@ -964,10 +993,18 @@ function recompute() {
   renderSheet();
   renderBreakdown();
   renderShearList();
-  const has = !!state.result;
+  updateOutputButtons();
+}
+function hasContent() { return !!state.result || state.stairs.length > 0 || state.hw.length > 0; }
+function updateOutputButtons() {
+  const has = hasContent();
   $('copyBtn').disabled = !has; $('dlBtn').disabled = !has;
   updateJobUi();
 }
+// Stand-in for a list with no panels read (stairs or hardware only)
+const EMPTY_RESULT = { left: { studs: [], lineal: [] }, right: { precut: [], paneling: [], headers: [], shear: null,
+  sheets: { qty: 0, type: '', walls: 0, plateFt: 0, stdHeight: null, tall: 0 } }, breakdown: [], pieceCount: 0, sheetsToSite: false };
+function res() { return state.result || EMPTY_RESULT; }
 
 function renderBanners(dups, empty, suspect) {
   const b = [];
@@ -1054,7 +1091,12 @@ function renderSite() {
 function renderSheet() {
   renderSite();
   const r = state.result;
-  if (!r) { $('sheet').innerHTML = `<p class="note">No panels read yet. Drop panel PDFs above.</p>`; return; }
+  if (!r) {
+    const extra = stairSheetHtml() + hwSheetHtml();
+    $('sheet').innerHTML = extra ? `<div class="co">Advanced Precut Systems</div><div class="addr">710 Pacific Ave W, Dassel MN 55325</div><h2>${esc(state.title)}</h2>${extra}<p class="note" style="margin-top:10px">No panels read. Drop panel PDFs above to add the wall material.</p>`
+      : `<p class="note">No panels read yet. Drop panel PDFs above.</p>`;
+    return;
+  }
   const grp = g => (g.rows.length === 1 && !g.rows[0].len) ? `<div class="grp"><div style="font-weight:600;padding-top:4px">${esc(g.type)}</div><div class="q" style="padding-top:4px">${fmtQ(g.rows[0].qty)}</div></div>` : `<div class="grp"><div class="t">${esc(g.type)}</div>${g.sub ? `<div class="t" style="font-weight:500">${esc(g.sub)}</div>` : ''}${g.rows.map(x => `<div class="l">${esc(x.len)}</div><div class="q">${fmtQ(x.qty)}</div>`).join('')}</div>`;
   const blk = (title, groups) => groups.length ? `<div class="blk"><h3>${title}</h3>${groups.map(grp).join('')}</div>` : '';
   const left = blk('Studs and Trimmers', r.left.studs) + blk('Lineal (plates, sills, cripples)', r.left.lineal);
@@ -1064,7 +1106,7 @@ function renderSheet() {
   const head = `<div class="colhead"><span>Type</span><span>Length</span><span>Quantity</span></div>`;
   $('sheet').innerHTML = `<div class="co">Advanced Precut Systems</div><div class="addr">710 Pacific Ave W, Dassel MN 55325</div>
     <h2>${esc(state.title)}</h2>
-    <div class="cols"><div>${head}${left}</div><div>${head}${right}</div></div>${hwSheetHtml()}
+    <div class="cols"><div>${head}${left}</div><div>${head}${right}</div></div>${stairSheetHtml()}${hwSheetHtml()}
     <p class="note" style="margin-top:10px">${fmtQ(r.pieceCount)} pieces read from ${state.sample ? SAMPLE.panelCount : activePanels().panels.length} panels. Wall sheets: ${r.right.sheets.walls} sheathed walls, ${fmtQ(Math.round(r.right.sheets.plateFt))} ft of bottom plate. Standard wall height ${esc(fmtFtIn(r.right.sheets.stdHeight)) || 'unknown'}${stdOverride() ? ' (set by you)' : ' (most common)'}; ${r.right.sheets.tall} taller exterior wall${r.right.sheets.tall === 1 ? '' : 's'} got extra sheets. Ordering ${r.right.sheets.type} sheets for that height.${r.right.sheets.tooTall ? ' The standard height is over 121", so 4x10 sheets will not cover it. Check the sheet size.' : ''}${r.right.shear && r.right.shear.rows.length ? ` Shear walls: ${r.right.shear.rows.length} marked below.` : ' No shear walls marked yet.'}</p>`;
 }
 
@@ -1153,7 +1195,12 @@ $('title').addEventListener('input', e => { state.title = e.target.value; state.
 
 /* ---------- output ---------- */
 function gridRows() {
-  const rows = toGrid(state.result, state.title);
+  const rows = toGrid(res(), state.title);
+  if (state.stairs.length) {
+    rows.push([], ['', { v: 'Stair stringers', bold: true }]);
+    stairOrder().forEach(o => rows.push(['', o.label, o.ft + "'", o.qty]));
+    state.stairs.forEach(st => { const c = stairCalc(st); rows.push(['', stairNote(st, c), '', '']); });
+  }
   if (state.hw.length) {
     rows.push([], ['', { v: 'Glue and screws', bold: true }]);
     state.hw.forEach(h => rows.push(['', h.name + (h.part ? ' (' + h.part + ')' : ''), unitWord(h.unit, h.qty), h.qty]));
@@ -1161,7 +1208,7 @@ function gridRows() {
   return rows;
 }
 $('copyBtn').onclick = () => {
-  if (!state.result) return;
+  if (!hasContent()) return;
   const tsv = gridRows().map(r => r.map(c => c && typeof c === 'object' ? c.v : (c ?? '')).join('\t')).join('\n');
   navigator.clipboard.writeText(tsv).then(() => toast('Copied. Click cell A1 in Excel and paste.'),
     () => { fallbackCopy(tsv); });
@@ -1189,7 +1236,7 @@ async function buildXlsx() {
   const ws = wb.addWorksheet('to BB', { pageSetup: { fitToPage: true, fitToWidth: 1, fitToHeight: 1 } });
   ws.columns = [{ width: 4 }, { width: 26 }, { width: 11 }, { width: 11 }, { width: 6 }, { width: 22 }, { width: 11 }, { width: 11 }];
   writeGrid(ws, gridRows());
-  if (state.result.site) {
+  if (res().site) {
     const site = wb.addWorksheet('to SITE', { pageSetup: { fitToPage: true, fitToWidth: 1, fitToHeight: 1 } });
     site.columns = [{ width: 4 }, { width: 26 }, { width: 11 }, { width: 11 }];
     writeGrid(site, toSiteGrid(state.result));
@@ -1197,8 +1244,8 @@ async function buildXlsx() {
   const bd = wb.addWorksheet('Piece breakdown');
   bd.columns = [{ header: 'Material', width: 14 }, { header: 'Part', width: 20 }, { header: 'Pieces', width: 10 }, { header: 'Lineal ft', width: 11 }];
   bd.getRow(1).font = { bold: true };
-  state.result.breakdown.forEach(b => bd.addRow([b.mat, b.desc, b.n, Math.round(b.inches / 12)]));
-  const hg = [...state.result.right.headers, ...state.result.left.lineal].filter(g => g.cuts);
+  res().breakdown.forEach(b => bd.addRow([b.mat, b.desc, b.n, Math.round(b.inches / 12)]));
+  const hg = [...res().right.headers, ...res().left.lineal].filter(g => g.cuts);
   if (hg.length) {
     const hc = wb.addWorksheet('Header cuts');
     hc.columns = [{ header: 'Header', width: 10 }, { header: 'Boards', width: 8 }, { header: 'Length', width: 8 }, { header: 'Pieces cut from each', width: 60 }, { header: 'Scrap each', width: 12 }];
@@ -1209,7 +1256,7 @@ async function buildXlsx() {
       hc.addRow([]);
     }
   }
-  const sh = state.result.right.shear;
+  const sh = res().right.shear;
   if (sh && sh.rows.length) {
     const s = wb.addWorksheet('Shear walls');
     s.columns = [{ header: 'Panel', width: 10 }, { header: 'Exterior (already in wall sheets)', width: 32 }, { header: 'Bottom plate ft', width: 15 }, { header: 'Height', width: 12 }, { header: 'Tall-wall extra', width: 14 }, { header: 'Counted', width: 10 }];
@@ -1217,12 +1264,12 @@ async function buildXlsx() {
     sh.rows.forEach(r => s.addRow([r.id, r.sheathed ? 'yes' : '', r.known ? Math.round(r.plateIn / 12 * 10) / 10 : 'not in panel PDFs', r.height ? fmtFtIn(r.height) : '', r.factor > 1 ? '+' + Math.round((r.factor - 1) * 100) + '%' : '', r.add ? 'yes' : 'no']));
     s.addRow([]);
     s.addRow(['Total ft (with tall-wall extra)', '', '', Math.round(sh.inches / 12), '', '', '']);
-    s.addRow([state.result.right.sheets.type + ' sheets (÷ 4\', rounded up to 5)', '', '', sh.qty, '', '', '']);
+    s.addRow([res().right.sheets.type + ' sheets (÷ 4\', rounded up to 5)', '', '', sh.qty, '', '', '']);
   }
   return wb.xlsx.writeBuffer();
 }
 $('dlBtn').onclick = async () => {
-  if (!state.result) return;
+  if (!hasContent()) return;
   const btn = $('dlBtn'); btn.disabled = true;
   try {
     const buf = await buildXlsx();
@@ -1260,8 +1307,124 @@ function billLines(r) {
     r.site.precut.forEach(g => add('Ship to site', g));
     r.site.vtp.forEach(g => add('Ship to site', g));
   }
+  stairOrder().forEach(o => out.push({ src: 'Stair stringers · ' + o.label + ' · ' + o.ft + "'", t: o.t, w: o.w, kind: o.kind, len: o.ft + "'", qty: o.qty }));
   return out;
 }
+/* ---------- stair stringers ---------- */
+// Stringer lumber: depth is the board's actual width, used to check how much wood is left under the cuts
+const STAIR_LUMBER = {
+  '2x12': { label: '2x12', t: 2, w: 12, kind: '', depth: 11.25 },
+  '2x12 PT': { label: '2x12 PT', t: 2, w: 12, kind: 'PT', depth: 11.25 },
+  'LVL': { label: '1 3/4 x 11 7/8 LVL', t: 1.75, w: 11.875, kind: 'LVL', depth: 11.875 }
+};
+const STAIR_MIN_THROAT = 5;   // inches of solid wood under the notches
+// 9' 1 1/8", 9'-1 1/8", 109 1/8, 109.125" -> inches
+function parseInches(v) {
+  const t = String(v || '').trim().replace(/[\u2019\u2032]/g, "'").replace(/[\u201d\u2033]/g, '"');
+  if (!t) return null;
+  const m = t.match(/^(\d+(?:\.\d+)?)\s*'\s*-?\s*(.*)$/);
+  const inch = s2 => { s2 = s2.replace(/"/g, '').trim(); if (!s2) return 0; if (!/^[\d\s./]+$/.test(s2)) return NaN; return s2.includes('/') ? fracToNum(s2) : Number(s2); };
+  const n = m ? +m[1] * 12 + inch(m[2]) : inch(t);
+  return isFinite(n) && n > 0 ? n : null;
+}
+function stairCalc(st) {
+  const n = Math.max(2, Math.ceil(st.rise / st.maxRiser - 1e-9));
+  const r = st.rise / n, treads = n - 1, run = treads * st.tread;
+  const d = Math.hypot(r, st.tread);
+  const lum = STAIR_LUMBER[st.lumber] || STAIR_LUMBER['2x12'];
+  const need = Math.hypot(st.rise, run) + d;          // along the board, plus a step's worth for the end cuts
+  const ft = Math.max(8, Math.ceil(need / 24) * 2);   // stock lengths come in even feet
+  const throat = lum.depth - r * st.tread / d;
+  const boards = st.per * st.count;
+  return { n, r, treads, run, need, ft, throat, boards, lum, d };
+}
+function stairWarn(st, c) {
+  const w = [];
+  if (c.throat < STAIR_MIN_THROAT) w.push(`Only ${fmtIn(c.throat)} of wood is left under the cuts. Use a deeper stringer or support it underneath.`);
+  if (st.tread < 10) w.push('Treads under 10" are below the building code minimum.');
+  if (c.r < 4) w.push('Risers under 4" are below the building code minimum.');
+  if (c.ft > 20) w.push(`The stringer needs a ${c.ft}' board. Check that length is available, or use LVL or a landing.`);
+  if (st.per > 0 && st.width / (st.per - 1 || 1) > 18) w.push(`${st.per} stringers for a ${fmtIn(st.width)} wide stair puts them more than 18" apart. Add a stringer.`);
+  return w;
+}
+function stairNote(st, c) {
+  return `${st.name || 'Stair'}: ${c.n} risers @ ${fmtIn(c.r)}, ${c.treads} treads @ ${fmtIn(st.tread)}, total run ${fmtFtIn(c.run)}`;
+}
+// Every stringer board needed, combined by lumber and length
+function stairOrder() {
+  const m = new Map();
+  for (const st of state.stairs) {
+    const c = stairCalc(st), k = st.lumber + '|' + c.ft;
+    const e = m.get(k) || { label: c.lum.label, t: c.lum.t, w: c.lum.w, kind: c.lum.kind, ft: c.ft, qty: 0 };
+    e.qty += c.boards; m.set(k, e);
+  }
+  return [...m.values()];
+}
+// Side view of one stringer: the cut steps, the board's bottom edge, and the floor
+function stairSvg(st, c) {
+  const W = 360, pad = 22, sc = (W - pad * 2) / Math.max(c.run + c.r * 2, 1);
+  const cOff = c.throat * c.d / st.tread;              // vertical drop from the inside corners to the bottom edge
+  const yb = c.r / st.tread * c.run - cOff, x0 = cOff * st.tread / c.r;
+  const H = Math.ceil(st.rise * sc + pad * 2 + 16);
+  const X = x => (pad + x * sc).toFixed(1), Y = y => (H - pad - 10 - y * sc).toFixed(1);
+  const pts = [[x0, 0], [0, 0]];
+  for (let i = 0; i < c.n; i++) { pts.push([i * st.tread, (i + 1) * c.r]); if (i < c.treads) pts.push([(i + 1) * st.tread, (i + 1) * c.r]); }
+  pts.push([c.run, yb]);
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Stringer side view">
+    <line x1="${pad - 10}" y1="${Y(0)}" x2="${W - pad + 10}" y2="${Y(0)}" stroke="#8E958A" stroke-width="1.5"/>
+    <polygon points="${pts.map(p => X(p[0]) + ',' + Y(p[1])).join(' ')}" fill="#F3E3C3" stroke="#8A6A45" stroke-width="2"/>
+    <text x="${X(0) - 4}" y="${(+Y(c.r / 2) + 4).toFixed(1)}" font-size="11" text-anchor="end" fill="#5D6459">${esc(fmtIn(c.r))}</text>
+    <text x="${X(st.tread / 2)}" y="${(+Y(c.r) - 5).toFixed(1)}" font-size="11" text-anchor="middle" fill="#5D6459">${esc(fmtIn(st.tread))}</text>
+    <text x="${X(c.run / 2)}" y="${(+Y(0) + 14).toFixed(1)}" font-size="11" text-anchor="middle" fill="#5D6459">run ${esc(fmtFtIn(c.run))}</text>
+  </svg>`;
+}
+function stairCard(st, c, i) {
+  const warn = stairWarn(st, c);
+  return `<div class="st-card"><div class="facts">
+    <h4>${esc(st.name || 'Stair')}${st.count > 1 ? ' × ' + st.count : ''}</h4>
+    Floor to floor <b>${esc(fmtFtIn(st.rise))}</b> (${esc(fmtIn(st.rise))})<br>
+    <b>${c.n}</b> risers at <b>${esc(fmtIn(c.r))}</b> · <b>${c.treads}</b> treads at <b>${esc(fmtIn(st.tread))}</b><br>
+    Total run <b>${esc(fmtFtIn(c.run))}</b> · stringer about <b>${esc(fmtFtIn(c.need))}</b> long · <b>${esc(fmtIn(c.throat))}</b> left under the cuts<br>
+    <div class="st-order">Order: ${c.boards} × ${esc(c.lum.label)} × ${c.ft}'</div>
+    ${warn.map(x => `<div class="st-warn">${esc(x)}</div>`).join('')}
+    ${i != null ? `<button class="rm" data-strm="${i}" style="margin-top:6px">Remove</button>` : ''}
+  </div>${stairSvg(st, c)}</div>`;
+}
+function readStairForm() {
+  const st = { name: $('stName').value.trim(), rise: parseInches($('stRise').value), tread: parseInches($('stTread').value),
+    maxRiser: parseInches($('stMax').value), width: parseInches($('stWidth').value), per: Math.floor(+$('stPer').value),
+    count: Math.floor(+$('stCount').value), lumber: $('stLumber').value };
+  const bad = !st.rise ? 'Enter the floor-to-floor height, like 9\' 1 1/8".' : !st.tread ? 'Enter the tread depth.' : !st.maxRiser ? 'Enter the max riser.' :
+    !st.width ? 'Enter the stair width.' : !(st.per > 0) ? 'Enter how many stringers per stair.' : !(st.count > 0) ? 'Enter how many of this stair.' : '';
+  return { st, bad };
+}
+function renderStairPreview() {
+  const { st, bad } = readStairForm();
+  $('stPreview').innerHTML = bad || !st.rise ? '' : '<p class="note" style="margin:0 0 6px">Preview</p>' + stairCard(st, stairCalc(st), null);
+}
+function renderStairs() {
+  if (!$('stLumber').options.length) $('stLumber').innerHTML = Object.keys(STAIR_LUMBER).map(k => `<option value="${esc(k)}">${esc(STAIR_LUMBER[k].label)}</option>`).join('');
+  $('stList').innerHTML = state.stairs.map((st, i) => stairCard(st, stairCalc(st), i)).join('');
+  $('stList').querySelectorAll('[data-strm]').forEach(b => b.onclick = () => { state.stairs.splice(+b.dataset.strm, 1); renderStairs(); renderSheet(); updateOutputButtons(); });
+  renderStairPreview();
+}
+function stairSheetHtml() {
+  if (!state.stairs.length) return '';
+  return `<div class="blk" style="margin-top:14px;max-width:520px"><h3>Stair stringers</h3>` +
+    stairOrder().map(o => `<div class="grp"><div>${esc(o.label)}</div><div class="l">${o.ft}'</div><div class="q">${fmtQ(o.qty)}</div></div>`).join('') +
+    state.stairs.map(st => `<div style="font-size:12px;color:var(--muted);padding:2px 0">${esc(stairNote(st, stairCalc(st)))}</div>`).join('') + '</div>';
+}
+['stName', 'stRise', 'stTread', 'stMax', 'stWidth', 'stPer', 'stCount', 'stLumber'].forEach(id => $(id).addEventListener('input', renderStairPreview));
+$('stLumber').addEventListener('change', renderStairPreview);
+$('stAddBtn').onclick = () => {
+  const { st, bad } = readStairForm();
+  if (bad) { toast(bad); return; }
+  state.stairs.push(st);
+  $('stName').value = ''; $('stRise').value = '';
+  renderStairs(); renderSheet(); updateOutputButtons();
+  toast(`Added ${st.name || 'the stair'}: ${stairCalc(st).boards} stringers.`);
+};
+
 /* ---------- glue and screws to order with the list ---------- */
 const UNIT_PLURAL = { each: 'each', box: 'boxes', case: 'cases', pail: 'pails', bucket: 'buckets', bag: 'bags', roll: 'rolls', pack: 'packs' };
 function unitWord(unit, n) { if (!unit) return ''; return n === 1 || unit === 'each' ? unit : (UNIT_PLURAL[unit] || unit + 's'); }
@@ -1286,9 +1449,9 @@ function renderHwTable() {
   t.querySelectorAll('[data-q]').forEach(inp => inp.onchange = () => {
     const n = Math.floor(+inp.value);
     if (n > 0) state.hw[+inp.dataset.q].qty = n; else inp.value = state.hw[+inp.dataset.q].qty;
-    renderHwTable(); renderSheet();
+    renderHwTable(); renderSheet(); updateOutputButtons();
   });
-  t.querySelectorAll('[data-rm]').forEach(b => b.onclick = () => { state.hw.splice(+b.dataset.rm, 1); renderHwTable(); renderSheet(); });
+  t.querySelectorAll('[data-rm]').forEach(b => b.onclick = () => { state.hw.splice(+b.dataset.rm, 1); renderHwTable(); renderSheet(); updateOutputButtons(); });
 }
 function hwSheetHtml() {
   if (!state.hw.length) return '';
@@ -1313,7 +1476,7 @@ function addHwLine() {
   const same = state.hw.find(x => (x.hwId && x.hwId === line.hwId) || (!x.hwId && !line.hwId && x.name.toLowerCase() === line.name.toLowerCase()));
   if (same) same.qty += qty; else state.hw.push(line);
   $('hwQty').value = ''; $('hwName').value = ''; $('hwPick').value = ''; $('hwName').hidden = true;
-  renderHwTable(); renderSheet();
+  renderHwTable(); renderSheet(); updateOutputButtons();
 }
 $('hwAddBtn').onclick = addHwLine;
 $('hwQty').onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); addHwLine(); } };
@@ -1334,12 +1497,12 @@ function refreshJobs() {
   if (!currentJob()) state.jobId = '';
   $('jobSel').value = state.jobId || '';
   updateJobUi();
-  renderHwPick(); renderHwTable();
+  renderHwPick(); renderHwTable(); renderStairs();
 }
 function updateJobUi() {
   const j = currentJob(), b = $('billBtn');
   b.textContent = j && j.type === 'in' ? 'Save & send to Bill out' : 'Save to job';
-  b.disabled = !state.result || !j;
+  b.disabled = !hasContent() || !j;
   $('jobNote').textContent = !j ? (jobOpts.length ? 'Pick the job this list is for, or make a new one, to save it.' : 'Make a job for this customer to save the list to it.')
     : j.type === 'in' ? 'Insourced job: saving sends the lumber to Bill out, then approval and Sales.'
     : 'Outsourced job: the list is saved to the job only. Nothing comes out of inventory.';
@@ -1353,13 +1516,13 @@ $('newJobBtn').onclick = () => {
 };
 $('billBtn').onclick = () => {
   const j = currentJob();
-  if (!state.result || !j || !host || !host.tallySaveList) return;
+  if (!hasContent() || !j || !host || !host.tallySaveList) return;
   const plain = rows => rows.map(r => r.map(c => (c && typeof c === 'object') ? c : (c ?? '')));
-  const lines = billLines(state.result);
+  const lines = billLines(res());
   const saved = host.tallySaveList(j.id, {
     title: state.title, pkg: PKG_INFO[state.pkg].h1,
-    grid: plain(gridRows()), site: state.result.site ? plain(toSiteGrid(state.result)) : null,
-    lines, hw: state.hw.map(h => Object.assign({}, h)), panels: activePanels().panels.length, pieces: state.result.pieceCount
+    grid: plain(gridRows()), site: state.result && state.result.site ? plain(toSiteGrid(state.result)) : null,
+    lines, hw: state.hw.map(h => Object.assign({}, h)), stairs: state.stairs.map(x => Object.assign({}, x)), panels: state.result ? activePanels().panels.length : 0, pieces: res().pieceCount
   });
   if (saved && j.type === 'in') host.tallyBillFromList(lines, state.title, j.id, state.hw);
 };
