@@ -228,6 +228,7 @@ td .rm { background: none; border: 0; color: var(--muted); text-decoration: unde
       <label class="field">Stair width (in)<input type="text" id="stWidth" value="36"></label>
       <label class="field">Stringers per stair<input type="number" id="stPer" min="1" step="1" value="3"></label>
       <label class="field">Lumber<select id="stLumber"></select></label>
+      <label class="field" id="stThickWrap" hidden>LVL thickness<select id="stThick"><option value="1.75">1 3/4"</option><option value="1.5">1 1/2"</option></select></label>
       <label class="field">How many of this stair<input type="number" id="stCount" min="1" step="1" value="1"></label>
     </div>
     <div id="stPreview"></div>
@@ -387,8 +388,9 @@ function fracToNum(s) {
   return t;
 }
 function fmtIn(x) {
-  const whole = Math.floor(x + 1e-9);
-  const sixteenths = Math.round((x - whole) * 16);
+  let whole = Math.floor(x + 1e-9);
+  let sixteenths = Math.round((x - whole) * 16);
+  if (sixteenths === 16) { whole++; sixteenths = 0; }
   if (!sixteenths) return whole + '"';
   let n = sixteenths, d = 16;
   while (n % 2 === 0) { n /= 2; d /= 2; }
@@ -1312,11 +1314,25 @@ function billLines(r) {
 }
 /* ---------- stair stringers ---------- */
 // Stringer lumber: depth is the board's actual width, used to check how much wood is left under the cuts
+// LVL comes 1 3/4" or 1 1/2" thick; its depth is the actual size
 const STAIR_LUMBER = {
+  '2x10': { label: '2x10', t: 2, w: 10, kind: '', depth: 9.25 },
   '2x12': { label: '2x12', t: 2, w: 12, kind: '', depth: 11.25 },
   '2x12 PT': { label: '2x12 PT', t: 2, w: 12, kind: 'PT', depth: 11.25 },
-  'LVL': { label: '1 3/4 x 11 7/8 LVL', t: 1.75, w: 11.875, kind: 'LVL', depth: 11.875 }
+  'LVL': { lvl: true, name: '11 7/8" LVL', w: 11.875, depth: 11.875 },
+  'LVL14': { lvl: true, name: '14" LVL', w: 14, depth: 14 },
+  'LVL16': { lvl: true, name: '16" LVL', w: 16, depth: 16 },
+  'LVL18': { lvl: true, name: '18" LVL', w: 18, depth: 18 }
 };
+const LVL_THICK = [1.75, 1.5];
+function inchText(x) { return fmtIn(x).replace('"', ''); }
+// The board for a stair: sawn lumber as listed, or LVL at the thickness picked
+function lumberOf(st) {
+  const L = STAIR_LUMBER[st.lumber] || STAIR_LUMBER['2x12'];
+  if (!L.lvl) return L;
+  const t = LVL_THICK.indexOf(+st.thick) > -1 ? +st.thick : 1.75;
+  return { label: inchText(t) + ' x ' + inchText(L.w) + ' LVL', t, w: L.w, kind: 'LVL', depth: L.depth };
+}
 const STAIR_MIN_THROAT = 5;   // inches of solid wood under the notches
 // 9' 1 1/8", 9'-1 1/8", 109 1/8, 109.125" -> inches
 function parseInches(v) {
@@ -1331,7 +1347,7 @@ function stairCalc(st) {
   const n = Math.max(2, Math.ceil(st.rise / st.maxRiser - 1e-9));
   const r = st.rise / n, treads = n - 1, run = treads * st.tread;
   const d = Math.hypot(r, st.tread);
-  const lum = STAIR_LUMBER[st.lumber] || STAIR_LUMBER['2x12'];
+  const lum = lumberOf(st);
   const need = Math.hypot(st.rise, run) + d;          // along the board, plus a step's worth for the end cuts
   const ft = Math.max(8, Math.ceil(need / 24) * 2);   // stock lengths come in even feet
   const throat = lum.depth - r * st.tread / d;
@@ -1354,7 +1370,7 @@ function stairNote(st, c) {
 function stairOrder() {
   const m = new Map();
   for (const st of state.stairs) {
-    const c = stairCalc(st), k = st.lumber + '|' + c.ft;
+    const c = stairCalc(st), k = c.lum.label + '|' + c.ft;
     const e = m.get(k) || { label: c.lum.label, t: c.lum.t, w: c.lum.w, kind: c.lum.kind, ft: c.ft, qty: 0 };
     e.qty += c.boards; m.set(k, e);
   }
@@ -1393,7 +1409,8 @@ function stairCard(st, c, i) {
 function readStairForm() {
   const st = { name: $('stName').value.trim(), rise: parseInches($('stRise').value), tread: parseInches($('stTread').value),
     maxRiser: parseInches($('stMax').value), width: parseInches($('stWidth').value), per: Math.floor(+$('stPer').value),
-    count: Math.floor(+$('stCount').value), lumber: $('stLumber').value };
+    count: Math.floor(+$('stCount').value), lumber: $('stLumber').value, thick: null };
+  if ((STAIR_LUMBER[st.lumber] || {}).lvl) st.thick = +$('stThick').value;
   const bad = !st.rise ? 'Enter the floor-to-floor height, like 9\' 1 1/8".' : !st.tread ? 'Enter the tread depth.' : !st.maxRiser ? 'Enter the max riser.' :
     !st.width ? 'Enter the stair width.' : !(st.per > 0) ? 'Enter how many stringers per stair.' : !(st.count > 0) ? 'Enter how many of this stair.' : '';
   return { st, bad };
@@ -1403,7 +1420,11 @@ function renderStairPreview() {
   $('stPreview').innerHTML = bad || !st.rise ? '' : '<p class="note" style="margin:0 0 6px">Preview</p>' + stairCard(st, stairCalc(st), null);
 }
 function renderStairs() {
-  if (!$('stLumber').options.length) $('stLumber').innerHTML = Object.keys(STAIR_LUMBER).map(k => `<option value="${esc(k)}">${esc(STAIR_LUMBER[k].label)}</option>`).join('');
+  if (!$('stLumber').options.length) {
+    $('stLumber').innerHTML = Object.keys(STAIR_LUMBER).map(k => `<option value="${esc(k)}">${esc(STAIR_LUMBER[k].label || STAIR_LUMBER[k].name)}</option>`).join('');
+    $('stLumber').value = '2x12';
+  }
+  $('stThickWrap').hidden = !(STAIR_LUMBER[$('stLumber').value] || {}).lvl;
   $('stList').innerHTML = state.stairs.map((st, i) => stairCard(st, stairCalc(st), i)).join('');
   $('stList').querySelectorAll('[data-strm]').forEach(b => b.onclick = () => { state.stairs.splice(+b.dataset.strm, 1); renderStairs(); renderSheet(); updateOutputButtons(); });
   renderStairPreview();
@@ -1415,7 +1436,8 @@ function stairSheetHtml() {
     state.stairs.map(st => `<div style="font-size:12px;color:var(--muted);padding:2px 0">${esc(stairNote(st, stairCalc(st)))}</div>`).join('') + '</div>';
 }
 ['stName', 'stRise', 'stTread', 'stMax', 'stWidth', 'stPer', 'stCount', 'stLumber'].forEach(id => $(id).addEventListener('input', renderStairPreview));
-$('stLumber').addEventListener('change', renderStairPreview);
+$('stLumber').addEventListener('change', () => { $('stThickWrap').hidden = !(STAIR_LUMBER[$('stLumber').value] || {}).lvl; renderStairPreview(); });
+$('stThick').addEventListener('change', renderStairPreview);
 $('stAddBtn').onclick = () => {
   const { st, bad } = readStairForm();
   if (bad) { toast(bad); return; }
