@@ -222,7 +222,7 @@ td .rm { background: none; border: 0; color: var(--muted); text-decoration: unde
 
   <section class="shear" id="cutProc" aria-labelledby="cutTitle" hidden>
     <h2 id="cutTitle">Cutting procedure</h2>
-    <p class="note" style="margin:0">The stock to pull, in cutting order: all the 2x4 first, then all the 2x6, then bearing headers. Steps run down the left column, then the right. Precut studs that need no cut are left off.</p>
+    <p class="note" style="margin:0">The stock to pull, in cutting order: all the 2x4 first, then all the 2x6, then bearing headers. Steps run down the left column, then the right. Precut studs that need no cut are left off.<span id="cutSiteNote" hidden> Precut package: only the material list is cut; the ship to site material (precut studs, very top plates, wall sheets) is left off.</span></p>
     <div class="actions" style="margin:0"><button class="btn ghost" id="cutDlBtn">Download cutting procedure (Excel)</button></div>
     <div id="cutBody"></div>
   </section>
@@ -1505,6 +1505,10 @@ function isPrecutLength(pc) {
   const st = cutStock(pc);
   return (st.inch === PRECUT || st.inch === 104.625) && Math.abs(pc.len - st.inch) < 0.01;
 }
+// Precut package ship to site pieces: 92 5/8" studs of any kind (untreated 2x4/2x6) and the VTPs
+function shipsToSite(pc) {
+  return /\bVTP\b/.test(pc.desc) || (/^2x(4|6)$/.test(pc.mat) && !pc.treat && isStudLike(pc.desc) && Math.abs(pc.len - PRECUT) < 0.01);
+}
 function cutGroups() {
   const g = { panels: 0, rows: new Map(), loose: {} };
   const seen = new Set();
@@ -1519,6 +1523,8 @@ function cutGroups() {
         const si = CUT_STEPS.findIndex(x => x.test(pc.desc, pc));
         // precut studs already at length are not cut, so they stay off the cutting procedure
         if (si > -1 && CUT_STEPS[si].name === 'Studs' && isPrecutLength(pc)) continue;
+        // precut package: what ships to the site (precut studs, very top plates) is not on the material list, so not cut here
+        if (state.pkg === 'precut' && shipsToSite(pc)) continue;
         if (si > -1 && CUT_STEPS[si].boards) {
           g.loose = g.loose || {};
           const arr = g.loose[si] = g.loose[si] || [];
@@ -1633,8 +1639,9 @@ function cutLayout() {
 }
 const cutTitle = () => state.title.replace(/\s*Material$/, '') + ' Cutting Procedure';
 function renderCut() {
-  const show = state.pkg === 'panel' && !state.sample && state.files.some(f => f.panels && f.panels.length);
+  const show = (state.pkg === 'panel' || state.pkg === 'precut') && !state.sample && state.files.some(f => f.panels && f.panels.length);
   $('cutProc').hidden = !show;
+  $('cutSiteNote').hidden = state.pkg !== 'precut';
   if (!show) { $('cutBody').innerHTML = ''; return; }
   const { left, right } = cutLayout();
   const grp = g => `<div class="grp"><div class="t">${esc(g.type)}</div>${g.rows.map(x => `<div class="l">${esc(x.len)}</div><div class="q">${fmtQ(x.qty)}</div>`).join('')}</div>`;
@@ -1677,7 +1684,7 @@ function cutGridRows() {
   return rows;
 }
 function addCutSheet(wb) {
-  if (state.pkg !== 'panel' || $('cutProc').hidden) return;
+  if ((state.pkg !== 'panel' && state.pkg !== 'precut') || $('cutProc').hidden) return;
   const ws = wb.addWorksheet('Cutting procedure', { pageSetup: { fitToPage: true, fitToWidth: 1, fitToHeight: 0 } });
   ws.columns = [{ width: 4 }, { width: 26 }, { width: 11 }, { width: 11 }, { width: 6 }, { width: 26 }, { width: 11 }, { width: 11 }];
   writeGrid(ws, cutGridRows());
