@@ -1356,10 +1356,36 @@ const isPlainStud = d => /\bKING\b/.test(d) || (/\b(SS)?STUD\b/.test(d) && !/JAC
 const CUT_STEPS = [
   { name: 'Trimmers', test: isTrimmer },
   { name: 'Studs', test: isPlainStud },
-  { name: 'Top plates', test: d => /TOP PLATE/.test(d) && !/VERY TOP/.test(d) },
-  { name: 'Bottom plates', test: d => /BOTTOM PLATE|BOT PLATE/.test(d) },
-  { name: 'VTP', test: d => /\bVTP\b|VERY TOP/.test(d) }
+  // Top, bottom and very top plates are one step, cut board by board out of their stock
+  { name: 'Plates (top, bottom and VTP)', test: d => /TOP PLATE|BOTTOM PLATE|BOT PLATE|\bVTP\b/.test(d), boards: true }
 ];
+// Plates packed into stock boards the same way the material list orders them: pieces up to 12' share 12' boards
+// (longest first, each into the first board it fits), longer pieces get their own board at the next even length.
+function plateBoards(pieces) {
+  const byMat = new Map();
+  for (const x of pieces) (byMat.get(x.mat) || byMat.set(x.mat, []).get(x.mat)).push(x);
+  const pats = new Map();
+  const addBoard = (mat, ft, list, panels) => {
+    list.sort((a, b) => b.len - a.len || a.desc.localeCompare(b.desc));
+    const key = mat + '|' + ft + '|' + list.map(x => x.desc + '@' + x.len).join(',');
+    const e = pats.get(key) || { mat, pc: list[0].pc, ft, pieces: list, count: 0, panels: new Set() };
+    e.count++; panels.forEach(id => e.panels.add(id)); pats.set(key, e);
+  };
+  for (const [mat, list] of byMat) {
+    const bins = [];
+    for (const x of [...list].sort((a, b) => b.len - a.len)) {
+      if (x.len > 144) {
+        let ft = Math.ceil(x.len / 24) * 2; if (ft * 12 < x.len) ft += 2;
+        addBoard(mat, ft, [x], x.panel ? [x.panel] : []);
+        continue;
+      }
+      const b = bins.find(b => b.used + KERF + x.len <= 144 + 1e-6);
+      if (b) { b.used += KERF + x.len; b.items.push(x); } else bins.push({ used: x.len, items: [x] });
+    }
+    for (const b of bins) addBoard(mat, 12, b.items, b.items.map(x => x.panel).filter(Boolean));
+  }
+  return [...pats.values()];
+}
 // The stock board a piece is cut from, matching how the material list orders it
 function cutStock(pc) {
   const sz = sizeKey(pc), len = pc.len;
@@ -1375,7 +1401,7 @@ function cutStock(pc) {
   return { inch: ft * 12, label: ft + "'" };
 }
 function cutGroups() {
-  const out = WALL_KINDS.map(k => ({ kind: k, panels: 0, rows: new Map() })), unset = { kind: { id: '', title: 'Wall type not set' }, panels: 0, rows: new Map(), files: [] };
+  const out = WALL_KINDS.map(k => ({ kind: k, panels: 0, rows: new Map(), loose: {} })), unset = { kind: { id: '', title: 'Wall type not set' }, panels: 0, rows: new Map(), loose: {}, files: [] };
   const seen = new Set();
   for (const f of state.files) {
     if (!f.panels) continue;
@@ -1387,6 +1413,13 @@ function cutGroups() {
       g.panels++;
       for (const pc of p.pieces) {
         const mat = pc.mat + (pc.treat ? ' ' + pc.treat : '');
+        const si = CUT_STEPS.findIndex(x => x.test(pc.desc));
+        if (si > -1 && CUT_STEPS[si].boards) {
+          g.loose = g.loose || {};
+          const arr = g.loose[si] = g.loose[si] || [];
+          for (let n = 0; n < pc.qty; n++) arr.push({ mat, pc, desc: pc.desc, len: pc.len, panel: p.id });
+          continue;
+        }
         const key = mat + '|' + pc.desc + '|' + pc.len;
         const r = g.rows.get(key) || { mat, pc, desc: pc.desc, len: pc.len, qty: 0, panels: new Set(), stock: cutStock(pc), step: CUT_STEPS.findIndex(x => x.test(pc.desc)) };
         r.qty += pc.qty; if (p.id) r.panels.add(p.id);
@@ -1395,11 +1428,18 @@ function cutGroups() {
     }
   }
   const bySize = (a, b) => { const sa = sizeKey(a.pc), sb = sizeKey(b.pc); return sa[0] - sb[0] || sa[1] - sb[1] || a.mat.localeCompare(b.mat); };
-  const sortRows = rows => {
+  const sortRows = (rows, loose) => {
     const all = [...rows.values()];
     // The shop's steps in order (trimmers, then studs...), each shortest stock length first, working up to the longest
     const out = [];
     CUT_STEPS.forEach((st, i) => {
+      if (st.boards) {
+        // one row per stock board pattern, shortest stock first
+        const boards = plateBoards(loose[i] || []).sort((a, b) => a.ft - b.ft || bySize(a, b) || b.pieces.length - a.pieces.length);
+        boards.forEach(r => { r.sec = st.name; r.board = true; r.qty = r.count; });
+        out.push(...boards);
+        return;
+      }
       const part = all.filter(r => r.step === i).sort((a, b) => a.stock.inch - b.stock.inch || bySize(a, b) || a.len - b.len);
       part.forEach(r => r.sec = st.name);
       out.push(...part);
@@ -1408,7 +1448,13 @@ function cutGroups() {
     rest.forEach(r => r.sec = 'Everything else (order not set yet)');
     return out.concat(rest);
   };
-  return out.concat(unset.panels ? [unset] : []).map(g => Object.assign(g, { list: sortRows(g.rows) }));
+  return out.concat(unset.panels ? [unset] : []).map(g => Object.assign(g, { list: sortRows(g.rows, g.loose) }));
+}
+// "TOP PLATE 8'-2 1/2" + VTP 3'-7 1/2"" with repeats shown as 2 ×
+function boardText(r) {
+  const m = new Map();
+  for (const x of r.pieces) { const k = x.desc + ' ' + fmtFtIn(x.len); m.set(k, (m.get(k) || 0) + 1); }
+  return [...m].map(([k, n]) => esc((n > 1 ? n + ' × ' : '') + k)).join(' + ');
 }
 function renderCut() {
   const show = state.pkg === 'panel' && !state.sample && state.files.some(f => f.panels && f.panels.length);
@@ -1421,10 +1467,12 @@ function renderCut() {
     const rows = g.list.map(r => {
       const head = r.sec !== lastSec ? `<tr class="size"><td colspan="7">${esc(r.sec)}</td></tr>` : '';
       lastSec = r.sec;
+      if (r.board) return head + `<tr><td class="n">${++step}</td><td>${esc(r.mat)}</td><td colspan="2">${boardText(r)}</td><td>${r.ft}'</td><td class="n">${fmtQ(r.count)} ${r.count === 1 ? 'board' : 'boards'}</td><td class="n">${r.panels.size}</td></tr>`;
       return head + `<tr><td class="n">${++step}</td><td>${esc(r.mat)}</td><td>${esc(r.desc)}</td><td>${esc(fmtFtIn(r.len))}</td><td>${esc(r.stock.label)}</td><td class="n">${fmtQ(r.qty)}</td><td class="n">${r.panels.size}</td></tr>`;
     }).join('');
     const warn = g.files ? `<p class="note" style="margin:8px 14px;color:var(--bad)">Set the wall type for: ${esc(g.files.join(', '))}</p>` : '';
-    return `<div class="cut-grp"><h3>${esc(g.kind.title)}<span class="meta">${g.panels} panels · ${fmtQ(g.list.reduce((t, r) => t + r.qty, 0))} pieces</span></h3>${warn}
+    const pcs = g.list.reduce((t, r) => t + (r.board ? r.pieces.length * r.count : r.qty), 0);
+    return `<div class="cut-grp"><h3>${esc(g.kind.title)}<span class="meta">${g.panels} panels · ${fmtQ(pcs)} pieces</span></h3>${warn}
       <div class="tbl-wrap"><table><thead><tr><th class="n">Step</th><th>Size</th><th>Part</th><th>Length</th><th>Cut from</th><th class="n">Pieces</th><th class="n">Panels</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
   }).join('');
 }
@@ -1435,7 +1483,10 @@ function addCutSheet(wb) {
   ws.columns = [{ header: 'Step', width: 7 }, { header: 'Walls', width: 26 }, { header: 'Material', width: 12 }, { header: 'Part', width: 22 }, { header: 'Length', width: 12 }, { header: 'Cut from', width: 16 }, { header: 'Pieces', width: 9 }, { header: 'Panels', width: 9 }];
   ws.getRow(1).font = { bold: true };
   let step = 0;
-  for (const g of cutGroups()) for (const r of g.list) ws.addRow([++step, g.kind.title, r.mat, r.desc, fmtFtIn(r.len), r.stock.label, r.qty, r.panels.size]);
+  for (const g of cutGroups()) for (const r of g.list) {
+    if (r.board) ws.addRow([++step, g.kind.title, r.mat, boardText(r).replace(/&quot;/g, '"').replace(/&amp;/g, '&'), '', r.ft + "' x " + r.count + (r.count === 1 ? ' board' : ' boards'), r.pieces.length * r.count, r.panels.size]);
+    else ws.addRow([++step, g.kind.title, r.mat, r.desc, fmtFtIn(r.len), r.stock.label, r.qty, r.panels.size]);
+  }
 }
 
 /* ---------- stair stringers ---------- */
