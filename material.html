@@ -1350,8 +1350,8 @@ const PART_ORDER = [/BOTTOM PLATE/, /TOP PLATE/, /\bVTP\b|VERY TOP/, /KING/, /TR
 function partRank(desc) { const i = PART_ORDER.findIndex(re => re.test(desc)); return i < 0 ? PART_ORDER.length : i; }
 function sizeKey(pc) { const m = String(pc.mat).match(/^(\d+)x(\d+)/); return m ? [+m[1], +m[2]] : [99, 99]; }
 const isTrimmer = d => /\bJACK\b|TRIMMER/.test(d);
-// Studs include king studs
-const isPlainStud = d => /\bKING\b/.test(d) || (/\b(SS)?STUD\b/.test(d) && !/JACK|TRIMMER|BACKER/.test(d));
+// Studs include king studs and backers
+const isPlainStud = d => /\bKING\b|BACKER/.test(d) || (/\b(SS)?STUD\b/.test(d) && !/JACK|TRIMMER/.test(d));
 // Shop cutting order, in steps. Each step is cut shortest stock length first, working up to the longest.
 const CUT_STEPS = [
   { name: 'Trimmers', test: isTrimmer },
