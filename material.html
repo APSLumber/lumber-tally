@@ -1468,19 +1468,21 @@ function cutGroups() {
     }
   }
   const bySize = (a, b) => { const sa = sizeKey(a.pc), sb = sizeKey(b.pc); return sa[0] - sb[0] || sa[1] - sb[1] || a.mat.localeCompare(b.mat); };
+  // all the 2x4s ahead of the 2x6s (then wider), treated next to untreated at the same length
+  const byDims = (a, b) => { const sa = sizeKey(a.pc), sb = sizeKey(b.pc); return sa[0] - sb[0] || sa[1] - sb[1]; };
   const sortRows = (rows, loose) => {
     const all = [...rows.values()];
-    // The shop's steps in order (trimmers, then studs...), each shortest stock length first, working up to the longest
+    // The shop's steps in order (trimmers, then studs...); in each step 2x4s before 2x6s, each shortest stock length first
     const out = [];
     CUT_STEPS.forEach((st, i) => {
       if (st.boards) {
         // one row per stock board pattern, shortest stock first
-        const boards = (st.pack || plateBoards)(loose[i] || []).sort((a, b) => a.ft - b.ft || bySize(a, b) || b.pieces.length - a.pieces.length);
+        const boards = (st.pack || plateBoards)(loose[i] || []).sort((a, b) => byDims(a, b) || a.ft - b.ft || a.mat.localeCompare(b.mat) || b.pieces.length - a.pieces.length);
         boards.forEach(r => { r.sec = st.name; r.board = true; r.qty = r.count; });
         out.push(...boards);
         return;
       }
-      const part = all.filter(r => r.step === i).sort((a, b) => a.stock.inch - b.stock.inch || bySize(a, b) || a.len - b.len);
+      const part = all.filter(r => r.step === i).sort((a, b) => byDims(a, b) || a.stock.inch - b.stock.inch || a.mat.localeCompare(b.mat) || a.len - b.len);
       part.forEach(r => r.sec = st.name);
       out.push(...part);
     });
