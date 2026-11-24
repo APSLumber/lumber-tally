@@ -231,6 +231,7 @@ td .rm { background: none; border: 0; color: var(--muted); text-decoration: unde
   <section class="shear" id="cutProc" aria-labelledby="cutTitle" hidden>
     <h2 id="cutTitle">Cutting procedure</h2>
     <p class="note" style="margin:0">The stock to pull for the panel PDFs, in cutting order: all the 2x4 first, then all the 2x6, then bearing headers. Precut studs that need no cut are left off.</p>
+    <div class="actions" style="margin:0"><button class="btn ghost" id="cutDlBtn">Download cutting procedure (Excel)</button></div>
     <div id="cutBody"></div>
   </section>
 
@@ -1290,20 +1291,36 @@ async function buildXlsx() {
   addCutSheet(wb);
   return wb.xlsx.writeBuffer();
 }
+function saveXlsx(buf, name) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+  a.download = name;
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 0);
+  toast('Saved ' + name);
+}
+const xlsxName = suffix => (state.title || 'Material').replace(/[\\/:*?"<>|]+/g, ' ').trim() + suffix + '.xlsx';
 $('dlBtn').onclick = async () => {
   if (!hasContent()) return;
   const btn = $('dlBtn'); btn.disabled = true;
   try {
-    const buf = await buildXlsx();
-    const name = (state.title || 'Material').replace(/[\\/:*?"<>|]+/g, ' ').trim() + '.xlsx';
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
-    a.download = name;
-    document.body.appendChild(a); a.click();
-    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 0);
-    toast('Saved ' + name);
+    saveXlsx(await buildXlsx(), xlsxName(''));
   } catch (e) {
     toast('The Excel file could not be made. Use Copy for Excel.');
+  } finally { btn.disabled = false; }
+};
+// Just the cutting procedure, on its own
+async function buildCutXlsx() {
+  const wb = new ExcelJS.Workbook();
+  addCutSheet(wb);
+  return wb.xlsx.writeBuffer();
+}
+$('cutDlBtn').onclick = async () => {
+  const btn = $('cutDlBtn'); btn.disabled = true;
+  try {
+    saveXlsx(await buildCutXlsx(), xlsxName(' - Cutting procedure'));
+  } catch (e) {
+    toast('The Excel file could not be made.');
   } finally { btn.disabled = false; }
 };
 
