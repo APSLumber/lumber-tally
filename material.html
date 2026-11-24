@@ -117,6 +117,14 @@ td.n { text-align: right; font-family: var(--font-data); font-variant-numeric: t
 .pl.pre { border: 1.5px solid var(--precut-line); background: var(--precut-fill); }
 /* shear walls */
 :root { --drawing: #ffffff; --mark: #0d7a45; --mark-fill: rgba(16, 150, 80, .42); --mark2-fill: rgba(9, 95, 52, .62); --sug: #d97a00; --sug-fill: rgba(255, 170, 0, .22); }
+.file .kind { font: inherit; font-size: 13px; border: 1px solid var(--line); border-radius: 6px; padding: 3px 6px; background: var(--paper); color: var(--ink); }
+.file .kind.unset { border-color: var(--bad); }
+.cut-grp { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.cut-grp h3 { margin: 0; padding: 10px 14px; font-family: var(--font-display); font-size: 16px; background: var(--accent-soft); display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.cut-grp h3 .meta { font-family: var(--font-body, inherit); font-size: 13px; font-weight: 500; color: var(--muted); }
+.cut-grp table td.n, .cut-grp table th.n { text-align: right; }
+.cut-grp .size td { background: var(--paper); font-weight: 700; padding-top: 10px; }
+#cutBody { display: grid; gap: 12px; }
 .stair-form { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px 12px; }
 .stair-form input, .stair-form select { font: inherit; border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; background: var(--paper); color: var(--ink); width: 100%; }
 .st-card { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 360px); gap: 10px 18px; align-items: center; border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; }
@@ -216,6 +224,12 @@ td .rm { background: none; border: 0; color: var(--muted); text-decoration: unde
   <section class="sheet" id="sheet" aria-label="Material list"></section>
 
   <section class="sheet" id="siteSheet" aria-label="Ship to site list" hidden></section>
+
+  <section class="shear" id="cutProc" aria-labelledby="cutTitle" hidden>
+    <h2 id="cutTitle">Cutting procedure</h2>
+    <p class="note" style="margin:0">Every piece from the panel PDFs, in the order to cut it: exterior walls first, then interior bearing, then interior non-bearing. Each PDF's wall type is set in the file list above.</p>
+    <div id="cutBody"></div>
+  </section>
 
   <section class="shear" id="stairs" aria-labelledby="stairsTitle">
     <h2 id="stairsTitle">Stair stringers</h2>
@@ -996,6 +1010,7 @@ function recompute() {
   renderBreakdown();
   renderShearList();
   updateOutputButtons();
+  renderCut();
 }
 function hasContent() { return !!state.result || state.stairs.length > 0 || state.hw.length > 0; }
 function updateOutputButtons() {
@@ -1145,8 +1160,10 @@ function renderFiles() {
   $('files').innerHTML = state.files.map((f, i) => `<div class="file">
     <span class="name">${esc(f.name)}</span>
     <span class="meta">${f.error ? `<span style="color:var(--bad)">${esc(f.error)}</span>` : f.panels ? `${f.panels.length} panels` : `reading ${f.done || 0} of ${f.total || '?'} pages`}</span>
+    ${state.pkg === 'panel' ? `<select class="kind${f.kind ? '' : ' unset'}" data-kind="${i}" aria-label="Wall type for ${esc(f.name)}">${(f.kind ? '' : '<option value="">Wall type?</option>') + WALL_KINDS.map(k => `<option value="${k.id}"${f.kind === k.id ? ' selected' : ''}>${k.name}</option>`).join('')}</select>` : ''}
     <button data-i="${i}" aria-label="Remove ${esc(f.name)}">Remove</button>
     ${!f.panels && !f.error ? `<div class="bar"><i style="width:${f.total ? (100 * f.done / f.total) : 2}%"></i></div>` : ''}</div>`).join('');
+  $('files').querySelectorAll('select[data-kind]').forEach(sel => sel.onchange = () => { state.files[+sel.dataset.kind].kind = sel.value; renderFiles(); renderCut(); });
   $('files').querySelectorAll('button[data-i]').forEach(b => b.onclick = () => {
     state.files.splice(+b.dataset.i, 1);
     // no example to fall back to once the last file is removed
@@ -1162,7 +1179,7 @@ function addFiles(list) {
   if (state.sample) { state.sample = false; state.titleEdited = false; }
   $('clearBtn').hidden = false;
   for (const file of pdfs) {
-    const rec = { name: file.name, done: 0, total: 0, panels: null };
+    const rec = { name: file.name, done: 0, total: 0, panels: null, kind: wallKindFromName(file.name) };
     state.files.push(rec);
     renderFiles();
     queue = queue.then(async () => {
@@ -1174,6 +1191,7 @@ function addFiles(list) {
           const now = Date.now(); if (now - last > 120) { last = now; renderFiles(); }
         });
         if (!rec.panels.some(p => p.pieces.length)) rec.error = 'No panel piece lists found in this PDF';
+        if (!rec.kind && rec.panels.length && rec.panels.every(p => /^\d*E/.test(p.id || ''))) rec.kind = 'ext';
       } catch (e) {
         rec.error = 'Could not read this PDF (' + (e && e.message ? e.message : 'unknown error') + ')';
         rec.panels = null;
@@ -1268,6 +1286,7 @@ async function buildXlsx() {
     s.addRow(['Total ft (with tall-wall extra)', '', '', Math.round(sh.inches / 12), '', '', '']);
     s.addRow([res().right.sheets.type + ' sheets (÷ 4\', rounded up to 5)', '', '', sh.qty, '', '', '']);
   }
+  addCutSheet(wb);
   return wb.xlsx.writeBuffer();
 }
 $('dlBtn').onclick = async () => {
@@ -1312,6 +1331,78 @@ function billLines(r) {
   stairOrder().forEach(o => out.push({ src: 'Stair stringers · ' + o.label + ' · ' + o.ft + "'", t: o.t, w: o.w, kind: o.kind, len: o.ft + "'", qty: o.qty }));
   return out;
 }
+/* ---------- cutting procedure (panel package) ---------- */
+const WALL_KINDS = [
+  { id: 'ext', name: 'Exterior', title: 'Exterior walls' },
+  { id: 'ib', name: 'Interior bearing', title: 'Interior bearing walls' },
+  { id: 'inb', name: 'Interior non-bearing', title: 'Interior non-bearing walls' }
+];
+// From the PDF's name: HL32Ext, ...IntB..., ...IntNB..., INT_NB, "Non Bearing"...
+function wallKindFromName(name) {
+  const n = ' ' + String(name).toUpperCase().replace(/\.PDF$/, '').replace(/[^A-Z0-9]+/g, ' ') + ' ';
+  if (/EXT/.test(n)) return 'ext';
+  if (/INTNB|INT NB|NON ?BEAR|[^A-Z]I?NB[^A-Z]/.test(n)) return 'inb';
+  if (/INTB|INT B[^A-Z]|BEARING|[^A-Z]IB[^A-Z]/.test(n)) return 'ib';
+  return '';
+}
+// Part order inside a size, until the shop's own rules are set
+const PART_ORDER = [/BOTTOM PLATE/, /TOP PLATE/, /\bVTP\b|VERY TOP/, /KING/, /TRIM|JACK/, /^STUD|\bSTUD\b/, /BACKER/, /SILL/, /CRIPPLE|\bCR\b/, /HEADER/, /BLOCK/];
+function partRank(desc) { const i = PART_ORDER.findIndex(re => re.test(desc)); return i < 0 ? PART_ORDER.length : i; }
+function sizeKey(pc) { const m = String(pc.mat).match(/^(\d+)x(\d+)/); return m ? [+m[1], +m[2]] : [99, 99]; }
+function cutGroups() {
+  const out = WALL_KINDS.map(k => ({ kind: k, panels: 0, rows: new Map() })), unset = { kind: { id: '', title: 'Wall type not set' }, panels: 0, rows: new Map(), files: [] };
+  const seen = new Set();
+  for (const f of state.files) {
+    if (!f.panels) continue;
+    const g = out.find(x => x.kind.id === f.kind) || unset;
+    if (g === unset) unset.files.push(f.name);
+    for (const p of f.panels) {
+      if (!p.pieces.length || (p.id && seen.has(p.id))) continue;   // a panel in two PDFs is cut once
+      if (p.id) seen.add(p.id);
+      g.panels++;
+      for (const pc of p.pieces) {
+        const mat = pc.mat + (pc.treat ? ' ' + pc.treat : '');
+        const key = mat + '|' + pc.desc + '|' + pc.len;
+        const r = g.rows.get(key) || { mat, pc, desc: pc.desc, len: pc.len, qty: 0, panels: new Set() };
+        r.qty += pc.qty; if (p.id) r.panels.add(p.id);
+        g.rows.set(key, r);
+      }
+    }
+  }
+  const sortRows = rows => [...rows.values()].sort((a, b) => {
+    const sa = sizeKey(a.pc), sb = sizeKey(b.pc);
+    return sa[0] - sb[0] || sa[1] - sb[1] || a.mat.localeCompare(b.mat) || partRank(a.desc) - partRank(b.desc) || a.desc.localeCompare(b.desc) || b.len - a.len;
+  });
+  return out.concat(unset.panels ? [unset] : []).map(g => Object.assign(g, { list: sortRows(g.rows) }));
+}
+function renderCut() {
+  const show = state.pkg === 'panel' && !state.sample && state.files.some(f => f.panels && f.panels.length);
+  $('cutProc').hidden = !show;
+  if (!show) { $('cutBody').innerHTML = ''; return; }
+  let step = 0;
+  $('cutBody').innerHTML = cutGroups().map(g => {
+    if (!g.panels) return `<div class="cut-grp"><h3>${esc(g.kind.title)}<span class="meta">no ${esc(g.kind.title.toLowerCase())} PDF added</span></h3></div>`;
+    let lastMat = '';
+    const rows = g.list.map(r => {
+      const head = r.mat !== lastMat ? `<tr class="size"><td colspan="5">${esc(r.mat)}</td></tr>` : '';
+      lastMat = r.mat;
+      return head + `<tr><td class="n">${++step}</td><td>${esc(r.desc)}</td><td>${esc(fmtFtIn(r.len))}</td><td class="n">${fmtQ(r.qty)}</td><td class="n">${r.panels.size}</td></tr>`;
+    }).join('');
+    const warn = g.files ? `<p class="note" style="margin:8px 14px;color:var(--bad)">Set the wall type for: ${esc(g.files.join(', '))}</p>` : '';
+    return `<div class="cut-grp"><h3>${esc(g.kind.title)}<span class="meta">${g.panels} panels · ${fmtQ(g.list.reduce((t, r) => t + r.qty, 0))} pieces</span></h3>${warn}
+      <div class="tbl-wrap"><table><thead><tr><th class="n">Step</th><th>Part</th><th>Length</th><th class="n">Pieces</th><th class="n">Panels</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+  }).join('');
+}
+// Excel tab
+function addCutSheet(wb) {
+  if (state.pkg !== 'panel' || $('cutProc').hidden) return;
+  const ws = wb.addWorksheet('Cutting procedure');
+  ws.columns = [{ header: 'Step', width: 7 }, { header: 'Walls', width: 26 }, { header: 'Material', width: 12 }, { header: 'Part', width: 22 }, { header: 'Length', width: 12 }, { header: 'Pieces', width: 9 }, { header: 'Panels', width: 9 }];
+  ws.getRow(1).font = { bold: true };
+  let step = 0;
+  for (const g of cutGroups()) for (const r of g.list) ws.addRow([++step, g.kind.title, r.mat, r.desc, fmtFtIn(r.len), r.qty, r.panels.size]);
+}
+
 /* ---------- stair stringers ---------- */
 // Stringer lumber: depth is the board's actual width, used to check how much wood is left under the cuts
 // LVL comes 1 3/4" or 1 1/2" thick; its depth is the actual size
