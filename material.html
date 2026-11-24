@@ -1359,8 +1359,40 @@ const CUT_STEPS = [
   // Top, bottom and very top plates are one step, cut board by board out of their stock
   { name: 'Plates (top, bottom and VTP)', test: d => /TOP PLATE|BOTTOM PLATE|BOT PLATE|\bVTP\b/.test(d), boards: true },
   // 2x6 headers and window sills are cut at the same time, sharing boards
-  { name: '2x6 headers and window sills', test: (d, pc) => /SILL/.test(d) || (/HEADER/.test(d) && /^2x6$/.test(pc.mat)), boards: true }
+  { name: '2x6 headers and window sills', test: (d, pc) => !isHeaderSillOrCap(d) && (/SILL/.test(d) || (/HEADER/.test(d) && /^2x6$/.test(pc.mat))), boards: true },
+  // top and bottom cripples are cut at the same time
+  { name: 'Cripples (top and bottom)', test: d => /CRIPPLE|\b(TOP|BOT|BOTTOM)\s*CR\b/.test(d), boards: true },
+  // header caps and header sills are cut at the same time
+  { name: 'Header caps and header sills', test: isHeaderSillOrCap, boards: true },
+  // bearing headers: 2x8 and wider, and LVL; out of the same boards the material list orders
+  { name: 'Bearing headers', test: (d, pc) => /HEADER|\bHDR\b/.test(d) && !isHeaderSillOrCap(d) && isBearingHeaderMat(pc.mat), boards: true, pack: bearingBoards }
 ];
+function isBearingHeaderMat(mat) { const m = String(mat).match(/^(\d+)x(\d+)$/); return !m || +m[2] >= 8; }
+// 2x8+ use the header cut plan (one board length with the least scrap); LVL and other engineered headers get a board each
+function bearingBoards(pieces) {
+  const pats = new Map(), byMat = new Map();
+  const addBoard = (mat, ft, list) => {
+    list.sort((a, b) => b.len - a.len);
+    const key = mat + '|' + ft + '|' + list.map(x => x.desc + '@' + x.len).join(',');
+    const e = pats.get(key) || { mat, pc: list[0].pc, ft, pieces: list, count: 0, panels: new Set() };
+    e.count++; list.forEach(x => x.panel && e.panels.add(x.panel)); pats.set(key, e);
+  };
+  for (const x of pieces) (byMat.get(x.mat) || byMat.set(x.mat, []).get(x.mat)).push(x);
+  for (const [mat, list] of byMat) {
+    if (/^\d+x\d+/.test(mat)) {
+      const pool = [...list];
+      const plan = headerStock(list.map(x => x.len));
+      for (const c of plan.cuts) {
+        const items = c.pieces.map(l => { const i = pool.findIndex(x => Math.abs(x.len - l) < 0.01); return i > -1 ? pool.splice(i, 1)[0] : { mat, pc: list[0].pc, desc: 'HEADER', len: l }; });
+        addBoard(mat, c.ft, items);
+      }
+    } else {
+      for (const x of list) addBoard(mat, Math.max(8, Math.ceil(x.len / 24) * 2), [x]);
+    }
+  }
+  return [...pats.values()];
+}
+function isHeaderSillOrCap(d) { return /\b(HEADER|HDR)\s*(SILL|CAP)\b/.test(d); }
 // Plates packed into stock boards the same way the material list orders them: pieces up to 12' share 12' boards
 // (longest first, each into the first board it fits), longer pieces get their own board at the next even length.
 function plateBoards(pieces) {
@@ -1414,7 +1446,7 @@ function cutGroups() {
       if (p.id) seen.add(p.id);
       g.panels++;
       for (const pc of p.pieces) {
-        const mat = pc.mat + (pc.treat ? ' ' + pc.treat : '');
+        const mat = (/^\d+x\d+/.test(pc.mat) ? pc.mat : lvlName(pc.mat)) + (pc.treat ? ' ' + pc.treat : '');
         const si = CUT_STEPS.findIndex(x => x.test(pc.desc, pc));
         if (si > -1 && CUT_STEPS[si].boards) {
           g.loose = g.loose || {};
@@ -1437,7 +1469,7 @@ function cutGroups() {
     CUT_STEPS.forEach((st, i) => {
       if (st.boards) {
         // one row per stock board pattern, shortest stock first
-        const boards = plateBoards(loose[i] || []).sort((a, b) => a.ft - b.ft || bySize(a, b) || b.pieces.length - a.pieces.length);
+        const boards = (st.pack || plateBoards)(loose[i] || []).sort((a, b) => a.ft - b.ft || bySize(a, b) || b.pieces.length - a.pieces.length);
         boards.forEach(r => { r.sec = st.name; r.board = true; r.qty = r.count; });
         out.push(...boards);
         return;
