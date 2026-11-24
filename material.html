@@ -1563,8 +1563,9 @@ const CUT_REST = 'Everything else (order not set yet)';
 function cutPlan() {
   const g = cutGroups();
   const BH = CUT_STEPS.findIndex(st => st.name === 'Bearing headers');
-  const passOf = r => { if (r.si === BH) return 1e6; const k = sizeKey(r.pc); return k[0] * 100 + k[1]; };
-  const passTitle = n => n === 1e6 ? 'Bearing headers' : n === 9999 ? 'Other stock' : 'All ' + Math.floor(n / 100) + 'x' + (n % 100) + ' stock';
+  // 1x stock is cut last, after the bearing headers
+  const passOf = r => { if (r.si === BH) return 1e6; const k = sizeKey(r.pc); return (k[0] === 1 ? 2e6 : 0) + k[0] * 100 + k[1]; };
+  const passTitle = n => { n = n % 1e6 || (n ? 1e6 : 0); return n === 1e6 ? 'Bearing headers' : n === 9999 ? 'Other stock' : 'All ' + Math.floor(n / 100) + 'x' + (n % 100) + ' stock'; };
   const rows = g.list.map((r, n) => ({ r, n, pass: passOf(r) }));
   rows.sort((a, b) => a.pass - b.pass || a.r.si - b.r.si || a.n - b.n);
   const passes = new Map();
