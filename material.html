@@ -117,13 +117,16 @@ td.n { text-align: right; font-family: var(--font-data); font-variant-numeric: t
 .pl.pre { border: 1.5px solid var(--precut-line); background: var(--precut-fill); }
 /* shear walls */
 :root { --drawing: #ffffff; --mark: #0d7a45; --mark-fill: rgba(16, 150, 80, .42); --mark2-fill: rgba(9, 95, 52, .62); --sug: #d97a00; --sug-fill: rgba(255, 170, 0, .22); }
-.file .kind { font: inherit; font-size: 13px; border: 1px solid var(--line); border-radius: 6px; padding: 3px 6px; background: var(--paper); color: var(--ink); }
-.file .kind.unset { border-color: var(--bad); }
 .cut-grp { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
 .cut-grp h3 { margin: 0; padding: 10px 14px; font-family: var(--font-display); font-size: 16px; background: var(--accent-soft); display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
 .cut-grp h3 .meta { font-family: var(--font-body, inherit); font-size: 13px; font-weight: 500; color: var(--muted); }
 .cut-grp table td.n, .cut-grp table th.n { text-align: right; }
 .cut-grp .size td { background: var(--paper); font-weight: 700; padding-top: 10px; }
+/* same column widths in every card so the stock cards line up */
+.cut-grp th:nth-child(1) { width: 10%; }
+.cut-grp th:nth-child(2) { width: 34%; }
+.cut-grp th:nth-child(3) { width: 22%; }
+.cut-grp th:nth-child(4), .cut-grp th:nth-child(5) { width: 17%; }
 #cutBody { display: grid; gap: 12px; }
 .stair-form { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px 12px; }
 .stair-form input, .stair-form select { font: inherit; border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; background: var(--paper); color: var(--ink); width: 100%; }
@@ -227,7 +230,7 @@ td .rm { background: none; border: 0; color: var(--muted); text-decoration: unde
 
   <section class="shear" id="cutProc" aria-labelledby="cutTitle" hidden>
     <h2 id="cutTitle">Cutting procedure</h2>
-    <p class="note" style="margin:0">Every piece from the panel PDFs, in the order to cut it: exterior walls first, then interior bearing, then interior non-bearing. Each PDF's wall type is set in the file list above.</p>
+    <p class="note" style="margin:0">The stock to pull for the panel PDFs, in cutting order: all the 2x4 first, then all the 2x6, then bearing headers. Precut studs that need no cut are left off.</p>
     <div id="cutBody"></div>
   </section>
 
@@ -1160,10 +1163,8 @@ function renderFiles() {
   $('files').innerHTML = state.files.map((f, i) => `<div class="file">
     <span class="name">${esc(f.name)}</span>
     <span class="meta">${f.error ? `<span style="color:var(--bad)">${esc(f.error)}</span>` : f.panels ? `${f.panels.length} panels` : `reading ${f.done || 0} of ${f.total || '?'} pages`}</span>
-    ${state.pkg === 'panel' ? `<select class="kind${f.kind ? '' : ' unset'}" data-kind="${i}" aria-label="Wall type for ${esc(f.name)}">${(f.kind ? '' : '<option value="">Wall type?</option>') + WALL_KINDS.map(k => `<option value="${k.id}"${f.kind === k.id ? ' selected' : ''}>${k.name}</option>`).join('')}</select>` : ''}
     <button data-i="${i}" aria-label="Remove ${esc(f.name)}">Remove</button>
     ${!f.panels && !f.error ? `<div class="bar"><i style="width:${f.total ? (100 * f.done / f.total) : 2}%"></i></div>` : ''}</div>`).join('');
-  $('files').querySelectorAll('select[data-kind]').forEach(sel => sel.onchange = () => { state.files[+sel.dataset.kind].kind = sel.value; renderFiles(); renderCut(); });
   $('files').querySelectorAll('button[data-i]').forEach(b => b.onclick = () => {
     state.files.splice(+b.dataset.i, 1);
     // no example to fall back to once the last file is removed
@@ -1179,7 +1180,7 @@ function addFiles(list) {
   if (state.sample) { state.sample = false; state.titleEdited = false; }
   $('clearBtn').hidden = false;
   for (const file of pdfs) {
-    const rec = { name: file.name, done: 0, total: 0, panels: null, kind: wallKindFromName(file.name) };
+    const rec = { name: file.name, done: 0, total: 0, panels: null };
     state.files.push(rec);
     renderFiles();
     queue = queue.then(async () => {
@@ -1332,19 +1333,6 @@ function billLines(r) {
   return out;
 }
 /* ---------- cutting procedure (panel package) ---------- */
-const WALL_KINDS = [
-  { id: 'ext', name: 'Exterior', title: 'Exterior walls' },
-  { id: 'ib', name: 'Interior bearing', title: 'Interior bearing walls' },
-  { id: 'inb', name: 'Interior non-bearing', title: 'Interior non-bearing walls' }
-];
-// From the PDF's name: HL32Ext, ...IntB..., ...IntNB..., INT_NB, "Non Bearing"...
-function wallKindFromName(name) {
-  const n = ' ' + String(name).toUpperCase().replace(/\.PDF$/, '').replace(/[^A-Z0-9]+/g, ' ') + ' ';
-  if (/EXT/.test(n)) return 'ext';
-  if (/INTNB|INT NB|NON ?BEAR|[^A-Z]I?NB[^A-Z]/.test(n)) return 'inb';
-  if (/INTB|INT B[^A-Z]|BEARING|[^A-Z]IB[^A-Z]/.test(n)) return 'ib';
-  return '';
-}
 // Part order inside a size, until the shop's own rules are set
 const PART_ORDER = [/BOTTOM PLATE/, /TOP PLATE/, /\bVTP\b|VERY TOP/, /KING/, /TRIM|JACK/, /^STUD|\bSTUD\b/, /BACKER/, /SILL/, /CRIPPLE|\bCR\b/, /HEADER/, /BLOCK/];
 function partRank(desc) { const i = PART_ORDER.findIndex(re => re.test(desc)); return i < 0 ? PART_ORDER.length : i; }
@@ -1439,12 +1427,10 @@ function isPrecutLength(pc) {
   return (st.inch === PRECUT || st.inch === 104.625) && Math.abs(pc.len - st.inch) < 0.01;
 }
 function cutGroups() {
-  const out = WALL_KINDS.map(k => ({ kind: k, panels: 0, rows: new Map(), loose: {} })), unset = { kind: { id: '', title: 'Wall type not set' }, panels: 0, rows: new Map(), loose: {}, files: [] };
+  const g = { panels: 0, rows: new Map(), loose: {} };
   const seen = new Set();
   for (const f of state.files) {
     if (!f.panels) continue;
-    const g = out.find(x => x.kind.id === f.kind) || unset;
-    if (g === unset) unset.files.push(f.name);
     for (const p of f.panels) {
       if (!p.pieces.length || (p.id && seen.has(p.id))) continue;   // a panel in two PDFs is cut once
       if (p.id) seen.add(p.id);
@@ -1472,8 +1458,8 @@ function cutGroups() {
   const byDims = (a, b) => { const sa = sizeKey(a.pc), sb = sizeKey(b.pc); return sa[0] - sb[0] || sa[1] - sb[1]; };
   const sortRows = (rows, loose) => {
     const all = [...rows.values()];
-    // The shop's steps in order (trimmers, then studs...); in each step 2x4s before 2x6s, each shortest stock length first
-    let out = [];
+    // The shop's steps in order (trimmers, then studs...); in each step shortest stock length first
+    const out = [];
     CUT_STEPS.forEach((st, i) => {
       if (st.boards) {
         // one row per stock board pattern, shortest stock first
@@ -1486,22 +1472,32 @@ function cutGroups() {
       part.forEach(r => r.si = i);
       out.push(...part);
     });
-    // All the 2x4 goes through every step (trimmers to header caps and sills) before any 2x6 is cut,
-    // then the 2x6 goes through the same steps; bearing headers come after both
-    const BH = CUT_STEPS.findIndex(st => st.name === 'Bearing headers');
-    const pass = r => { if (r.si === BH) return 1e6; const k = sizeKey(r.pc); return k[0] * 100 + k[1]; };
-    out = out.map((r, n) => ({ r, n })).sort((a, b) => pass(a.r) - pass(b.r) || a.r.si - b.r.si || a.n - b.n).map(x => x.r);
-    out.forEach(r => {
-      const k = sizeKey(r.pc), st = CUT_STEPS[r.si];
-      r.sec = r.si === BH ? st.name : (k[0] < 99 ? k[0] + 'x' + k[1] : r.mat) + ' — ' + st.name;
-    });
     const rest = all.filter(r => r.step < 0).sort((a, b) => bySize(a, b) || partRank(a.desc) - partRank(b.desc) || a.desc.localeCompare(b.desc) || b.len - a.len);
-    rest.forEach(r => r.sec = 'Everything else (order not set yet)');
+    rest.forEach(r => r.si = CUT_STEPS.length);
     return out.concat(rest);
   };
-  return out.concat(unset.panels ? [unset] : []).map(g => Object.assign(g, { list: sortRows(g.rows, g.loose) }));
+  return Object.assign(g, { list: sortRows(g.rows, g.loose) });
 }
-// Stock lengths only: each step collapsed to one row per size and stock length, with how many boards to pull
+// The whole package in cutting order. All the 2x4 stock is used before any 2x6 stock is grabbed:
+// 2x4 through the steps in order, then 2x6 the same way, then any other stock, then bearing headers last.
+const CUT_REST = 'Everything else (order not set yet)';
+function cutPlan() {
+  const g = cutGroups();
+  const BH = CUT_STEPS.findIndex(st => st.name === 'Bearing headers');
+  const passOf = r => { if (r.si === BH) return 1e6; const k = sizeKey(r.pc); return k[0] * 100 + k[1]; };
+  const passTitle = n => n === 1e6 ? 'Bearing headers' : n === 9999 ? 'Other stock' : 'All ' + Math.floor(n / 100) + 'x' + (n % 100) + ' stock';
+  const rows = g.list.map((r, n) => ({ r, n, pass: passOf(r) }));
+  rows.sort((a, b) => a.pass - b.pass || a.r.si - b.r.si || a.n - b.n);
+  const passes = new Map();
+  for (const x of rows) {
+    const r = x.r;
+    r.cut = r.sec = r.si < CUT_STEPS.length ? CUT_STEPS[r.si].name : CUT_REST;
+    const p = passes.get(x.pass) || passes.set(x.pass, { title: passTitle(x.pass), list: [] }).get(x.pass);
+    p.list.push(r);
+  }
+  return { panels: g.panels, passes: [...passes.values()] };
+}
+// Stock lengths only: each section collapsed to one row per size and stock length, with how many boards to pull
 function stockRows(list) {
   const m = new Map();
   for (const r of list) {
@@ -1509,7 +1505,7 @@ function stockRows(list) {
     const inch = r.board ? r.ft * 12 : r.stock.inch;
     const label = r.board ? r.ft + "'" : r.stock.label.replace(/\s*\(no cut\)/, '');
     const key = r.sec + '|' + r.mat + '|' + label + (rest ? '|' + r.desc : '');
-    const e = m.get(key) || { sec: r.sec, mat: r.mat, part: rest ? r.desc : '', inch, label, qty: 0, panels: new Set() };
+    const e = m.get(key) || { sec: r.sec, cut: r.cut, mat: r.mat, part: rest ? r.desc : '', inch, label, qty: 0, panels: new Set() };
     e.qty += r.board ? r.count : r.qty;
     r.panels.forEach(id => e.panels.add(id));
     m.set(key, e);
@@ -1520,31 +1516,31 @@ function renderCut() {
   const show = state.pkg === 'panel' && !state.sample && state.files.some(f => f.panels && f.panels.length);
   $('cutProc').hidden = !show;
   if (!show) { $('cutBody').innerHTML = ''; return; }
+  const { panels, passes } = cutPlan();
   let step = 0;
-  $('cutBody').innerHTML = cutGroups().map(g => {
-    if (!g.panels) return `<div class="cut-grp"><h3>${esc(g.kind.title)}<span class="meta">no ${esc(g.kind.title.toLowerCase())} PDF added</span></h3></div>`;
-    let lastSec = '';
-    const list = stockRows(g.list);
-    const rows = list.map(r => {
-      const head = r.sec !== lastSec ? `<tr class="size"><td colspan="5">${esc(r.sec)}</td></tr>` : '';
-      lastSec = r.sec;
-      return head + `<tr><td class="n">${++step}</td><td>${esc(r.mat + (r.part ? ' ' + r.part : ''))}</td><td>${esc(r.label)}</td><td class="n">${fmtQ(r.qty)}</td><td class="n">${r.panels.size}</td></tr>`;
-    }).join('');
-    const warn = g.files ? `<p class="note" style="margin:8px 14px;color:var(--bad)">Set the wall type for: ${esc(g.files.join(', '))}</p>` : '';
-    const boards = list.reduce((t, r) => t + r.qty, 0);
-    return `<div class="cut-grp"><h3>${esc(g.kind.title)}<span class="meta">${g.panels} panels · ${fmtQ(boards)} boards</span></h3>${warn}
+  $('cutBody').innerHTML = `<p class="note" style="margin:0">${panels} panels</p>` +
+    passes.map(p => {
+      let lastSec = '';
+      const list = stockRows(p.list);
+      const rows = list.map(r => {
+        const head = r.sec !== lastSec && r.sec !== p.title ? `<tr class="size"><td colspan="5">${esc(r.sec)}</td></tr>` : '';
+        lastSec = r.sec;
+        return head + `<tr><td class="n">${++step}</td><td>${esc(r.mat + (r.part ? ' ' + r.part : ''))}</td><td>${esc(r.label)}</td><td class="n">${fmtQ(r.qty)}</td><td class="n">${r.panels.size}</td></tr>`;
+      }).join('');
+      const boards = list.reduce((t, r) => t + r.qty, 0);
+      return `<div class="cut-grp"><h3>${esc(p.title)}<span class="meta">${fmtQ(boards)} boards</span></h3>
       <div class="tbl-wrap"><table><thead><tr><th class="n">Step</th><th>Size</th><th>Stock length</th><th class="n">Boards</th><th class="n">Panels</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
-  }).join('');
+    }).join('');
 }
 // Excel tab
 function addCutSheet(wb) {
   if (state.pkg !== 'panel' || $('cutProc').hidden) return;
   const ws = wb.addWorksheet('Cutting procedure');
-  ws.columns = [{ header: 'Step', width: 7 }, { header: 'Walls', width: 26 }, { header: 'Cut', width: 30 }, { header: 'Size', width: 18 }, { header: 'Stock length', width: 14 }, { header: 'Boards', width: 9 }, { header: 'Panels', width: 9 }];
+  ws.columns = [{ header: 'Step', width: 7 }, { header: 'Stock', width: 16 }, { header: 'Cut', width: 30 }, { header: 'Size', width: 18 }, { header: 'Stock length', width: 14 }, { header: 'Boards', width: 9 }, { header: 'Panels', width: 9 }];
   ws.getRow(1).font = { bold: true };
   let step = 0;
-  for (const g of cutGroups()) for (const r of stockRows(g.list))
-    ws.addRow([++step, g.kind.title, r.sec, r.mat + (r.part ? ' ' + r.part : ''), r.label, r.qty, r.panels.size]);
+  for (const p of cutPlan().passes) for (const r of stockRows(p.list))
+    ws.addRow([++step, p.title, r.cut, r.mat + (r.part ? ' ' + r.part : ''), r.label, r.qty, r.panels.size]);
 }
 
 /* ---------- stair stringers ---------- */
