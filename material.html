@@ -123,10 +123,10 @@ td.n { text-align: right; font-family: var(--font-data); font-variant-numeric: t
 .cut-grp table td.n, .cut-grp table th.n { text-align: right; }
 .cut-grp .size td { background: var(--paper); font-weight: 700; padding-top: 10px; }
 /* same column widths in every card so the stock cards line up */
-.cut-grp th:nth-child(1) { width: 10%; }
-.cut-grp th:nth-child(2) { width: 34%; }
-.cut-grp th:nth-child(3) { width: 22%; }
-.cut-grp th:nth-child(4), .cut-grp th:nth-child(5) { width: 17%; }
+.cut-grp th:nth-child(1) { width: 12%; }
+.cut-grp th:nth-child(2) { width: 40%; }
+.cut-grp th:nth-child(3) { width: 28%; }
+.cut-grp th:nth-child(4) { width: 20%; }
 #cutBody { display: grid; gap: 12px; }
 .stair-form { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px 12px; }
 .stair-form input, .stair-form select { font: inherit; border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; background: var(--paper); color: var(--ink); width: 100%; }
@@ -1603,31 +1603,31 @@ function renderCut() {
   const show = state.pkg === 'panel' && !state.sample && state.files.some(f => f.panels && f.panels.length);
   $('cutProc').hidden = !show;
   if (!show) { $('cutBody').innerHTML = ''; return; }
-  const { panels, passes } = cutPlan();
+  const { passes } = cutPlan();
   let step = 0;
-  $('cutBody').innerHTML = `<p class="note" style="margin:0">${panels} panels</p>` +
+  $('cutBody').innerHTML =
     passes.map(p => {
       let lastSec = '';
       const list = stockRows(p.list);
       const rows = list.map(r => {
-        const head = r.sec !== lastSec && r.sec !== p.title ? `<tr class="size"><td colspan="5">${esc(r.sec)}</td></tr>` : '';
+        const head = r.sec !== lastSec && r.sec !== p.title ? `<tr class="size"><td colspan="4">${esc(r.sec)}</td></tr>` : '';
         lastSec = r.sec;
-        return head + `<tr><td class="n">${++step}</td><td>${esc(r.mat + (r.part ? ' ' + r.part : ''))}</td><td>${esc(r.label)}</td><td class="n">${fmtQ(r.qty)}</td><td class="n">${r.panels.size}</td></tr>`;
+        return head + `<tr><td class="n">${++step}</td><td>${esc(r.mat + (r.part ? ' ' + r.part : ''))}</td><td>${esc(r.label)}</td><td class="n">${fmtQ(r.qty)}</td></tr>`;
       }).join('');
       const boards = list.reduce((t, r) => t + r.qty, 0);
       return `<div class="cut-grp"><h3>${esc(p.title)}<span class="meta">${fmtQ(boards)} boards</span></h3>
-      <div class="tbl-wrap"><table><thead><tr><th class="n">Step</th><th>Size</th><th>Stock length</th><th class="n">Boards</th><th class="n">Panels</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+      <div class="tbl-wrap"><table><thead><tr><th class="n">Step</th><th>Size</th><th>Stock length</th><th class="n">Boards</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
     }).join('');
 }
 // Excel tab
 function addCutSheet(wb) {
   if (state.pkg !== 'panel' || $('cutProc').hidden) return;
   const ws = wb.addWorksheet('Cutting procedure');
-  ws.columns = [{ header: 'Step', width: 7 }, { header: 'Stock', width: 16 }, { header: 'Cut', width: 30 }, { header: 'Size', width: 18 }, { header: 'Stock length', width: 14 }, { header: 'Boards', width: 9 }, { header: 'Panels', width: 9 }];
+  ws.columns = [{ header: 'Step', width: 7 }, { header: 'Stock', width: 16 }, { header: 'Cut', width: 30 }, { header: 'Size', width: 18 }, { header: 'Stock length', width: 14 }, { header: 'Boards', width: 9 }];
   ws.getRow(1).font = { bold: true };
   let step = 0;
   for (const p of cutPlan().passes) for (const r of stockRows(p.list))
-    ws.addRow([++step, p.title, r.cut, r.mat + (r.part ? ' ' + r.part : ''), r.label, r.qty, r.panels.size]);
+    ws.addRow([++step, p.title, r.cut, r.mat + (r.part ? ' ' + r.part : ''), r.label, r.qty]);
 }
 
 /* ---------- stair stringers ---------- */
