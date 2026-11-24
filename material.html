@@ -185,7 +185,7 @@ td .rm { background: none; border: 0; color: var(--muted); text-decoration: unde
 <div class="wrap">
   <header>
     <h1 id="pageH1">Panel Material List</h1>
-    <p id="pageLede">Drop in the wall panel PDFs for a floor. Every piece list is read in your browser and totaled into the shop's material sheet.</p>
+    <p id="pageLede">Drop in the wall panel PDFs or Vertex .ehx files for a floor. Every piece list is read in your browser and totaled into the shop's material sheet.</p>
   </header>
 
   <!-- Step one is the job: it decides whether the list goes through Bill out -->
@@ -203,10 +203,10 @@ td .rm { background: none; border: 0; color: var(--muted); text-decoration: unde
     <button role="tab" id="pkg-mixed" data-pkg="mixed" aria-selected="false">Panel + precut package</button>
   </nav>
 
-  <div class="drop" id="drop" tabindex="0" role="button" aria-label="Choose panel PDFs">
-    <strong>Drop panel PDFs here</strong>
-    <span>or click to choose files. Add several (EXT, INB, IB) and they are combined.</span>
-    <input type="file" id="fileInput" accept="application/pdf,.pdf" multiple hidden>
+  <div class="drop" id="drop" tabindex="0" role="button" aria-label="Choose panel PDFs or Vertex .ehx files">
+    <strong>Drop panel PDFs or .ehx files here</strong>
+    <span>or click to choose files. Vertex .ehx files and panel PDFs both work. Add several (EXT, INB, IB) and they are combined.</span>
+    <input type="file" id="fileInput" accept="application/pdf,.pdf,.ehx" multiple hidden>
   </div>
 
   <div class="files" id="files"></div>
@@ -543,6 +543,72 @@ function classifyRaw(m) {
   else if (/\bSYP\b/.test(rest)) treat = 'SYP';
   const desc = rest.replace(/\b(LUMBER|SPF|SYP|PT|DF|HF)\b/g, '').replace(/#\d/g, '').replace(/\s+/g, ' ').trim();
   return { label: m[1], qty: +m[2], mat, treat, desc, len: fracToNum(m[5]), raw: m[0] };
+}
+
+/* ===== Vertex .ehx reader =====
+   An .ehx is the Vertex BD export (XML) the panel PDFs are printed from. It is read into the same panel
+   records as a PDF page: same piece labels, counts, sizes and lengths, and the PDF's part names. */
+const EHX_PART = {
+  'Bottom Plate': 'BOTTOM PLATE', 'Top Plate': 'TOP PLATE', 'Very Top Plate': 'VTP', 'Stud': 'STUD', 'King': 'KING',
+  'Jack': 'JACK', 'Header': 'HEADER', 'Header Sill': 'HEADER SILL', 'Header Cap': 'HEADER CAP', 'Sill': 'SILL',
+  'Top Cripple': 'TOP CR', 'Bottom Cripple': 'BOT CR', 'Block': 'BLOCK'
+};
+// Vertex calls backers "Stud"; the PDF names them by label: B = backer, E = exterior backer, I = interior backer
+function ehxPartName(fam, label, flat) {
+  if (fam === 'Stud') return /^B\d/.test(label) ? 'BACKER' : /^E\d/.test(label) ? 'EXT BACKER' : /^I\d/.test(label) ? 'INT BACKER' : 'STUD';
+  if (fam === 'Block') return flat ? 'FLAT BLK' : 'BLOCK';
+  return EHX_PART[fam] || String(fam || 'PART').toUpperCase();
+}
+function sheetFtIn(v) { const ft = Math.floor(v / 12), r = v - ft * 12; return ft + "'-" + fmtIn(r); }
+async function readPanelEhx(data, onProgress) {
+  const text = new TextDecoder('windows-1252').decode(data);
+  const doc = new DOMParser().parseFromString(text, 'application/xml');
+  if (doc.getElementsByTagName('parsererror').length) throw new Error('not a readable .ehx file');
+  const kid = (el, tag) => { if (el) for (const c of el.children) if (c.tagName === tag) return c; return null; };
+  const txt = (el, tag) => { const c = kid(el, tag); return c ? c.textContent.trim() : ''; };
+  const ys = el => el ? [...el.getElementsByTagName('Y')].map(y => +y.textContent) : [];
+  const list = [...doc.getElementsByTagName('Panel')];
+  const panels = [];
+  for (let i = 0; i < list.length; i++) {
+    const P = list[i];
+    const panel = { page: i + 1, id: txt(P, 'Label') || null, job: null, height: null, pieces: [], sheets: [], suspect: [] };
+    const pieces = new Map();
+    let lo = Infinity, hi = -Infinity;
+    for (const b of P.getElementsByTagName('Board')) {
+      const fam = txt(b, 'FamilyMemberName'), label = txt(b, 'Label'), m = kid(b, 'Material');
+      const ev = ys(kid(b, 'ElevationView'));
+      // panel height = the framing, bottom of the bottom plate to the top of the top plate (no VTP), as on the PDF
+      if (fam !== 'Very Top Plate' && fam !== 'RoughOpening') for (const y of ev) { if (y < lo) lo = y; if (y > hi) hi = y; }
+      if (!label || !m || fam === 'RoughOpening') continue;
+      const size = txt(m, 'Size'), mdesc = txt(m, 'Description'), grade = txt(m, 'Grade');
+      const len = Math.round(+txt(m, 'ActualLength') * 16) / 16;
+      if (!size || !(len > 0)) continue;
+      const mat = size.split(/\s+/)[0];
+      const all = size + ' ' + mdesc + ' ' + grade;
+      const treat = /\bPT\b/.test(all) ? 'PT' : /\bSYP\b/.test(all) ? 'SYP' : '';
+      const thick = +txt(m, 'ActualThickness');
+      const flat = ev.length > 0 && thick > 0 && Math.abs(Math.max(...ev) - Math.min(...ev) - thick) < 0.02;
+      const desc = ehxPartName(fam, label, flat);
+      const key = [label, mat, treat, desc, len].join('|');
+      const pc = pieces.get(key) || { label, qty: 0, mat, treat, desc, len, raw: '' };
+      pc.qty++;
+      pc.raw = `${label} ${pc.qty} ${mat} ${mdesc} ${desc} ${fmtIn(len)}`;
+      pieces.set(key, pc);
+    }
+    panel.pieces = [...pieces.values()].sort((a, b) => a.label.localeCompare(b.label, undefined, { numeric: true }));
+    if (hi > lo) panel.height = Math.round((hi - lo) * 16) / 16;
+    const sheets = new Map();
+    for (const sh of P.getElementsByTagName('Sheet')) {
+      const m = kid(sh, 'Material'), label = txt(sh, 'Label');
+      const sz = txt(m, 'Size').match(/^([\d.]+)x([\d.]+)/);
+      const e = sheets.get(label) || { label, qty: 0, mat: txt(m, 'Description'), size: sz ? sheetFtIn(+sz[1]) + ' X ' + sheetFtIn(+sz[2]) : txt(m, 'Size') };
+      e.qty++; sheets.set(label, e);
+    }
+    panel.sheets = [...sheets.values()];
+    panels.push(panel);
+    if (onProgress && (i % 20 === 0 || i === list.length - 1)) { onProgress(i + 1, list.length); await new Promise(r => setTimeout(r, 0)); }
+  }
+  return panels;
 }
 
 async function readPanelPdf(data, onProgress) {
@@ -908,9 +974,9 @@ const SAMPLE = null; // no built-in example job: this page is public, so it star
 
 /* Three package types, each a full copy of the tool with its own files, title, allowances and shear walls. */
 const PKG_INFO = {
-  panel: { h1: 'Panel Material List', lede: "Panel package. Drop in the wall panel PDFs for a floor. Every piece list is read in your browser and totaled into the shop's material sheet.", suffix: 'Material', store: '' },
-  precut: { h1: 'Precut Material List', lede: "Precut-only package. Drop in the wall PDFs for a floor. Every piece list is read in your browser and totaled into the shop's material sheet.", suffix: 'Precut Material', store: ':precut' },
-  mixed: { h1: 'Panel + Precut Material List', lede: "Package that is part panels and part precut. Drop in the wall PDFs for a floor. Every piece list is read in your browser and totaled into the shop's material sheet.", suffix: 'Panel + Precut Material', store: ':mixed' }
+  panel: { h1: 'Panel Material List', lede: "Panel package. Drop in the wall panel PDFs or Vertex .ehx files for a floor. Every piece list is read in your browser and totaled into the shop's material sheet.", suffix: 'Material', store: '' },
+  precut: { h1: 'Precut Material List', lede: "Precut-only package. Drop in the wall PDFs or Vertex .ehx files for a floor. Every piece list is read in your browser and totaled into the shop's material sheet.", suffix: 'Precut Material', store: ':precut' },
+  mixed: { h1: 'Panel + Precut Material List', lede: "Package that is part panels and part precut. Drop in the wall PDFs or Vertex .ehx files for a floor. Every piece list is read in your browser and totaled into the shop's material sheet.", suffix: 'Panel + Precut Material', store: ':mixed' }
 };
 const LAYOUT_MSG = 'The panel layout sheet for this floor, with every panel number on it.';
 const PLAN_MSG = 'The structural sheet (or whole structural set) showing the shear walls.';
@@ -983,6 +1049,8 @@ function autoTitle() {
     if (!job && p.job) job = p.job;
     const m = p.id && p.id.match(/^(\d+)/); if (m) floors.add(m[1]);
   }
+  // .ehx files carry no project name: use the job the list is for
+  if (!job && !state.sample) { try { const cj = currentJob(); if (cj && cj.name) job = cj.name; } catch (e) {} }
   job = job.replace(/#\s*/g, '').replace(/\s+/g, ' ').trim() || 'Job';
   let fl = '';
   if (floors.size === 1) { const n = +[...floors][0]; fl = ' ' + n + (n === 1 ? 'st' : n === 2 ? 'nd' : n === 3 ? 'rd' : 'th') + ' flr'; }
@@ -1163,7 +1231,7 @@ function renderBreakdown() {
 function renderFiles() {
   $('files').innerHTML = state.files.map((f, i) => `<div class="file">
     <span class="name">${esc(f.name)}</span>
-    <span class="meta">${f.error ? `<span style="color:var(--bad)">${esc(f.error)}</span>` : f.panels ? `${f.panels.length} panels` : `reading ${f.done || 0} of ${f.total || '?'} pages`}</span>
+    <span class="meta">${f.error ? `<span style="color:var(--bad)">${esc(f.error)}</span>` : f.panels ? `${f.panels.length} panels` : `reading ${f.done || 0} of ${f.total || '?'} ${/\.ehx$/i.test(f.name) ? 'panels' : 'pages'}`}</span>
     <button data-i="${i}" aria-label="Remove ${esc(f.name)}">Remove</button>
     ${!f.panels && !f.error ? `<div class="bar"><i style="width:${f.total ? (100 * f.done / f.total) : 2}%"></i></div>` : ''}</div>`).join('');
   $('files').querySelectorAll('button[data-i]').forEach(b => b.onclick = () => {
@@ -1176,8 +1244,9 @@ function renderFiles() {
 
 let queue = Promise.resolve();
 function addFiles(list) {
-  const pdfs = [...list].filter(f => /\.pdf$/i.test(f.name) || f.type === 'application/pdf');
-  if (!pdfs.length) { toast('Those files are not PDFs. Drop the panel PDFs.'); return; }
+  const isEhx = f => /\.ehx$/i.test(f.name);
+  const pdfs = [...list].filter(f => isEhx(f) || /\.pdf$/i.test(f.name) || f.type === 'application/pdf');
+  if (!pdfs.length) { toast('Those files are not panel PDFs or .ehx files.'); return; }
   if (state.sample) { state.sample = false; state.titleEdited = false; }
   $('clearBtn').hidden = false;
   for (const file of pdfs) {
@@ -1188,14 +1257,13 @@ function addFiles(list) {
       try {
         const buf = new Uint8Array(await file.arrayBuffer());
         let last = 0;
-        rec.panels = await readPanelPdf(buf, (d, t) => {
+        rec.panels = await (isEhx(file) ? readPanelEhx : readPanelPdf)(buf, (d, t) => {
           rec.done = d; rec.total = t;
           const now = Date.now(); if (now - last > 120) { last = now; renderFiles(); }
         });
-        if (!rec.panels.some(p => p.pieces.length)) rec.error = 'No panel piece lists found in this PDF';
-        if (!rec.kind && rec.panels.length && rec.panels.every(p => /^\d*E/.test(p.id || ''))) rec.kind = 'ext';
+        if (!rec.panels.some(p => p.pieces.length)) rec.error = 'No panel piece lists found in this ' + (isEhx(file) ? '.ehx file' : 'PDF');
       } catch (e) {
-        rec.error = 'Could not read this PDF (' + (e && e.message ? e.message : 'unknown error') + ')';
+        rec.error = 'Could not read this ' + (isEhx(file) ? '.ehx file' : 'PDF') + ' (' + (e && e.message ? e.message : 'unknown error') + ')';
         rec.panels = null;
       }
       if (state.files.includes(rec)) { renderFiles(); recompute(); }
@@ -1779,7 +1847,10 @@ function updateJobUi() {
     : j.type === 'in' ? 'Insourced job: saving sends the lumber to Bill out, then approval and Sales.'
     : 'Outsourced job: the list is saved to the job only. Nothing comes out of inventory.';
 }
-$('jobSel').onchange = e => { state.jobId = e.target.value; updateJobUi(); };
+$('jobSel').onchange = e => {
+  state.jobId = e.target.value; updateJobUi();
+  if (!state.titleEdited && state.files.length) { state.title = autoTitle(); $('title').value = state.title; }
+};
 // "New material list" on a job page picks that job here (for whichever package is showing)
 function selectJob(id) { state.jobId = id || ''; refreshJobs(); }
 $('newJobBtn').onclick = () => {
