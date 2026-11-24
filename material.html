@@ -1359,7 +1359,7 @@ const CUT_STEPS = [
   // Top, bottom and very top plates are one step, cut board by board out of their stock
   { name: 'Plates (top, bottom and VTP)', test: d => /TOP PLATE|BOTTOM PLATE|BOT PLATE|\bVTP\b/.test(d), boards: true },
   // 2x4 and 2x6 headers and window sills are cut at the same time, sharing boards
-  { name: '2x4 and 2x6 headers and window sills', test: (d, pc) => !isHeaderSillOrCap(d) && (/SILL/.test(d) || (/HEADER|\bHDR\b/.test(d) && /^2x[46]$/.test(pc.mat))), boards: true },
+  { name: 'Headers and window sills', test: (d, pc) => !isHeaderSillOrCap(d) && (/SILL/.test(d) || (/HEADER|\bHDR\b/.test(d) && /^2x[46]$/.test(pc.mat))), boards: true },
   // top and bottom cripples are cut at the same time
   { name: 'Cripples (top and bottom)', test: d => /CRIPPLE|\b(TOP|BOT|BOTTOM)\s*CR\b/.test(d), boards: true },
   // header caps and header sills are cut at the same time
@@ -1473,18 +1473,27 @@ function cutGroups() {
   const sortRows = (rows, loose) => {
     const all = [...rows.values()];
     // The shop's steps in order (trimmers, then studs...); in each step 2x4s before 2x6s, each shortest stock length first
-    const out = [];
+    let out = [];
     CUT_STEPS.forEach((st, i) => {
       if (st.boards) {
         // one row per stock board pattern, shortest stock first
         const boards = (st.pack || plateBoards)(loose[i] || []).sort((a, b) => byDims(a, b) || a.ft - b.ft || a.mat.localeCompare(b.mat) || b.pieces.length - a.pieces.length);
-        boards.forEach(r => { r.sec = st.name; r.board = true; r.qty = r.count; });
+        boards.forEach(r => { r.si = i; r.board = true; r.qty = r.count; });
         out.push(...boards);
         return;
       }
       const part = all.filter(r => r.step === i).sort((a, b) => byDims(a, b) || a.stock.inch - b.stock.inch || a.mat.localeCompare(b.mat) || a.len - b.len);
-      part.forEach(r => r.sec = st.name);
+      part.forEach(r => r.si = i);
       out.push(...part);
+    });
+    // All the 2x4 goes through every step (trimmers to header caps and sills) before any 2x6 is cut,
+    // then the 2x6 goes through the same steps; bearing headers come after both
+    const BH = CUT_STEPS.findIndex(st => st.name === 'Bearing headers');
+    const pass = r => { if (r.si === BH) return 1e6; const k = sizeKey(r.pc); return k[0] * 100 + k[1]; };
+    out = out.map((r, n) => ({ r, n })).sort((a, b) => pass(a.r) - pass(b.r) || a.r.si - b.r.si || a.n - b.n).map(x => x.r);
+    out.forEach(r => {
+      const k = sizeKey(r.pc), st = CUT_STEPS[r.si];
+      r.sec = r.si === BH ? st.name : (k[0] < 99 ? k[0] + 'x' + k[1] : r.mat) + ' — ' + st.name;
     });
     const rest = all.filter(r => r.step < 0).sort((a, b) => bySize(a, b) || partRank(a.desc) - partRank(b.desc) || a.desc.localeCompare(b.desc) || b.len - a.len);
     rest.forEach(r => r.sec = 'Everything else (order not set yet)');
