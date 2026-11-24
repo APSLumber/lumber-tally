@@ -1357,7 +1357,9 @@ const CUT_STEPS = [
   { name: 'Trimmers', test: isTrimmer },
   { name: 'Studs', test: isPlainStud },
   // Top, bottom and very top plates are one step, cut board by board out of their stock
-  { name: 'Plates (top, bottom and VTP)', test: d => /TOP PLATE|BOTTOM PLATE|BOT PLATE|\bVTP\b/.test(d), boards: true }
+  { name: 'Plates (top, bottom and VTP)', test: d => /TOP PLATE|BOTTOM PLATE|BOT PLATE|\bVTP\b/.test(d), boards: true },
+  // 2x6 headers and window sills are cut at the same time, sharing boards
+  { name: '2x6 headers and window sills', test: (d, pc) => /SILL/.test(d) || (/HEADER/.test(d) && /^2x6$/.test(pc.mat)), boards: true }
 ];
 // Plates packed into stock boards the same way the material list orders them: pieces up to 12' share 12' boards
 // (longest first, each into the first board it fits), longer pieces get their own board at the next even length.
@@ -1413,7 +1415,7 @@ function cutGroups() {
       g.panels++;
       for (const pc of p.pieces) {
         const mat = pc.mat + (pc.treat ? ' ' + pc.treat : '');
-        const si = CUT_STEPS.findIndex(x => x.test(pc.desc));
+        const si = CUT_STEPS.findIndex(x => x.test(pc.desc, pc));
         if (si > -1 && CUT_STEPS[si].boards) {
           g.loose = g.loose || {};
           const arr = g.loose[si] = g.loose[si] || [];
@@ -1421,7 +1423,7 @@ function cutGroups() {
           continue;
         }
         const key = mat + '|' + pc.desc + '|' + pc.len;
-        const r = g.rows.get(key) || { mat, pc, desc: pc.desc, len: pc.len, qty: 0, panels: new Set(), stock: cutStock(pc), step: CUT_STEPS.findIndex(x => x.test(pc.desc)) };
+        const r = g.rows.get(key) || { mat, pc, desc: pc.desc, len: pc.len, qty: 0, panels: new Set(), stock: cutStock(pc), step: CUT_STEPS.findIndex(x => x.test(pc.desc, pc)) };
         r.qty += pc.qty; if (p.id) r.panels.add(p.id);
         g.rows.set(key, r);
       }
