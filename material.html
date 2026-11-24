@@ -1358,8 +1358,8 @@ const CUT_STEPS = [
   { name: 'Studs', test: isPlainStud },
   // Top, bottom and very top plates are one step, cut board by board out of their stock
   { name: 'Plates (top, bottom and VTP)', test: d => /TOP PLATE|BOTTOM PLATE|BOT PLATE|\bVTP\b/.test(d), boards: true },
-  // 2x6 headers and window sills are cut at the same time, sharing boards
-  { name: '2x6 headers and window sills', test: (d, pc) => !isHeaderSillOrCap(d) && (/SILL/.test(d) || (/HEADER/.test(d) && /^2x6$/.test(pc.mat))), boards: true },
+  // 2x4 and 2x6 headers and window sills are cut at the same time, sharing boards
+  { name: '2x4 and 2x6 headers and window sills', test: (d, pc) => !isHeaderSillOrCap(d) && (/SILL/.test(d) || (/HEADER|\bHDR\b/.test(d) && /^2x[46]$/.test(pc.mat))), boards: true },
   // top and bottom cripples are cut at the same time
   { name: 'Cripples (top and bottom)', test: d => /CRIPPLE|\b(TOP|BOT|BOTTOM)\s*CR\b/.test(d), boards: true },
   // header caps and header sills are cut at the same time
