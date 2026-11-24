@@ -1355,7 +1355,10 @@ const isPlainStud = d => /\bKING\b/.test(d) || (/\b(SS)?STUD\b/.test(d) && !/JAC
 // Shop cutting order, in steps. Each step is cut shortest stock length first, working up to the longest.
 const CUT_STEPS = [
   { name: 'Trimmers', test: isTrimmer },
-  { name: 'Studs', test: isPlainStud }
+  { name: 'Studs', test: isPlainStud },
+  { name: 'Top plates', test: d => /TOP PLATE/.test(d) && !/VERY TOP/.test(d) },
+  { name: 'Bottom plates', test: d => /BOTTOM PLATE|BOT PLATE/.test(d) },
+  { name: 'VTP', test: d => /\bVTP\b|VERY TOP/.test(d) }
 ];
 // The stock board a piece is cut from, matching how the material list orders it
 function cutStock(pc) {
