@@ -222,7 +222,7 @@ td .rm { background: none; border: 0; color: var(--muted); text-decoration: unde
 
   <section class="shear" id="cutProc" aria-labelledby="cutTitle" hidden>
     <h2 id="cutTitle">Cutting procedure</h2>
-    <p class="note" style="margin:0">The stock to pull, in cutting order: all the 2x4 first (left), then all the 2x6, then bearing headers (right). Precut studs that need no cut are left off.</p>
+    <p class="note" style="margin:0">The stock to pull, in cutting order: all the 2x4 first, then all the 2x6, then bearing headers. Steps run down the left column, then the right. Precut studs that need no cut are left off.</p>
     <div class="actions" style="margin:0"><button class="btn ghost" id="cutDlBtn">Download cutting procedure (Excel)</button></div>
     <div id="cutBody"></div>
   </section>
@@ -1591,8 +1591,8 @@ function stockRows(list) {
   }
   return [...m.values()];
 }
-// The cutting procedure laid out like the material sheet: all the 2x4 stock in the left column; the 2x6, any other
-// stock and the bearing headers in the right. Each step is a numbered heading, each size a group of stock lengths.
+// The cutting procedure laid out like the material sheet: the first half of the steps in the left column, the second
+// half in the right. Each step is a numbered heading, each size a group of stock lengths, under its stock heading.
 function cutLayout() {
   const { passes } = cutPlan();
   let n = 0;
@@ -1611,7 +1611,24 @@ function cutLayout() {
     const solo = steps.length === 1 && steps[0].name === p.title;
     return { title: solo ? '' : p.title, boards: list.reduce((t, r) => t + r.qty, 0), steps };
   });
-  return { left: cols.slice(0, 1), right: cols.slice(1) };
+  // every step in order, then split in half; a stock heading starts each run of its steps in a column
+  const all = [];
+  cols.forEach(c => c.steps.forEach(st => all.push({ pass: c, st })));
+  const half = Math.ceil(all.length / 2);
+  const column = (items, cont) => {
+    const out = [];
+    for (const it of items) {
+      let last = out[out.length - 1];
+      if (!last || last.src !== it.pass) {
+        const more = cont && !out.length && all[half - 1] && all[half - 1].pass === it.pass;
+        last = { src: it.pass, title: it.pass.title ? it.pass.title + (more ? ' (continued)' : '') : '', boards: more ? null : it.pass.boards, steps: [] };
+        out.push(last);
+      }
+      last.steps.push(it.st);
+    }
+    return out;
+  };
+  return { left: column(all.slice(0, half), false), right: column(all.slice(half), true) };
 }
 const cutTitle = () => state.title.replace(/\s*Material$/, '') + ' Cutting Procedure';
 function renderCut() {
@@ -1620,7 +1637,7 @@ function renderCut() {
   if (!show) { $('cutBody').innerHTML = ''; return; }
   const { left, right } = cutLayout();
   const grp = g => `<div class="grp"><div class="t">${esc(g.type)}</div>${g.rows.map(x => `<div class="l">${esc(x.len)}</div><div class="q">${fmtQ(x.qty)}</div>`).join('')}</div>`;
-  const pass = p => (p.title ? `<div class="cut-pass">${esc(p.title)}<span>${fmtQ(p.boards)} boards</span></div>` : '') +
+  const pass = p => (p.title ? `<div class="cut-pass">${esc(p.title)}${p.boards != null ? `<span>${fmtQ(p.boards)} boards</span>` : ''}</div>` : '') +
     p.steps.map(st => `<div class="blk"><h3>${st.n}. ${esc(st.name)}</h3>${st.groups.map(grp).join('')}</div>`).join('');
   const head = `<div class="colhead"><span>Type</span><span>Length</span><span>Quantity</span></div>`;
   $('cutBody').innerHTML = `<div class="sheet"><div class="co">Advanced Precut Systems</div><div class="addr">710 Pacific Ave W, Dassel MN 55325</div>
@@ -1634,7 +1651,7 @@ function cutGridRows() {
   const col = ps => {
     const out = [];
     for (const p of ps) {
-      if (p.title) out.push([{ v: p.title + ' (' + p.boards + ' boards)', bold: true, big: true }]);
+      if (p.title) out.push([{ v: p.title + (p.boards != null ? ' (' + p.boards + ' boards)' : ''), bold: true, big: true }]);
       for (const st of p.steps) {
         out.push([H(st.n + '. ' + st.name)]);
         for (const g of st.groups) { out.push([g.type]); g.rows.forEach(r => out.push(['', r.len, r.qty])); }
