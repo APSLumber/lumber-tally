@@ -1349,6 +1349,21 @@ function wallKindFromName(name) {
 const PART_ORDER = [/BOTTOM PLATE/, /TOP PLATE/, /\bVTP\b|VERY TOP/, /KING/, /TRIM|JACK/, /^STUD|\bSTUD\b/, /BACKER/, /SILL/, /CRIPPLE|\bCR\b/, /HEADER/, /BLOCK/];
 function partRank(desc) { const i = PART_ORDER.findIndex(re => re.test(desc)); return i < 0 ? PART_ORDER.length : i; }
 function sizeKey(pc) { const m = String(pc.mat).match(/^(\d+)x(\d+)/); return m ? [+m[1], +m[2]] : [99, 99]; }
+const isTrimmer = d => /\bJACK\b|TRIMMER/.test(d);
+// The stock board a piece is cut from, matching how the material list orders it
+function cutStock(pc) {
+  const sz = sizeKey(pc), len = pc.len;
+  if (!pc.treat && sz[0] === 2 && (sz[1] === 4 || sz[1] === 6) && isStudLike(pc.desc) && len <= 120) {
+    if (Math.abs(len - PRECUT) < 0.01) return { inch: PRECUT, label: '92 5/8" (no cut)' };
+    if (len < PRECUT) return { inch: PRECUT, label: '92 5/8"' };
+    if (len <= 104.625) return { inch: 104.625, label: '104 5/8"' };
+    return { inch: 120, label: "10'" };
+  }
+  if (sz[0] === 2 && sz[1] >= 8 && /HEADER/.test(pc.desc)) return { inch: 0, label: 'see header cuts' };
+  let ft = len <= 144 ? 12 : Math.ceil(len / 24) * 2;
+  if (ft * 12 < len) ft += 2;
+  return { inch: ft * 12, label: ft + "'" };
+}
 function cutGroups() {
   const out = WALL_KINDS.map(k => ({ kind: k, panels: 0, rows: new Map() })), unset = { kind: { id: '', title: 'Wall type not set' }, panels: 0, rows: new Map(), files: [] };
   const seen = new Set();
@@ -1363,16 +1378,22 @@ function cutGroups() {
       for (const pc of p.pieces) {
         const mat = pc.mat + (pc.treat ? ' ' + pc.treat : '');
         const key = mat + '|' + pc.desc + '|' + pc.len;
-        const r = g.rows.get(key) || { mat, pc, desc: pc.desc, len: pc.len, qty: 0, panels: new Set() };
+        const r = g.rows.get(key) || { mat, pc, desc: pc.desc, len: pc.len, qty: 0, panels: new Set(), stock: cutStock(pc), trim: isTrimmer(pc.desc) };
         r.qty += pc.qty; if (p.id) r.panels.add(p.id);
         g.rows.set(key, r);
       }
     }
   }
-  const sortRows = rows => [...rows.values()].sort((a, b) => {
-    const sa = sizeKey(a.pc), sb = sizeKey(b.pc);
-    return sa[0] - sb[0] || sa[1] - sb[1] || a.mat.localeCompare(b.mat) || partRank(a.desc) - partRank(b.desc) || a.desc.localeCompare(b.desc) || b.len - a.len;
-  });
+  const bySize = (a, b) => { const sa = sizeKey(a.pc), sb = sizeKey(b.pc); return sa[0] - sb[0] || sa[1] - sb[1] || a.mat.localeCompare(b.mat); };
+  const sortRows = rows => {
+    const all = [...rows.values()];
+    // Rule 2: trimmers first, shortest stock length first, working up to the longest
+    const trim = all.filter(r => r.trim).sort((a, b) => a.stock.inch - b.stock.inch || bySize(a, b) || a.len - b.len);
+    const rest = all.filter(r => !r.trim).sort((a, b) => bySize(a, b) || partRank(a.desc) - partRank(b.desc) || a.desc.localeCompare(b.desc) || b.len - a.len);
+    trim.forEach(r => r.sec = 'Trimmers');
+    rest.forEach(r => r.sec = 'Everything else (order not set yet)');
+    return trim.concat(rest);
+  };
   return out.concat(unset.panels ? [unset] : []).map(g => Object.assign(g, { list: sortRows(g.rows) }));
 }
 function renderCut() {
@@ -1382,25 +1403,25 @@ function renderCut() {
   let step = 0;
   $('cutBody').innerHTML = cutGroups().map(g => {
     if (!g.panels) return `<div class="cut-grp"><h3>${esc(g.kind.title)}<span class="meta">no ${esc(g.kind.title.toLowerCase())} PDF added</span></h3></div>`;
-    let lastMat = '';
+    let lastSec = '';
     const rows = g.list.map(r => {
-      const head = r.mat !== lastMat ? `<tr class="size"><td colspan="5">${esc(r.mat)}</td></tr>` : '';
-      lastMat = r.mat;
-      return head + `<tr><td class="n">${++step}</td><td>${esc(r.desc)}</td><td>${esc(fmtFtIn(r.len))}</td><td class="n">${fmtQ(r.qty)}</td><td class="n">${r.panels.size}</td></tr>`;
+      const head = r.sec !== lastSec ? `<tr class="size"><td colspan="7">${esc(r.sec)}</td></tr>` : '';
+      lastSec = r.sec;
+      return head + `<tr><td class="n">${++step}</td><td>${esc(r.mat)}</td><td>${esc(r.desc)}</td><td>${esc(fmtFtIn(r.len))}</td><td>${esc(r.stock.label)}</td><td class="n">${fmtQ(r.qty)}</td><td class="n">${r.panels.size}</td></tr>`;
     }).join('');
     const warn = g.files ? `<p class="note" style="margin:8px 14px;color:var(--bad)">Set the wall type for: ${esc(g.files.join(', '))}</p>` : '';
     return `<div class="cut-grp"><h3>${esc(g.kind.title)}<span class="meta">${g.panels} panels · ${fmtQ(g.list.reduce((t, r) => t + r.qty, 0))} pieces</span></h3>${warn}
-      <div class="tbl-wrap"><table><thead><tr><th class="n">Step</th><th>Part</th><th>Length</th><th class="n">Pieces</th><th class="n">Panels</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+      <div class="tbl-wrap"><table><thead><tr><th class="n">Step</th><th>Size</th><th>Part</th><th>Length</th><th>Cut from</th><th class="n">Pieces</th><th class="n">Panels</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
   }).join('');
 }
 // Excel tab
 function addCutSheet(wb) {
   if (state.pkg !== 'panel' || $('cutProc').hidden) return;
   const ws = wb.addWorksheet('Cutting procedure');
-  ws.columns = [{ header: 'Step', width: 7 }, { header: 'Walls', width: 26 }, { header: 'Material', width: 12 }, { header: 'Part', width: 22 }, { header: 'Length', width: 12 }, { header: 'Pieces', width: 9 }, { header: 'Panels', width: 9 }];
+  ws.columns = [{ header: 'Step', width: 7 }, { header: 'Walls', width: 26 }, { header: 'Material', width: 12 }, { header: 'Part', width: 22 }, { header: 'Length', width: 12 }, { header: 'Cut from', width: 16 }, { header: 'Pieces', width: 9 }, { header: 'Panels', width: 9 }];
   ws.getRow(1).font = { bold: true };
   let step = 0;
-  for (const g of cutGroups()) for (const r of g.list) ws.addRow([++step, g.kind.title, r.mat, r.desc, fmtFtIn(r.len), r.qty, r.panels.size]);
+  for (const g of cutGroups()) for (const r of g.list) ws.addRow([++step, g.kind.title, r.mat, r.desc, fmtFtIn(r.len), r.stock.label, r.qty, r.panels.size]);
 }
 
 /* ---------- stair stringers ---------- */
