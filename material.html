@@ -1350,6 +1350,8 @@ const CUT_STEPS = [
   { name: 'Headers and window sills', test: (d, pc) => !isHeaderSillOrCap(d) && (/SILL/.test(d) || (/HEADER|\bHDR\b/.test(d) && /^2x[46]$/.test(pc.mat))), boards: true },
   // top and bottom cripples are cut at the same time
   { name: 'Cripples (top and bottom)', test: d => /CRIPPLE|\b(TOP|BOT|BOTTOM)\s*CR\b/.test(d), boards: true },
+  // flat blocking right after cripples, packed into stock boards
+  { name: 'Flat blocking', test: d => /\bFLAT\s*(BLK|BLOCK)|\b(BLK|BLOCK)(ING)?\s*FLAT\b/.test(d), boards: true },
   // header caps and header sills are cut at the same time
   { name: 'Header caps and header sills', test: isHeaderSillOrCap, boards: true },
   // bearing headers: 2x8 and wider, and LVL; out of the same boards the material list orders
