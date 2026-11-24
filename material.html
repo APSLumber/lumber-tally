@@ -117,16 +117,8 @@ td.n { text-align: right; font-family: var(--font-data); font-variant-numeric: t
 .pl.pre { border: 1.5px solid var(--precut-line); background: var(--precut-fill); }
 /* shear walls */
 :root { --drawing: #ffffff; --mark: #0d7a45; --mark-fill: rgba(16, 150, 80, .42); --mark2-fill: rgba(9, 95, 52, .62); --sug: #d97a00; --sug-fill: rgba(255, 170, 0, .22); }
-.cut-grp { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
-.cut-grp h3 { margin: 0; padding: 10px 14px; font-family: var(--font-display); font-size: 16px; background: var(--accent-soft); display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
-.cut-grp h3 .meta { font-family: var(--font-body, inherit); font-size: 13px; font-weight: 500; color: var(--muted); }
-.cut-grp table td.n, .cut-grp table th.n { text-align: right; }
-.cut-grp .size td { background: var(--paper); font-weight: 700; padding-top: 10px; }
-/* same column widths in every card so the stock cards line up */
-.cut-grp th:nth-child(1) { width: 12%; }
-.cut-grp th:nth-child(2) { width: 40%; }
-.cut-grp th:nth-child(3) { width: 28%; }
-.cut-grp th:nth-child(4) { width: 20%; }
+.cut-pass { font-family: var(--font-display); font-size: 18px; font-weight: 700; margin: 4px 0 10px; }
+.cut-pass span { font-family: var(--font-body, inherit); font-size: 13px; font-weight: 500; color: var(--muted); margin-left: 8px; }
 #cutBody { display: grid; gap: 12px; }
 .stair-form { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px 12px; }
 .stair-form input, .stair-form select { font: inherit; border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; background: var(--paper); color: var(--ink); width: 100%; }
@@ -230,7 +222,7 @@ td .rm { background: none; border: 0; color: var(--muted); text-decoration: unde
 
   <section class="shear" id="cutProc" aria-labelledby="cutTitle" hidden>
     <h2 id="cutTitle">Cutting procedure</h2>
-    <p class="note" style="margin:0">The stock to pull for the panel PDFs, in cutting order: all the 2x4 first, then all the 2x6, then bearing headers. Precut studs that need no cut are left off.</p>
+    <p class="note" style="margin:0">The stock to pull, in cutting order: all the 2x4 first (left), then all the 2x6, then bearing headers (right). Precut studs that need no cut are left off.</p>
     <div class="actions" style="margin:0"><button class="btn ghost" id="cutDlBtn">Download cutting procedure (Excel)</button></div>
     <div id="cutBody"></div>
   </section>
@@ -1310,9 +1302,7 @@ function fallbackCopy(text) {
   ta.remove(); toast(ok ? 'Copied. Click cell A1 in Excel and paste.' : 'Copy was blocked here. Use Download Excel instead.');
 }
 
-async function buildXlsx() {
-  const wb = new ExcelJS.Workbook();
-  const writeGrid = (ws, rows) => rows.forEach((row, i) => {
+const writeGrid = (ws, rows) => rows.forEach((row, i) => {
     const xr = ws.getRow(i + 1);
     row.forEach((c, j) => {
       if (c === '' || c === undefined || c === null) return;
@@ -1323,6 +1313,8 @@ async function buildXlsx() {
       if (typeof v === 'number') { cell.numFmt = '#,##0'; cell.alignment = { horizontal: 'right' }; }
     });
   });
+async function buildXlsx() {
+  const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet('to BB', { pageSetup: { fitToPage: true, fitToWidth: 1, fitToHeight: 1 } });
   ws.columns = [{ width: 4 }, { width: 26 }, { width: 11 }, { width: 11 }, { width: 6 }, { width: 22 }, { width: 11 }, { width: 11 }];
   writeGrid(ws, gridRows());
@@ -1386,7 +1378,7 @@ async function buildCutXlsx() {
 $('cutDlBtn').onclick = async () => {
   const btn = $('cutDlBtn'); btn.disabled = true;
   try {
-    saveXlsx(await buildCutXlsx(), xlsxName(' - Cutting procedure'));
+    saveXlsx(await buildCutXlsx(), cutTitle().replace(/[\\/:*?"<>|]+/g, ' ').trim() + '.xlsx');
   } catch (e) {
     toast('The Excel file could not be made.');
   } finally { btn.disabled = false; }
@@ -1599,35 +1591,78 @@ function stockRows(list) {
   }
   return [...m.values()];
 }
+// The cutting procedure laid out like the material sheet: all the 2x4 stock in the left column; the 2x6, any other
+// stock and the bearing headers in the right. Each step is a numbered heading, each size a group of stock lengths.
+function cutLayout() {
+  const { passes } = cutPlan();
+  let n = 0;
+  const cols = passes.map(p => {
+    const list = stockRows(p.list);
+    const steps = [];
+    for (const r of list) {
+      let st = steps[steps.length - 1];
+      if (!st || st.name !== r.sec) { st = { name: r.sec, groups: [] }; steps.push(st); }
+      const type = r.mat + (r.part ? ' ' + r.part : '');
+      let g = st.groups.find(x => x.type === type);
+      if (!g) { g = { type, rows: [] }; st.groups.push(g); }
+      g.rows.push({ len: r.label, qty: r.qty });
+    }
+    steps.forEach(st => st.n = ++n);
+    const solo = steps.length === 1 && steps[0].name === p.title;
+    return { title: solo ? '' : p.title, boards: list.reduce((t, r) => t + r.qty, 0), steps };
+  });
+  return { left: cols.slice(0, 1), right: cols.slice(1) };
+}
+const cutTitle = () => state.title.replace(/\s*Material$/, '') + ' Cutting Procedure';
 function renderCut() {
   const show = state.pkg === 'panel' && !state.sample && state.files.some(f => f.panels && f.panels.length);
   $('cutProc').hidden = !show;
   if (!show) { $('cutBody').innerHTML = ''; return; }
-  const { passes } = cutPlan();
-  let step = 0;
-  $('cutBody').innerHTML =
-    passes.map(p => {
-      let lastSec = '';
-      const list = stockRows(p.list);
-      const rows = list.map(r => {
-        const head = r.sec !== lastSec && r.sec !== p.title ? `<tr class="size"><td colspan="4">${esc(r.sec)}</td></tr>` : '';
-        lastSec = r.sec;
-        return head + `<tr><td class="n">${++step}</td><td>${esc(r.mat + (r.part ? ' ' + r.part : ''))}</td><td>${esc(r.label)}</td><td class="n">${fmtQ(r.qty)}</td></tr>`;
-      }).join('');
-      const boards = list.reduce((t, r) => t + r.qty, 0);
-      return `<div class="cut-grp"><h3>${esc(p.title)}<span class="meta">${fmtQ(boards)} boards</span></h3>
-      <div class="tbl-wrap"><table><thead><tr><th class="n">Step</th><th>Size</th><th>Stock length</th><th class="n">Boards</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
-    }).join('');
+  const { left, right } = cutLayout();
+  const grp = g => `<div class="grp"><div class="t">${esc(g.type)}</div>${g.rows.map(x => `<div class="l">${esc(x.len)}</div><div class="q">${fmtQ(x.qty)}</div>`).join('')}</div>`;
+  const pass = p => (p.title ? `<div class="cut-pass">${esc(p.title)}<span>${fmtQ(p.boards)} boards</span></div>` : '') +
+    p.steps.map(st => `<div class="blk"><h3>${st.n}. ${esc(st.name)}</h3>${st.groups.map(grp).join('')}</div>`).join('');
+  const head = `<div class="colhead"><span>Type</span><span>Length</span><span>Quantity</span></div>`;
+  $('cutBody').innerHTML = `<div class="sheet"><div class="co">Advanced Precut Systems</div><div class="addr">710 Pacific Ave W, Dassel MN 55325</div>
+    <h2>${esc(cutTitle())}</h2>
+    <div class="cols"><div>${head}${left.map(pass).join('')}</div><div>${right.length ? head + right.map(pass).join('') : ''}</div></div></div>`;
 }
-// Excel tab
+// Excel: the same two-column layout as the material list's sheet
+function cutGridRows() {
+  const { left, right } = cutLayout();
+  const H = t => ({ v: t, bold: true });
+  const col = ps => {
+    const out = [];
+    for (const p of ps) {
+      if (p.title) out.push([{ v: p.title + ' (' + p.boards + ' boards)', bold: true, big: true }]);
+      for (const st of p.steps) {
+        out.push([H(st.n + '. ' + st.name)]);
+        for (const g of st.groups) { out.push([g.type]); g.rows.forEach(r => out.push(['', r.len, r.qty])); }
+        out.push([]);
+      }
+    }
+    while (out.length && !out[out.length - 1].length) out.pop();
+    return out;
+  };
+  const L = col(left), R = col(right);
+  const rows = [
+    ['', H('Advanced Precut Systems')],
+    ['', H('710 Pacific Ave W, Dassel MN 55325')],
+    ['', { v: cutTitle(), bold: true, big: true }],
+    ['', 'Type', 'Length', 'Quantity', '', 'Type', 'Length', 'Quantity'],
+    []
+  ];
+  for (let i = 0; i < Math.max(L.length, R.length); i++) {
+    const l = L[i] || [], r = R[i] || [];
+    rows.push(['', l[0] ?? '', l[1] ?? '', l[2] ?? '', '', r[0] ?? '', r[1] ?? '', r[2] ?? '']);
+  }
+  return rows;
+}
 function addCutSheet(wb) {
   if (state.pkg !== 'panel' || $('cutProc').hidden) return;
-  const ws = wb.addWorksheet('Cutting procedure');
-  ws.columns = [{ header: 'Step', width: 7 }, { header: 'Stock', width: 16 }, { header: 'Cut', width: 30 }, { header: 'Size', width: 18 }, { header: 'Stock length', width: 14 }, { header: 'Boards', width: 9 }];
-  ws.getRow(1).font = { bold: true };
-  let step = 0;
-  for (const p of cutPlan().passes) for (const r of stockRows(p.list))
-    ws.addRow([++step, p.title, r.cut, r.mat + (r.part ? ' ' + r.part : ''), r.label, r.qty]);
+  const ws = wb.addWorksheet('Cutting procedure', { pageSetup: { fitToPage: true, fitToWidth: 1, fitToHeight: 0 } });
+  ws.columns = [{ width: 4 }, { width: 26 }, { width: 11 }, { width: 11 }, { width: 6 }, { width: 26 }, { width: 11 }, { width: 11 }];
+  writeGrid(ws, cutGridRows());
 }
 
 /* ---------- stair stringers ---------- */
